@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: herreria
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/herreria
+    username: herreria
+    password: cambiame   # debe coincidir con docker-compose.yml
+
+  jpa:
+    hibernate:
+      # Crea/actualiza las tablas a partir de las entidades.
+      # Cómodo para desarrollo; cuando el sistema esté en producción
+      # conviene pasar a migraciones controladas (Flyway).
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8080
+
+# Límite de subida: las fotos van dentro de la petición
+spring.servlet.multipart:
+  max-file-size: 10MB
+  max-request-size: 15MB

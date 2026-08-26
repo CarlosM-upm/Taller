@@ -1,0 +1,19 @@
+# Base de datos del taller.
+# Arrancar con:  docker compose up -d
+# Los datos persisten en el volumen "herreria_datos" aunque el contenedor se reinicie.
+services:
+  postgres:
+    image: postgres:17
+    container_name: herreria-db
+    restart: unless-stopped        # se relanza solo al arrancar el servidor
+    environment:
+      POSTGRES_DB: herreria
+      POSTGRES_USER: herreria
+      POSTGRES_PASSWORD: cambiame  # cámbiala antes de ponerlo en marcha
+    ports:
+      - "5432:5432"
+    volumes:
+      - herreria_datos:/var/lib/postgresql/data
+
+volumes:
+  herreria_datos:
