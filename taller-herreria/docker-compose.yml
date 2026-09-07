@@ -11,7 +11,9 @@ services:
       POSTGRES_USER: herreria
       POSTGRES_PASSWORD: cambiame  # cámbiala antes de ponerlo en marcha
     ports:
-      - "5432:5432"
+      # 5433 en el equipo, 5432 dentro del contenedor.
+      # El 5432 del equipo puede estar ocupado por un PostgreSQL nativo.
+      - "5433:5432"
     volumes:
       - herreria_datos:/var/lib/postgresql/data
 

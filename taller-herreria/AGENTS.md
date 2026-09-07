@@ -41,8 +41,12 @@ separado (una PWA que aún no está construida).
 - **Maven no está instalado.** Usa siempre el wrapper: `.\mvnw.cmd` en Windows,
   `./mvnw` en Linux/Mac. Nunca sugieras `mvn` a secas.
 - **PostgreSQL corre en el puerto 5433**, no en el 5432. La máquina de desarrollo tiene
-  un PostgreSQL nativo ocupando el 5432. Está así en `docker-compose.yml` y en
-  `application.yml`; deben coincidir siempre.
+  un PostgreSQL nativo ocupando el 5432. `docker-compose.yml` mapea `"5433:5432"` y
+  `application.yml` apunta al 5433; deben coincidir siempre.
+- **La URL de la BD usa `127.0.0.1`, no `localhost`.** En Windows `localhost` resuelve
+  primero a `::1` (IPv6), donde hay un relay de WSL escuchando, y la conexión acaba en
+  un PostgreSQL que no es el del contenedor. El síntoma es un
+  `password authentication failed` desconcertante. No lo cambies a `localhost`.
 - La máquina de desarrollo es **Windows**; el destino final es **Linux**.
 - Las pruebas manuales de la API se hacen con **Postman**.
 
@@ -71,6 +75,7 @@ src/main/java/com/taller/herreria/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
 ├── foto/        Foto y FotoRepository (compartidos por las tres entidades)
 ├── config/      Configuracion: el contador de albaranes
+├── comun/       Transversal: manejo de errores y CORS (no es de dominio)
 └── seguridad/   Usuario, TokenAcceso, filtro, SecurityConfig, AuthService
 ```
 
@@ -87,10 +92,32 @@ Capas y responsabilidades:
 - **El dominio se nombra en castellano** (`Pedido`, `Trabajo`, `Albaran`, `trabajador`,
   `descripcion`, `esBorrador()`). Manténlo. No traduzcas a inglés.
 - Los errores se lanzan con `ResponseStatusException` y **mensajes en castellano**
-  pensados para que un humano los entienda.
+  pensados para que un humano los entienda. `comun/ManejadorErrores` los convierte en
+  un JSON uniforme (`RespuestaError`). **Sin ese manejador el mensaje no viaja**: por
+  defecto Spring Boot usa `server.error.include-message: never`.
 - Las entidades tienen constructor `protected` vacío (requisito de JPA) y setters solo
   para los campos que de verdad son editables.
 - Comentarios en castellano, explicando el *porqué* de las reglas de negocio.
+
+### Formato de error de la API
+
+Todas las respuestas de error, incluidas las de seguridad, tienen esta forma:
+
+```json
+{
+  "momento": "2026-09-07T20:43:00.14",
+  "codigo": 400,
+  "error": "Bad Request",
+  "mensaje": "No se puede enviar: faltan campos por rellenar: cliente, horas",
+  "ruta": "/api/trabajos/3/enviar",
+  "campos": { "contrasena": "indique la contraseña" }
+}
+```
+
+`campos` solo aparece cuando el fallo viene de una validación `@Valid`.
+Los rechazos por token o permiso **no** pasan por `ManejadorErrores` (ocurren en la
+cadena de filtros, antes del controlador): se generan en `SecurityConfig`, que escribe
+el mismo formato a mano. Si cambias uno, cambia el otro.
 
 ---
 
@@ -155,10 +182,44 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajador`, `descripcion`,
 ### Fotos
 
 - Las tres entidades admiten fotos, **máximo 5 por entidad** (constante `MAX_FOTOS`).
-- Se guardan **dentro de PostgreSQL** (blob), no en el sistema de ficheros. Decisión
+- Se guardan **dentro de PostgreSQL**, no en el sistema de ficheros. Decisión
   deliberada: así una sola copia de seguridad de la BD se lleva absolutamente todo.
-- Tabla única `fotos` con `origenTipo` (PEDIDO/TRABAJO/ALBARAN) + `origenId`.
+- Tabla única `fotos` con `origenTipo` (PEDIDO/TRABAJO/ALBARAN) + `origenId`, con índice
+  `idx_foto_origen` sobre ambas columnas.
 - Borrar una entidad arrastra sus fotos.
+- **Solo se admiten JPEG y PNG**, y se comprueban los **bytes de cabecera**, no la
+  cabecera `Content-Type` que declara el cliente (es falsificable, y dejaba pasar
+  `image/svg+xml`, que puede llevar scripts). Está centralizado en
+  `foto/ValidadorImagen`. **El tipo MIME se deduce del contenido**: si el cliente
+  declara `image/png` y envía un JPEG, se guarda y se sirve como `image/jpeg`.
+- **Los listados NO deben traer las imágenes.** Usa `FotoRepository.idsPorOrigen(...)`,
+  que proyecta solo los identificadores. El lazy en atributos básicos **no funciona**
+  sin instrumentación de bytecode, que este proyecto no tiene.
+
+### Cómo se almacenan las imágenes: `bytea`, nunca `@Lob`
+
+`Foto.datos` y `Albaran.firma` son `byte[]` **sin `@Lob` y sin `fetch = LAZY`**, a
+propósito. No lo cambies:
+
+- Con `@Lob`, Hibernate mapea `byte[]` a **`oid` (large object)** en PostgreSQL, y
+  entonces **borrar la fila no libera la imagen**: queda huérfana en `pg_largeobject`
+  y la base de datos crece para siempre. Estaba ocurriendo: se encontraron 5 large
+  objects huérfanos con la tabla `fotos` vacía. Ya está migrado a `bytea` y verificado
+  (borrar una foto deja `pg_largeobject_metadata` en 0).
+- Con `fetch = LAZY` tampoco: no funciona sin el plugin de instrumentación, y si se
+  añadiera ese plugin **rompería las descargas** (`GET /api/albaranes/{id}/firma` y las
+  tres de foto), porque con `open-in-view: false` el controlador lee los bytes fuera de
+  la transacción y saltaría `LazyInitializationException`.
+
+Nota sobre copias de seguridad: un `pg_dump` normal **sí** incluye los large objects
+por defecto (comprobado), así que el problema del `oid` nunca fue la copia de
+seguridad, sino la fuga de espacio. Con `bytea` las imágenes viajan dentro del `COPY`
+de la tabla, y los volcados selectivos (`pg_dump -t fotos`) también las llevan.
+
+**Requisito para la PWA:** las fotos deben **redimensionarse en el cliente** antes de
+subirlas (algo así como 1600 px de ancho). Una foto de tablet pesa 4-8 MB; sin reducir,
+cinco fotos por trabajo llenan la base de datos del taller en poco tiempo. Se decidió
+hacerlo en el cliente y no en el servidor.
 
 ---
 
@@ -199,8 +260,18 @@ Ambos roles:
 **Regla de edición por estado (importante):** en cuanto una entidad se finaliza y se envía,
 pasa a ser territorio del jefe.
 - Pedido: nace ya finalizado → el trabajador lo crea, pero editarlo es cosa del jefe.
+  Eso incluye **borrar sus fotos**: el pedido no tiene estado borrador, así que si el
+  trabajador sube una foto movida tiene que pedírselo al jefe. Es intencionado.
 - Trabajo BORRADOR: el trabajador lo edita libremente.
 - Trabajo ENVIADO: solo el jefe puede editarlo, borrarlo o tocar sus fotos.
+
+**Regla de campos vacíos en los PATCH:** un PATCH solo ignora los campos ausentes
+(`null`), así que había que decidir qué hacer con `""` o `"   "`.
+- **Trabajo BORRADOR**: la cadena en blanco se guarda como `null`. Vaciar un campo a
+  medio rellenar es legítimo, y así `camposQueFaltan()` lo detecta al enviar.
+- **Trabajo ENVIADO, Pedido y Albarán**: se rechaza con 400. Son documentos ya cerrados
+  y no pueden quedar incompletos. (El `dniCliente` del albarán sí admite vacío: es
+  opcional.)
 
 Esta última regla **no se puede expresar solo con la URL** (depende del estado del objeto),
 por eso vive en `TrabajoService.exigirJefeSiEnviado()` y no en `SecurityConfig`. Si añades
@@ -226,7 +297,7 @@ PATCH  /api/pedidos/{id}              JEFE
 DELETE /api/pedidos/{id}              JEFE
 POST   /api/pedidos/{id}/fotos        multipart, campo "fotos", máx 5
 GET    /api/pedidos/{id}/fotos/{fid}
-DELETE /api/pedidos/{id}/fotos/{fid}
+DELETE /api/pedidos/{id}/fotos/{fid}  JEFE
 
 POST   /api/trabajos                  crear borrador (campos opcionales)
 GET    /api/trabajos?estado=borrador|enviado
@@ -257,23 +328,66 @@ PUT    /api/config/proximo-numero-albaran   JEFE
 
 ## 7. Trabajo pendiente
 
-En orden previsto:
+### Ya hecho (Fase 0 — cimientos, Fase 1 — imágenes, Fase 2 — seguridad probada)
 
-1. **Generación de PDFs** para las tres entidades. Solo JEFE.
+Verificado arrancando la aplicación contra PostgreSQL real:
+
+- `comun/ManejadorErrores` + `RespuestaError`: los mensajes en castellano por fin llegan
+  al cliente, con formato uniforme.
+- Peticiones sin token devuelven **401** (antes 403, por el `Http403ForbiddenEntryPoint`
+  que Spring Security usa cuando no se registra un `AuthenticationEntryPoint`).
+- **CORS** configurado en `comun/ConfiguracionCors`, orígenes en `taller.cors.origenes`.
+- Proyección `idsPorOrigen` + índice `idx_foto_origen`: los listados ya no cargan las
+  imágenes en memoria.
+- Registro en fichero rotativo (`logs/herreria.log`, 30 días).
+- `@Valid` en login y cambio de contraseña: los cuerpos incompletos dan 400, no 500.
+- Puerto y host de la BD corregidos (5433 y `127.0.0.1`).
+- **Imágenes migradas de `oid` a `bytea`** y fuga de large objects cerrada (verificado:
+  borrar una foto deja `pg_largeobject_metadata` en 0).
+- **`foto/ValidadorImagen`**: solo JPEG y PNG, comprobando bytes de cabecera, con el
+  tipo MIME deducido del contenido. Sustituye a 4 copias de la misma comprobación.
+- **Capa de seguridad probada de punta a punta: 35 comprobaciones, 35 correctas.**
+  La matriz de permisos se comporta exactamente como dice §5. Además, verificado que
+  **la sesión sobrevive al reinicio de la API** (se para, se arranca y el mismo token
+  sigue valiendo) y que el logout explícito sí la invalida. Es la razón de guardar los
+  tokens en base de datos, y funciona.
+
+### Pendiente, en orden
+
+1. **PWA en Angular**: cliente para la tablet (pedidos y trabajos) y para el ordenador
+   del jefe (todo). Instalable, con resiliencia offline para microcortes de wifi.
+   Se decidió construirla **completa desde el principio**, no por fases.
+   Requisito: redimensionar las fotos en el cliente antes de subirlas (ver §4).
+2. **Generación de PDFs** para las tres entidades. Solo JEFE.
    Se decidió **PDF y no Word**: son documentos finales, no editables, que se imprimen y
    archivan; la edición se hace en la aplicación y luego se regenera el documento.
-2. **Infraestructura del servidor:**
+3. **Flyway antes de producción**, mientras la base de datos aún esté casi vacía.
+4. **Infraestructura del servidor:**
    - Servicio `systemd` para que API y base de datos arranquen solas al encender.
    - **Copia de seguridad nocturna automática** a un **disco externo USB** dedicado,
      conservando unos 30 días. Un solo disco (se descartó la rotación de dos).
    - Integración con el **SAI**: detectar corte de luz por USB y apagar limpiamente si el
      corte se alarga, con margen para no reaccionar a microcortes.
-3. **PWA en Angular**: cliente para la tablet (pedidos y trabajos) y para el ordenador del
-   jefe (todo). Instalable, con resiliencia offline para microcortes de wifi.
-4. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
+5. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
+   Habrá que añadirla a `taller.cors.origenes`.
+6. **Cambiar las contraseñas** de las dos cuentas y la de PostgreSQL antes de que el
+   taller empiece a usarlo de verdad.
 
-Nota sobre `ddl-auto: update`: vale para desarrollo, pero antes de producción conviene
-pasar a migraciones controladas (Flyway).
+**Topología decidida:** son **dos equipos separados**. Un mini-PC hace de servidor (sin
+pantalla, arranca solo al dar corriente) y el jefe usa otro ordenador distinto que se
+conecta por red local. La PWA, por tanto, se sirve a dos clientes: la tablet y el equipo
+del jefe.
+
+### Decisiones de negocio aún sin tomar
+
+- Borrar un trabajo que ya tiene albarán deja el albarán **huérfano**: `Albaran.trabajoId`
+  es un `Long` sin clave foránea, así que la BD no lo impide. ¿Bloquear con 409?
+- El contador de albaranes se lee e incrementa **sin bloqueo pesimista**: dos albaranes
+  simultáneos pueden tomar el mismo número. Riesgo bajo con cuatro personas, pero real.
+- La tabla `tokens_acceso` **crece indefinidamente** y los tokens se guardan en claro.
+  Cambiar la contraseña **no invalida** las sesiones abiertas. Medido: una sola tarde de
+  pruebas dejó 8 filas que nada purgará nunca. Con dos cuentas crece despacio, pero
+  nunca baja.
 
 ---
 
@@ -287,7 +401,23 @@ pasar a migraciones controladas (Flyway).
 - Replica el patrón existente: `pedido/` y `trabajo/` son las plantillas de referencia para
   cualquier entidad nueva.
 - Las validaciones y reglas de negocio van **en el Service**, nunca en el Controller.
-- Al terminar un cambio, verifica que compila con `.\mvnw.cmd spring-boot:run`
-  (o `.\mvnw.cmd compile` si solo quieres comprobar la compilación).
+- Al terminar un cambio, verifica que compila con `.\mvnw.cmd compile`. **Compilar no
+  basta**: el cableado de beans, la validez de las consultas JPQL y la configuración de
+  seguridad solo fallan al arrancar. Levanta la aplicación de verdad
+  (`.\mvnw.cmd spring-boot:run`) y comprueba al menos que sale
+  `Started HerreriaApplication`.
+- Cuidado con dos nombres que el framework impone y que no se pueden traducir:
+  el bean **debe** llamarse `corsConfigurationSource` (Spring Security lo busca por ese
+  nombre literal), y no declares un `@ExceptionHandler` para excepciones que
+  `ResponseEntityExceptionHandler` ya trata (p. ej. `MaxUploadSizeExceededException`):
+  el arranque falla con "Ambiguous @ExceptionHandler method mapped".
+- **`ddl-auto: update` no cambia el tipo de una columna que ya existe.** Solo añade
+  tablas y columnas. Si cambias el tipo de un campo en una entidad, la base de datos de
+  desarrollo se queda como estaba y no avisa: hay que migrarla a mano (o esperar a
+  Flyway). En el mini-PC no afecta, porque allí la base nace de cero desde las entidades.
+- Si pruebas la API con PowerShell, **no uses `-o $null` en `curl.exe`**: PowerShell
+  descarta el argumento, curl se come el siguiente parámetro como nombre de fichero y
+  acabas haciendo un GET donde creías hacer un DELETE, con un "204" falso en pantalla.
+  Usa una ruta de fichero real. Pasó, y dio por buenos dos borrados que nunca ocurrieron.
 - No hay tests automatizados todavía. Si añades alguno, que no dependa de un PostgreSQL
   real levantado a mano.

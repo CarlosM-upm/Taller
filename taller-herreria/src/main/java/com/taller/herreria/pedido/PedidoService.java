@@ -2,6 +2,7 @@ package com.taller.herreria.pedido;
 
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
+import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.pedido.dto.PedidoPatch;
 import com.taller.herreria.pedido.dto.PedidoRequest;
 import com.taller.herreria.pedido.dto.PedidoResponse;
@@ -11,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -52,9 +52,12 @@ public class PedidoService {
     /** Edición parcial: solo se tocan los campos que vienen informados. Solo jefe. */
     public PedidoResponse editar(Long id, PedidoPatch cambios) {
         Pedido pedido = buscarOFallar(id);
-        if (cambios.trabajador() != null) pedido.setTrabajador(cambios.trabajador());
-        if (cambios.cliente() != null) pedido.setCliente(cambios.cliente());
-        if (cambios.descripcion() != null) pedido.setDescripcion(cambios.descripcion());
+        if (cambios.trabajador() != null)
+            pedido.setTrabajador(exigirNoVacio(cambios.trabajador(), "trabajador"));
+        if (cambios.cliente() != null)
+            pedido.setCliente(exigirNoVacio(cambios.cliente(), "cliente"));
+        if (cambios.descripcion() != null)
+            pedido.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
         return aRespuesta(pedido);
     }
 
@@ -69,6 +72,7 @@ public class PedidoService {
 
     public List<Long> subirFotos(Long id, List<MultipartFile> ficheros) {
         Pedido pedido = buscarOFallar(id);
+        ValidadorImagen.exigirAlgunFichero(ficheros);
 
         long existentes = fotoRepository.countByOrigenTipoAndOrigenId(
                 Foto.OrigenTipo.PEDIDO, pedido.getId());
@@ -78,18 +82,9 @@ public class PedidoService {
         }
 
         for (MultipartFile fichero : ficheros) {
-            if (fichero.getContentType() == null || !fichero.getContentType().startsWith("image/")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Solo se admiten imágenes");
-            }
-            try {
-                fotoRepository.save(new Foto(
-                        Foto.OrigenTipo.PEDIDO, pedido.getId(),
-                        fichero.getContentType(), fichero.getBytes()));
-            } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "No se pudo leer la imagen recibida");
-            }
+            ValidadorImagen.Imagen imagen = ValidadorImagen.validar(fichero, "foto");
+            fotoRepository.save(new Foto(Foto.OrigenTipo.PEDIDO, pedido.getId(),
+                    imagen.tipoContenido(), imagen.datos()));
         }
         return idsDeFotos(pedido.getId());
     }
@@ -116,9 +111,21 @@ public class PedidoService {
                         "No existe el pedido " + id));
     }
 
+    /**
+     * Un PATCH solo ignora los campos ausentes (null). Sin esta comprobación,
+     * enviar "" o "   " vaciaba un campo obligatorio del pedido, que nace ya
+     * finalizado y por tanto siempre debe estar completo.
+     */
+    private String exigirNoVacio(String valor, String campo) {
+        if (valor.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El campo '" + campo + "' no puede quedar vacío");
+        }
+        return valor.trim();
+    }
+
     private List<Long> idsDeFotos(Long pedidoId) {
-        return fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.PEDIDO, pedidoId)
-                .stream().map(Foto::getId).toList();
+        return fotoRepository.idsPorOrigen(Foto.OrigenTipo.PEDIDO, pedidoId);
     }
 
     private PedidoResponse aRespuesta(Pedido p) {

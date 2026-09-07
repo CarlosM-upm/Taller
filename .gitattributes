@@ -1,0 +1,17 @@
+# Finales de línea: LF en el repositorio, siempre.
+#
+# Se desarrolla en Windows y el destino es Linux. Sin esto, basta con que un
+# editor guarde un fichero en CRLF para que git lo marque entero como
+# modificado: pasó con AGENTS.md, donde un cambio de 30 líneas aparecía como
+# 714. Todo el repositorio está ya en LF, así que esta regla no cambia nada
+# de lo existente; solo evita que se ensucie a partir de ahora.
+* text=auto eol=lf
+
+# Binarios: que git no intente convertirlos.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary

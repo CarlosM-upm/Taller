@@ -2,16 +2,18 @@ package com.taller.herreria.trabajo;
 
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
+import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.seguridad.SeguridadUtils;
 import com.taller.herreria.trabajo.dto.TrabajoDatos;
 import com.taller.herreria.trabajo.dto.TrabajoResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,8 @@ import java.util.List;
 @Service
 @Transactional
 public class TrabajoService {
+
+    private static final Logger log = LoggerFactory.getLogger(TrabajoService.class);
 
     public static final int MAX_FOTOS = 5;
 
@@ -89,6 +93,8 @@ public class TrabajoService {
         }
 
         trabajo.enviar();
+        log.info("Trabajo {} enviado (cliente: {}, trabajador: {})",
+                id, trabajo.getCliente(), trabajo.getTrabajador());
         return aRespuesta(trabajo);
     }
 
@@ -108,6 +114,7 @@ public class TrabajoService {
     public List<Long> subirFotos(Long id, List<MultipartFile> ficheros) {
         Trabajo trabajo = buscarOFallar(id);
         exigirJefeSiEnviado(trabajo, "añadir fotos a");
+        ValidadorImagen.exigirAlgunFichero(ficheros);
 
         long existentes = fotoRepository.countByOrigenTipoAndOrigenId(
                 Foto.OrigenTipo.TRABAJO, trabajo.getId());
@@ -117,17 +124,9 @@ public class TrabajoService {
         }
 
         for (MultipartFile fichero : ficheros) {
-            if (fichero.getContentType() == null || !fichero.getContentType().startsWith("image/")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se admiten imágenes");
-            }
-            try {
-                fotoRepository.save(new Foto(
-                        Foto.OrigenTipo.TRABAJO, trabajo.getId(),
-                        fichero.getContentType(), fichero.getBytes()));
-            } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "No se pudo leer la imagen recibida");
-            }
+            ValidadorImagen.Imagen imagen = ValidadorImagen.validar(fichero, "foto");
+            fotoRepository.save(new Foto(Foto.OrigenTipo.TRABAJO, trabajo.getId(),
+                    imagen.tipoContenido(), imagen.datos()));
         }
         return idsDeFotos(trabajo.getId());
     }
@@ -149,10 +148,15 @@ public class TrabajoService {
     // ---------- auxiliares ----------
 
     private void aplicarDatos(Trabajo trabajo, TrabajoDatos datos) {
-        if (datos.cliente() != null) trabajo.setCliente(datos.cliente());
-        if (datos.trabajador() != null) trabajo.setTrabajador(datos.trabajador());
-        if (datos.descripcion() != null) trabajo.setDescripcion(datos.descripcion());
-        if (datos.materiales() != null) trabajo.setMateriales(datos.materiales());
+        boolean borrador = trabajo.esBorrador();
+        if (datos.cliente() != null)
+            trabajo.setCliente(normalizar(datos.cliente(), borrador, "cliente"));
+        if (datos.trabajador() != null)
+            trabajo.setTrabajador(normalizar(datos.trabajador(), borrador, "trabajador"));
+        if (datos.descripcion() != null)
+            trabajo.setDescripcion(normalizar(datos.descripcion(), borrador, "descripción"));
+        if (datos.materiales() != null)
+            trabajo.setMateriales(normalizar(datos.materiales(), borrador, "materiales"));
         if (datos.horas() != null) {
             if (datos.horas().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -160,6 +164,21 @@ public class TrabajoService {
             }
             trabajo.setHoras(datos.horas());
         }
+    }
+
+    /**
+     * En un borrador, vaciar un campo es legítimo: se está rellenando a medias
+     * y puede que lo escrito estuviera mal. La cadena en blanco se guarda como
+     * null, para que camposQueFaltan() lo detecte al enviar.
+     *
+     * En un trabajo ya enviado no se permite: dejaría incompleto un documento
+     * que ya se dio por bueno y del que puede colgar un albarán.
+     */
+    private String normalizar(String valor, boolean borrador, String campo) {
+        if (!valor.isBlank()) return valor.trim();
+        if (borrador) return null;
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "El campo '" + campo + "' no puede quedar vacío en un trabajo ya enviado");
     }
 
     /** Campos obligatorios para poder ENVIAR (mientras es borrador pueden faltar). */
@@ -204,8 +223,7 @@ public class TrabajoService {
     }
 
     private List<Long> idsDeFotos(Long trabajoId) {
-        return fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, trabajoId)
-                .stream().map(Foto::getId).toList();
+        return fotoRepository.idsPorOrigen(Foto.OrigenTipo.TRABAJO, trabajoId);
     }
 
     private TrabajoResponse aRespuesta(Trabajo t) {

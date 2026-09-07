@@ -6,15 +6,17 @@ import com.taller.herreria.albaran.dto.AlbaranResponse;
 import com.taller.herreria.config.ConfiguracionService;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
+import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.trabajo.Trabajo;
 import com.taller.herreria.trabajo.TrabajoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -26,6 +28,8 @@ import java.util.List;
 @Service
 @Transactional
 public class AlbaranService {
+
+    private static final Logger log = LoggerFactory.getLogger(AlbaranService.class);
 
     public static final int MAX_FOTOS = 5;
 
@@ -87,6 +91,9 @@ public class AlbaranService {
                     original.getTipoContenido(), original.getDatos()));
         }
 
+        log.info("Albarán {} creado desde el trabajo {} ({} fotos copiadas)",
+                numero, trabajoId, fotosDelTrabajo.size());
+
         return aRespuesta(albaran);
     }
 
@@ -116,10 +123,13 @@ public class AlbaranService {
             albaran.setNumero(cambios.numero());
         }
         if (cambios.fecha() != null) albaran.setFecha(cambios.fecha());
-        if (cambios.cliente() != null) albaran.setCliente(cambios.cliente());
-        if (cambios.dniCliente() != null) albaran.setDniCliente(cambios.dniCliente());
-        if (cambios.trabajador() != null) albaran.setTrabajador(cambios.trabajador());
-        if (cambios.descripcion() != null) albaran.setDescripcion(cambios.descripcion());
+        if (cambios.cliente() != null)
+            albaran.setCliente(exigirNoVacio(cambios.cliente(), "cliente"));
+        if (cambios.dniCliente() != null) albaran.setDniCliente(cambios.dniCliente().trim());
+        if (cambios.trabajador() != null)
+            albaran.setTrabajador(exigirNoVacio(cambios.trabajador(), "trabajador"));
+        if (cambios.descripcion() != null)
+            albaran.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
 
         return aRespuesta(albaran);
     }
@@ -134,16 +144,8 @@ public class AlbaranService {
 
     public AlbaranResponse guardarFirma(Long id, MultipartFile fichero) {
         Albaran albaran = buscarOFallar(id);
-        if (fichero.getContentType() == null || !fichero.getContentType().startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La firma debe ser una imagen");
-        }
-        try {
-            albaran.setFirma(fichero.getBytes(), fichero.getContentType());
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "No se pudo leer la firma recibida");
-        }
+        ValidadorImagen.Imagen firma = ValidadorImagen.validar(fichero, "firma");
+        albaran.setFirma(firma.datos(), firma.tipoContenido());
         return aRespuesta(albaran);
     }
 
@@ -161,6 +163,7 @@ public class AlbaranService {
 
     public List<Long> subirFotos(Long id, List<MultipartFile> ficheros) {
         Albaran albaran = buscarOFallar(id);
+        ValidadorImagen.exigirAlgunFichero(ficheros);
 
         long existentes = fotoRepository.countByOrigenTipoAndOrigenId(
                 Foto.OrigenTipo.ALBARAN, albaran.getId());
@@ -170,16 +173,9 @@ public class AlbaranService {
         }
 
         for (MultipartFile fichero : ficheros) {
-            if (fichero.getContentType() == null || !fichero.getContentType().startsWith("image/")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se admiten imágenes");
-            }
-            try {
-                fotoRepository.save(new Foto(Foto.OrigenTipo.ALBARAN, albaran.getId(),
-                        fichero.getContentType(), fichero.getBytes()));
-            } catch (IOException e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "No se pudo leer la imagen recibida");
-            }
+            ValidadorImagen.Imagen imagen = ValidadorImagen.validar(fichero, "foto");
+            fotoRepository.save(new Foto(Foto.OrigenTipo.ALBARAN, albaran.getId(),
+                    imagen.tipoContenido(), imagen.datos()));
         }
         return idsDeFotos(albaran.getId());
     }
@@ -205,9 +201,21 @@ public class AlbaranService {
                         "No existe el albarán " + id));
     }
 
+    /**
+     * El albarán es un documento cerrado: un PATCH con "" o "   " no puede
+     * dejar sin cliente, trabajador o descripción a algo que ya se imprimió.
+     * (El DNI sí puede quedar vacío: es opcional.)
+     */
+    private String exigirNoVacio(String valor, String campo) {
+        if (valor.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El campo '" + campo + "' no puede quedar vacío");
+        }
+        return valor.trim();
+    }
+
     private List<Long> idsDeFotos(Long albaranId) {
-        return fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.ALBARAN, albaranId)
-                .stream().map(Foto::getId).toList();
+        return fotoRepository.idsPorOrigen(Foto.OrigenTipo.ALBARAN, albaranId);
     }
 
     private AlbaranResponse aRespuesta(Albaran a) {

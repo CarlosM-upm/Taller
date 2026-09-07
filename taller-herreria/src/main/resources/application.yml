@@ -3,7 +3,12 @@ spring:
     name: herreria
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/herreria
+    # 127.0.0.1 y no "localhost": en Windows localhost resuelve primero a ::1
+    # (IPv6), donde puede haber un relay de WSL escuchando, y la conexión
+    # acaba en un PostgreSQL que no es el del contenedor.
+    # Puerto 5433: el 5432 lo ocupa el PostgreSQL nativo de Windows.
+    # Debe coincidir con el mapeo de docker-compose.yml ("5433:5432").
+    url: jdbc:postgresql://127.0.0.1:5433/herreria
     username: herreria
     password: cambiame   # debe coincidir con docker-compose.yml
 
@@ -15,10 +20,32 @@ spring:
       ddl-auto: update
     open-in-view: false
 
+  servlet:
+    multipart:
+      # Límite de subida: las fotos van dentro de la petición.
+      # El total debe dar cabida a las 5 fotos que permite el negocio
+      # (MAX_FOTOS), o subir un lote completo falla siempre.
+      max-file-size: 10MB
+      max-request-size: 60MB
+
 server:
   port: 8080
 
-# Límite de subida: las fotos van dentro de la petición
-spring.servlet.multipart:
-  max-file-size: 10MB
-  max-request-size: 15MB
+# El servidor del taller no tiene a nadie delante: sin registro en fichero
+# no hay forma de averiguar qué pasó en un fallo de primera hora.
+logging:
+  file:
+    name: logs/herreria.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30      # un mes, igual que la copia de seguridad
+  level:
+    com.taller.herreria: INFO
+
+taller:
+  cors:
+    # Orígenes autorizados para la PWA, separados por comas.
+    # En desarrollo, "ng serve" (4200). Cuando el servidor del taller tenga
+    # IP fija, añadir aquí esa dirección.
+    origenes: http://localhost:4200,http://127.0.0.1:4200

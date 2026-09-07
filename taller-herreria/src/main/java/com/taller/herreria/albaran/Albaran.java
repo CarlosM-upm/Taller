@@ -41,9 +41,13 @@ public class Albaran {
     @Column(nullable = false, length = 4000)
     private String descripcion;  // copiada del trabajo
 
-    /** Firma del cliente (imagen capturada). */
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
+    /**
+     * Firma del cliente (imagen capturada), como bytea.
+     * Sin @Lob ni fetch = LAZY, por los mismos motivos que Foto.datos:
+     * @Lob la convertiría en un large object que no se borra con la fila,
+     * y el lazy no funciona sin instrumentación de bytecode (y si funcionara,
+     * rompería GET /api/albaranes/{id}/firma con open-in-view = false).
+     */
     private byte[] firma;
 
     private String firmaTipoContenido;
