@@ -88,24 +88,26 @@ src/main/java/com/taller/herreria/
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
 ├── trabajo/     Trabajo, Repository, Service, Controller, dto/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
-├── foto/        Foto y FotoRepository (compartidos por las tres entidades)
+├── foto/        Foto, FotoRepository y ValidadorImagen (los comparten las tres)
 ├── config/      Configuracion: el contador de albaranes
 ├── comun/       Transversal: manejo de errores, CORS y reenvío de la PWA
 └── seguridad/   Usuario, TokenAcceso, filtro, SecurityConfig, AuthService
+
+src/main/resources/db/migration/   Migraciones de Flyway (V1__, V2__…)
 ```
 
 El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 
 ```
 taller-pwa/src/app/
-├── nucleo/          sesión, cliente de API, interceptores, guardias, fotos, avisos
+├── nucleo/          sesión, API, interceptores, guardias, fotos, borrador local
 ├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro
-├── armazon/         barra superior y navegación inferior, según el rol
+├── armazon/         barra superior, aviso de sin red y navegación según el rol
 ├── sesion/          pantalla de login
 ├── pedidos/         listado, alta y ficha
 ├── trabajos/        listado con filtro, alta a medias y ficha con envío
 ├── albaranes/       listado, ficha con firma y generación desde un trabajo
-└── configuracion/   pendiente
+└── configuracion/   contador de albaranes y cambio de contraseña
 ```
 
 Capas y responsabilidades:
@@ -433,13 +435,19 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 ```
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
-entra, da de alta un pedido y un trabajo, los recorre y los borra. **Falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar.**
+entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 8
+comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
+del albarán, subida y descarga de fotos, y el contador de albaranes.
 
 Existe por un motivo concreto, y conviene recordarlo: las tres primeras pantallas se
 dieron por buenas con decenas de comprobaciones contra la API con curl, y aun así tenían
-dos fallos que dejaban pantallas en blanco o campos que no se recogían. **Probar la API
-no es probar la aplicación.** Si tocas la PWA, pasa esto antes de darlo por hecho.
+fallos que dejaban pantallas en blanco, campos que no se recogían y fotos que nunca se
+veían. **Probar la API no es probar la aplicación.** Si tocas la PWA, pasa esto antes de
+darlo por hecho.
+
+Las imágenes se comprueban con `naturalWidth`, no con `toBeVisible()`: un `<img>` con la
+fuente rota sigue estando visible y pasaría por bueno.
 
 Los datos de prueba llevan la hora en el nombre y se borran al terminar. Si una ejecución
 falla a mitad puede dejar algo: se reconoce porque el cliente empieza por `PRUEBA-HUMO`.
@@ -491,31 +499,45 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   ese usuario, incluida la de quien la cambia. El caso que importa es la cuenta
   `tablet`, compartida: si se va un trabajador y se cambia la contraseña, los tres
   tienen que salir de verdad.
+- **Ajustes, en la PWA**: el jefe reencauza la numeración de albaranes y cambia su
+  contraseña. Al cambiarla se le lleva al login, porque el servidor acaba de cerrar su
+  sesión.
+- **Capa PWA**: manifiesto en castellano e instalable, `nucleo/borrador-local` que
+  guarda en el navegador el formulario de alta de pedido **antes** de enviarlo (si el
+  wifi parpadea al guardar, lo tecleado no se pierde y se ofrece recuperarlo), y una
+  banda de aviso cuando no hay red.
+- **Flyway**, con `V1__esquema_inicial.sql` sacado con `pg_dump` de la base real para no
+  dejarse nada. `ddl-auto` pasa de `update` a **`validate`**: el esquema lo manda Flyway
+  y Hibernate solo comprueba que concuerda. Verificados los dos caminos: sobre la base
+  de desarrollo que ya tenía tablas (baseline, no toca nada) y sobre una base vacía
+  (aplica la V1 y la aplicación arranca y funciona).
 
 ### Pendiente, en orden
 
-1. **Terminar la PWA**:
-   - Configuración: contador de albaranes y cambio de contraseña.
-   - Capa PWA: instalable, y no perder los formularios a medio rellenar si parpadea
-     el wifi al guardar.
-2. **Generación de PDFs** para las tres entidades. Solo JEFE.
+1. **Generación de PDFs** para las tres entidades. Solo JEFE.
    Se decidió **PDF y no Word**: son documentos finales, no editables, que se imprimen y
    archivan; la edición se hace en la aplicación y luego se regenera el documento.
-3. **Flyway antes de producción**, mientras la base de datos aún esté casi vacía.
-4. **Infraestructura del servidor:**
+   **Falta decidir cómo**: plantilla HTML convertida a PDF (más fácil de ajustar
+   visualmente) o dibujarlo por código con OpenPDF (control total, cada cambio es
+   código). Se ha aplazado dos veces; hay que elegir antes de empezar.
+2. **Infraestructura del servidor**, todo sin empezar (no existe ni un fichero):
    - Servicio `systemd` para que API y base de datos arranquen solas al encender.
-     Se puede escribir y probar en la WSL del portátil, que es Ubuntu con systemd real.
-   - **Copia de seguridad nocturna automática** a un **disco externo USB** dedicado,
-     conservando unos 30 días. Un solo disco (se descartó la rotación de dos).
-     Conviene probar además que la copia **restaura**, no solo que se genera.
-   - Integración con el **SAI**: detectar corte de luz por USB y apagar limpiamente si el
-     corte se alarga, con margen para no reaccionar a microcortes.
-     **Necesita el aparato**: no se puede probar sin él.
-5. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
-   Necesita el mini-PC y el router del taller.
-6. **Cambiar las contraseñas** de las dos cuentas y la de PostgreSQL antes de que el
-   taller empiece a usarlo de verdad. Que la de producción **no acabe en git**: para eso
-   está `application-local.yml`, ya excluido en `.gitignore`.
+     Se puede escribir y probar aquí: la WSL de este portátil es Ubuntu 26.04 con
+     systemd real (`systemctl is-system-running` responde `running`).
+   - **Copia de seguridad nocturna** a un **disco USB** dedicado, 30 días de histórico.
+     Un solo disco (se descartó la rotación de dos). Conviene probar que la copia
+     **restaura**, no solo que se genera: es la parte que casi nadie comprueba.
+   - Integración con el **SAI**: detectar el corte por USB y apagar limpiamente si se
+     alarga, con margen para no reaccionar a microcortes.
+     **Necesita el aparato**: se puede dejar la configuración escrita, pero no probarla.
+3. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
+   Necesita el mini-PC y el router del taller. Añadirla a `taller.cors.origenes` no hace
+   falta: en producción la PWA y la API comparten origen.
+4. **Cambiar las tres contraseñas** antes de que el taller lo use: `tablet123`,
+   `jefe123` y la de PostgreSQL (`cambiame`). **Las tres están en un repositorio
+   público.** Las dos de usuario ya se pueden cambiar desde Ajustes; la de PostgreSQL
+   hay que cambiarla en el servidor y **no debe volver a git**: para eso está
+   `application-local.yml`, ya excluido en `.gitignore`.
 
 ### Lo que espera a tener el hardware delante
 
@@ -531,8 +553,12 @@ pantalla, arranca solo al dar corriente) y el jefe usa otro ordenador distinto q
 conecta por red local. La PWA, por tanto, se sirve a dos clientes: la tablet y el equipo
 del jefe.
 
-### Decisiones de negocio aún sin tomar
+### Decisiones de negocio ya cerradas
 
+- Borrar un trabajo que ya generó albarán: **bloqueado con 409**, diciendo qué albarán
+  es. Un albarán es un documento que el cliente firmó y ese trabajo es su respaldo.
+- Cambiar la contraseña **cierra todas las sesiones** del usuario, incluida la de quien
+  la cambia.
 - El contador de albaranes se lee e incrementa **sin bloqueo pesimista**: dos albaranes
   simultáneos podrían tomar el mismo número. **Decidido dejarlo así**: solo el jefe crea
   albaranes, el botón se deshabilita mientras se envía, y si aun así coincidieran, la
@@ -566,10 +592,12 @@ del jefe.
   nombre literal), y no declares un `@ExceptionHandler` para excepciones que
   `ResponseEntityExceptionHandler` ya trata (p. ej. `MaxUploadSizeExceededException`):
   el arranque falla con "Ambiguous @ExceptionHandler method mapped".
-- **`ddl-auto: update` no cambia el tipo de una columna que ya existe.** Solo añade
-  tablas y columnas. Si cambias el tipo de un campo en una entidad, la base de datos de
-  desarrollo se queda como estaba y no avisa: hay que migrarla a mano (o esperar a
-  Flyway). En el mini-PC no afecta, porque allí la base nace de cero desde las entidades.
+- **`ddl-auto` es `validate`, no `update`. El esquema lo manda Flyway.**
+  Si cambias una entidad, la aplicación **fallará al arrancar** hasta que escribas la
+  migración correspondiente en `src/main/resources/db/migration/` (`V2__...`, `V3__...`).
+  Es a propósito: con `update`, Hibernate iba creando columnas solo, pero **nunca
+  cambiaba el tipo de una que ya existía** y no avisaba, así que un cambio de tipo se
+  aplicaba en el código y la base de datos se quedaba como estaba.
 - **Para `ng serve` antes de `.\mvnw.cmd package`.** `npm ci` borra `node_modules`, y el
   servidor de desarrollo tiene `esbuild.exe` abierto: en Windows da un `EPERM` cuyo
   mensaje no menciona en ningún momento la causa real.

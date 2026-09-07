@@ -14,11 +14,26 @@ spring:
 
   jpa:
     hibernate:
-      # Crea/actualiza las tablas a partir de las entidades.
-      # Cómodo para desarrollo; cuando el sistema esté en producción
-      # conviene pasar a migraciones controladas (Flyway).
-      ddl-auto: update
+      # El esquema lo manda Flyway (src/main/resources/db/migration), no
+      # Hibernate. "validate" comprueba al arrancar que las entidades y las
+      # tablas concuerdan, y falla si no, pero no modifica nada.
+      #
+      # Antes esto era "update", que iba creando columnas solo. Cómodo mientras
+      # se diseñaba, pero tenía un fallo silencioso: NO cambia el tipo de una
+      # columna que ya existe. Un cambio de tipo se aplicaba en las entidades y
+      # la base de datos se quedaba como estaba, sin avisar.
+      ddl-auto: validate
     open-in-view: false
+
+  flyway:
+    enabled: true
+    # La base de datos de desarrollo ya tenía las tablas cuando se introdujo
+    # Flyway. baseline-on-migrate le dice que dé por aplicada la V1 en ese caso
+    # en lugar de intentar crearlas otra vez. En el mini-PC la base nace vacía
+    # y sencillamente se ejecutan las migraciones.
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: Esquema ya existente
 
   servlet:
     multipart:

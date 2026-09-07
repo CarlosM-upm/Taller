@@ -1,0 +1,113 @@
+@if (cargando() || ocupado()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <h2>Ajustes</h2>
+
+  <!-- Numeración de albaranes -->
+  <mat-card>
+    <mat-card-content>
+      <h3>Numeración de albaranes</h3>
+      <p class="explicacion">
+        Cada albarán nuevo toma este número y el contador avanza solo.
+        Cámbialo únicamente para reencauzar la serie si algo salió torcido.
+      </p>
+
+      @if (numeroGuardado() !== null) {
+        <p class="actual">
+          El próximo albarán será el
+          <strong>nº {{ numeroGuardado() }}</strong>
+        </p>
+      }
+
+      <form (ngSubmit)="guardarContador()">
+        <mat-form-field appearance="outline">
+          <mat-label>Próximo número</mat-label>
+          <input
+            matInput
+            name="proximoNumero"
+            type="text"
+            inputmode="numeric"
+            [ngModel]="proximoNumero()"
+            (ngModelChange)="proximoNumero.set($event)"
+            [disabled]="ocupado()"
+          />
+          @if (errorNumero()) {
+            <mat-error>{{ errorNumero() }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="fila-fin">
+          <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Contraseña -->
+  <mat-card class="tarjeta-contrasena">
+    <mat-card-content>
+      <h3>Mi contraseña</h3>
+
+      <p class="aviso">
+        <mat-icon>logout</mat-icon>
+        <span>
+          Al cambiarla se cerrarán todas las sesiones abiertas con esta cuenta,
+          incluida esta. Tendrás que volver a entrar.
+        </span>
+      </p>
+
+      <form (ngSubmit)="cambiarContrasena()">
+        <mat-form-field appearance="outline">
+          <mat-label>Contraseña actual</mat-label>
+          <input
+            matInput
+            type="password"
+            name="actual"
+            autocomplete="current-password"
+            [ngModel]="actual()"
+            (ngModelChange)="actual.set($event)"
+            [disabled]="ocupado()"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nueva contraseña</mat-label>
+          <input
+            matInput
+            type="password"
+            name="nueva"
+            autocomplete="new-password"
+            [ngModel]="nueva()"
+            (ngModelChange)="nueva.set($event)"
+            [disabled]="ocupado()"
+          />
+          <mat-hint>Al menos 6 caracteres</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Repite la nueva</mat-label>
+          <input
+            matInput
+            type="password"
+            name="repetida"
+            autocomplete="new-password"
+            [ngModel]="repetida()"
+            (ngModelChange)="repetida.set($event)"
+            [disabled]="ocupado()"
+          />
+          @if (errorContrasena()) {
+            <mat-error>{{ errorContrasena() }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="fila-fin">
+          <button matButton="filled" type="submit" [disabled]="ocupado()">
+            Cambiar contraseña
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

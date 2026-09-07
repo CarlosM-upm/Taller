@@ -6,6 +6,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { EstadoConexion } from '../nucleo/borrador-local';
 import { Sesion } from '../nucleo/sesion';
 
 interface Apartado {
@@ -34,6 +35,7 @@ export class Armazon {
   private readonly router = inject(Router);
   private readonly avisos = inject(Avisos);
   readonly sesion = inject(Sesion);
+  readonly conexion = inject(EstadoConexion);
 
   /**
    * La navegación va abajo, no arriba: en una tablet que se sujeta con las

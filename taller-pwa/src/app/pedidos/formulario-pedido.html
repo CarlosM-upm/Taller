@@ -10,6 +10,16 @@
     <h2 class="crece">Nuevo pedido</h2>
   </div>
 
+  @if (recuperado()) {
+    <p class="recuperado">
+      <mat-icon>restore</mat-icon>
+      <span class="crece">
+        Se ha recuperado un pedido que quedó a medias. Revísalo antes de guardar.
+      </span>
+      <button matButton type="button" (click)="descartarRecuperado()">Empezar de cero</button>
+    </p>
+  }
+
   <mat-card>
     <mat-card-content>
       <form (ngSubmit)="guardar()">

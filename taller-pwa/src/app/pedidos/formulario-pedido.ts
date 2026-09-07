@@ -9,9 +9,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { BorradorLocal } from '../nucleo/borrador-local';
 import { SelectorFotos } from '../comun/selector-fotos';
 
 const MAX_FOTOS = 5;
+
+/** Lo que se guarda en el navegador si el envío falla. */
+interface PedidoAMedias {
+  cliente: string;
+  trabajador: string;
+  descripcion: string;
+}
+
+const CLAVE_BORRADOR = 'pedido-nuevo';
 
 /**
  * Alta de un pedido.
@@ -44,6 +54,7 @@ export class FormularioPedido {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
   private readonly avisos = inject(Avisos);
+  private readonly borrador = inject(BorradorLocal);
 
   private readonly selector = viewChild(SelectorFotos);
 
@@ -56,6 +67,28 @@ export class FormularioPedido {
 
   readonly guardando = signal(false);
   readonly errores = signal<Record<string, string>>({});
+  readonly recuperado = signal(false);
+
+  constructor() {
+    // Si un intento anterior se quedó a medias (típicamente porque falló el
+    // wifi al guardar), se recupera lo escrito en vez de hacer teclearlo otra
+    // vez. Las fotos no se pueden recuperar: son binarios y no caben aquí.
+    const previo = this.borrador.recuperar<PedidoAMedias>(CLAVE_BORRADOR);
+    if (previo) {
+      this.cliente.set(previo.cliente);
+      this.trabajador.set(previo.trabajador);
+      this.descripcion.set(previo.descripcion);
+      this.recuperado.set(true);
+    }
+  }
+
+  descartarRecuperado(): void {
+    this.borrador.olvidar(CLAVE_BORRADOR);
+    this.cliente.set('');
+    this.trabajador.set('');
+    this.descripcion.set('');
+    this.recuperado.set(false);
+  }
 
   guardar(): void {
     if (this.guardando()) return;
@@ -79,6 +112,9 @@ export class FormularioPedido {
 
     this.guardando.set(true);
     this.errores.set({});
+    // Se guarda ANTES de enviar: si la petición no llega, lo tecleado ya está
+    // a salvo en el navegador.
+    this.borrador.guardar(CLAVE_BORRADOR, datos);
 
     this.api.crearPedido(datos).subscribe({
       next: (pedido) => {
@@ -111,6 +147,8 @@ export class FormularioPedido {
   }
 
   private terminar(id: number, mensaje: string): void {
+    // Ya está guardado en el servidor: el borrador local sobra.
+    this.borrador.olvidar(CLAVE_BORRADOR);
     this.selector()?.vaciar();
     this.avisos.correcto(mensaje);
     this.router.navigate(['/pedidos', id]);

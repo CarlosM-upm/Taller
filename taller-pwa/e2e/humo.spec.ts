@@ -351,6 +351,35 @@ test('las fotos se suben, se ven y se borran', async ({ page }) => {
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
 
+test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
+  const errores = vigilarErrores(page);
+
+  await entrar(page, CUENTAS.jefe);
+  await page.getByRole('link', { name: 'Ajustes' }).click();
+  await expect(page).toHaveURL(/\/configuracion$/);
+
+  // Se lee el valor actual para poder dejarlo como estaba al terminar.
+  const campo = page.getByLabel('Próximo número');
+  await expect(campo).not.toHaveValue('', { timeout: 15_000 });
+  const original = await campo.inputValue();
+
+  await campo.fill('777');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.getByText('El próximo albarán llevará el número 777')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText('nº 777')).toBeVisible();
+
+  // Restaurar: esta prueba no debe alterar la numeración real del taller.
+  await campo.fill(original);
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.getByText(`El próximo albarán llevará el número ${original}`)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
 test('las pantallas pendientes se abren sin romperse', async ({ page }) => {
   const errores = vigilarErrores(page);
 

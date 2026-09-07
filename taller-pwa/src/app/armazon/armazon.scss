@@ -28,6 +28,20 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
+// Banda fija arriba mientras no hay red. En un taller el wifi va y viene, así
+// que conviene que se vea sin tener que interpretar un error.
+.sin-red {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font-size: 0.9rem;
+}
+
 .contenido {
   flex: 1 1 auto;
   overflow-y: auto;

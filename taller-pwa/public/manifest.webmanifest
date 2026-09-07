@@ -1,9 +1,9 @@
 {
-  "name": "taller-pwa",
-  "short_name": "taller-pwa",
+  "name": "Taller de Herrería",
+  "short_name": "Taller",
   "display": "standalone",
-  "scope": "./",
-  "start_url": "./",
+  "scope": "/",
+  "start_url": "/",
   "icons": [
     {
       "src": "icons/icon-72x72.png",
@@ -53,5 +53,11 @@
       "type": "image/png",
       "purpose": "maskable any"
     }
-  ]
+  ],
+  "description": "Pedidos, trabajos y albaranes del taller",
+  "lang": "es",
+  "dir": "ltr",
+  "theme_color": "#005cbb",
+  "background_color": "#ffffff",
+  "orientation": "portrait"
 }

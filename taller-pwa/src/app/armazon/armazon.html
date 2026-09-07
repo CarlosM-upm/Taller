@@ -18,6 +18,13 @@
     </mat-menu>
   </mat-toolbar>
 
+  @if (!conexion.hayRed()) {
+    <p class="sin-red">
+      <mat-icon>wifi_off</mat-icon>
+      <span>Sin conexión. Lo que escribas no se perderá, pero no podrás guardarlo hasta que vuelva.</span>
+    </p>
+  }
+
   <main class="contenido">
     <router-outlet />
   </main>
