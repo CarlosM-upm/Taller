@@ -1,0 +1,39 @@
+h2 {
+  margin: 8px 0 16px;
+  font: var(--mat-sys-headline-small);
+}
+
+.pedido {
+  margin-bottom: 12px;
+}
+
+.cliente {
+  font-weight: 500;
+  font-size: 1.05rem;
+}
+
+.fecha {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.descripcion {
+  margin: 8px 0;
+  color: var(--mat-sys-on-surface);
+}
+
+.pie {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+.icono-pie {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.tarjeta-fallo {
+  border-left: 4px solid var(--mat-sys-error);
+}

@@ -12,7 +12,8 @@ Aplicación de gestión para un **taller de herrería de tres trabajadores más 
 Registra tres cosas: **pedidos** que llegan, **trabajos realizados** y **albaranes**.
 
 Arquitectura: **API REST** con toda la lógica de negocio en el servidor y el cliente
-separado (una PWA que aún no está construida).
+separado (una PWA en Angular, en la carpeta hermana `taller-pwa/`, que se empaqueta
+dentro del jar del backend — ver §7).
 
 ### Entorno de despliegue (condiciona muchas decisiones)
 
@@ -33,8 +34,8 @@ separado (una PWA que aún no está construida).
 |---|---|
 | Backend | Java 21 + Spring Boot 3.4 + Maven |
 | Base de datos | PostgreSQL 17 en Docker |
-| Cliente (pendiente) | PWA en Angular + TypeScript |
-| Documentos | PDF (no Word — ver §7) |
+| Cliente | PWA en Angular 22 + Angular Material (carpeta `taller-pwa/`) |
+| Documentos | PDF (no Word — ver §8) |
 
 ### Particularidades del entorno de desarrollo
 
@@ -52,13 +53,27 @@ separado (una PWA que aún no está construida).
 
 ### Arranque
 
+Desarrollo, tres cosas a la vez:
+
 ```
-docker compose up -d          # levanta PostgreSQL
-.\mvnw.cmd spring-boot:run    # arranca la API en el puerto 8080
+docker compose up -d          # PostgreSQL (carpeta taller-herreria)
+.\mvnw.cmd spring-boot:run    # API en el 8080. NO compila la PWA: arranca al instante
+npm start                     # PWA en el 4200 (carpeta taller-pwa)
+```
+
+Empaquetar para el taller, un único jar con la PWA dentro:
+
+```
+.\mvnw.cmd package            # -> target/herreria-0.0.1-SNAPSHOT.jar
+java -jar target\herreria-0.0.1-SNAPSHOT.jar
 ```
 
 `docker compose down` para parar. **Nunca sugieras `down -v`** sin avisar de forma
 explícita: borra el volumen y con él todos los datos.
+
+**Antes de `package`, para `ng serve`.** `npm ci` borra `node_modules` entero, y si el
+servidor de desarrollo está en marcha tiene `esbuild.exe` abierto: en Windows eso da un
+`EPERM: operation not permitted` que no dice en ningún momento cuál es la causa real.
 
 ---
 
@@ -75,8 +90,21 @@ src/main/java/com/taller/herreria/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
 ├── foto/        Foto y FotoRepository (compartidos por las tres entidades)
 ├── config/      Configuracion: el contador de albaranes
-├── comun/       Transversal: manejo de errores y CORS (no es de dominio)
+├── comun/       Transversal: manejo de errores, CORS y reenvío de la PWA
 └── seguridad/   Usuario, TokenAcceso, filtro, SecurityConfig, AuthService
+```
+
+El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
+
+```
+taller-pwa/src/app/
+├── nucleo/          sesión, cliente de API, interceptores, guardias, fotos, avisos
+├── armazon/         barra superior y navegación inferior, según el rol
+├── sesion/          pantalla de login
+├── pedidos/
+├── trabajos/
+├── albaranes/
+└── configuracion/
 ```
 
 Capas y responsabilidades:
@@ -326,7 +354,61 @@ PUT    /api/config/proximo-numero-albaran   JEFE
 
 ---
 
-## 7. Trabajo pendiente
+## 7. La PWA (`taller-pwa/`)
+
+Angular 22 con Material, componentes standalone, **signals** y **zoneless** (sin
+zone.js). Sin NgRx: para esta aplicación sería sobreingeniería.
+
+### Cómo llega al taller
+
+Se empaqueta **dentro del jar de Spring Boot** y se sirve desde el propio backend.
+Un solo servicio en el mini-PC, sin nginx que mantener en una máquina sin pantalla.
+La tablet y el equipo del jefe abren `http://<ip-fija>:8080` e instalan desde ahí.
+
+Consecuencia: en producción cliente y API comparten origen, así que **el CORS de
+`comun/ConfiguracionCors` no llega a usarse**. En desarrollo tampoco, porque
+`ng serve` usa el proxy de `proxy.conf.json`. Se mantiene como red de seguridad por
+si algún día se sirve la PWA desde otro sitio, pero no es una pieza activa.
+
+`comun/ReenvioPwa` devuelve `index.html` para cualquier ruta que no sea un fichero
+real ni empiece por `api/`. Sin eso, recargar (F5) estando en `/trabajos/5` daría 404,
+igual que abrir un favorito o reabrir la PWA instalada.
+
+### Reglas que no se deben romper
+
+- **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller no tiene
+  internet: los iconos aparecerían como palabras sueltas ("delete", "photo_camera").
+  Roboto y los iconos van desde `node_modules`, declarados en `angular.json`.
+  El `ng new` los pone en el CDN por defecto; ya se han quitado.
+- **Las rutas de la API son relativas** (`/api/...`), nunca con host y puerto. Así el
+  mismo código vale para el proxy de desarrollo y para el mismo origen en producción.
+  Poner una IP obligaría a recompilar el cliente si cambia el servidor.
+- **El service worker no cachea `/api`.** Es deliberado: en un taller, enseñar el
+  listado de ayer como si fuera el de hoy hace más daño que un aviso de "sin conexión".
+  Solo se cachea la aplicación, para que abra sin red.
+- **Las fotos se reducen en el cliente** antes de subirlas (`nucleo/fotos.ts`): 1600 px
+  de lado mayor y JPEG 0,8, de 4-8 MB a 300-500 KB. Y se corrige la orientación EXIF con
+  `createImageBitmap(..., { imageOrientation: 'from-image' })`, o las fotos hechas en
+  vertical se ven tumbadas.
+- **Los guardias de ruta no son seguridad**, solo evitan enseñar pantallas inútiles.
+  Quien manda es el backend, que responde 403 aunque se manipule el navegador. Nunca
+  muevas una regla de permisos al cliente quitándola de `SecurityConfig`.
+- Navegación **abajo**: es lo que alcanza el pulgar sujetando una tablet. Objetivos
+  táctiles de 48-64 px, pensados para manos con guantes. No bajes la densidad de
+  Material a valores negativos.
+
+### Detalles del entorno que hacen perder tiempo
+
+- **`ng serve` escucha solo en `::1`.** Desde el propio portátil hay que usar
+  `localhost:4200`, no `127.0.0.1:4200`. Para probar desde la tablet:
+  `npm start -- --host 0.0.0.0`.
+- La versión de Node está fijada en el `pom.xml` (`node.version`). El plugin descarga
+  esa misma versión al compilar, así el jar no depende de lo que cada uno tenga
+  instalado. El mini-PC **no necesita Node**: recibe el jar ya montado.
+
+---
+
+## 8. Trabajo pendiente
 
 ### Ya hecho (Fase 0 — cimientos, Fase 1 — imágenes, Fase 2 — seguridad probada)
 
@@ -351,27 +433,48 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   **la sesión sobrevive al reinicio de la API** (se para, se arranca y el mismo token
   sigue valiendo) y que el logout explícito sí la invalida. Es la razón de guardar los
   tokens en base de datos, y funciona.
+- **Andamiaje de la PWA**: login real contra la API, armazón con navegación por rol,
+  núcleo completo (sesión, cliente de API con los 32 endpoints, interceptores de token
+  y de errores, guardias, servicio de fotos) y listado de pedidos. Empaquetado dentro
+  del jar y verificado ejecutándolo: 14 comprobaciones, 14 correctas.
 
 ### Pendiente, en orden
 
-1. **PWA en Angular**: cliente para la tablet (pedidos y trabajos) y para el ordenador
-   del jefe (todo). Instalable, con resiliencia offline para microcortes de wifi.
-   Se decidió construirla **completa desde el principio**, no por fases.
-   Requisito: redimensionar las fotos en el cliente antes de subirlas (ver §4).
+1. **Terminar la PWA**, que es el bloque grande:
+   - Pedidos: alta con fotos, detalle, edición y borrado (jefe).
+   - Trabajos: ciclo borrador → enviado, fotos, y mostrar la lista de campos que
+     faltan que ya devuelve el backend al intentar enviar.
+   - Albaranes: generar desde un trabajo enviado, editar, firma en lienzo y fotos.
+   - Configuración: contador de albaranes y cambio de contraseña.
+   - Capa PWA: instalable, y no perder los formularios a medio rellenar si parpadea
+     el wifi al guardar.
 2. **Generación de PDFs** para las tres entidades. Solo JEFE.
    Se decidió **PDF y no Word**: son documentos finales, no editables, que se imprimen y
    archivan; la edición se hace en la aplicación y luego se regenera el documento.
 3. **Flyway antes de producción**, mientras la base de datos aún esté casi vacía.
 4. **Infraestructura del servidor:**
    - Servicio `systemd` para que API y base de datos arranquen solas al encender.
+     Se puede escribir y probar en la WSL del portátil, que es Ubuntu con systemd real.
    - **Copia de seguridad nocturna automática** a un **disco externo USB** dedicado,
      conservando unos 30 días. Un solo disco (se descartó la rotación de dos).
+     Conviene probar además que la copia **restaura**, no solo que se genera.
    - Integración con el **SAI**: detectar corte de luz por USB y apagar limpiamente si el
      corte se alarga, con margen para no reaccionar a microcortes.
+     **Necesita el aparato**: no se puede probar sin él.
 5. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
-   Habrá que añadirla a `taller.cors.origenes`.
+   Necesita el mini-PC y el router del taller.
 6. **Cambiar las contraseñas** de las dos cuentas y la de PostgreSQL antes de que el
-   taller empiece a usarlo de verdad.
+   taller empiece a usarlo de verdad. Que la de producción **no acabe en git**: para eso
+   está `application-local.yml`, ya excluido en `.gitignore`.
+
+### Lo que espera a tener el hardware delante
+
+- El SAI, completo.
+- La IP fija en el router.
+- Ergonomía táctil real (botones con guantes) e instalación de la PWA en Android.
+- Arranque en frío desde la BIOS con *Restore on AC Power Loss*.
+- Fotos de cámara de verdad, sobre todo la orientación EXIF. Esto último se puede
+  adelantar copiando al portátil unas fotos hechas con el móvil.
 
 **Topología decidida:** son **dos equipos separados**. Un mini-PC hace de servidor (sin
 pantalla, arranca solo al dar corriente) y el jefe usa otro ordenador distinto que se
@@ -391,7 +494,7 @@ del jefe.
 
 ---
 
-## 8. Cómo trabajar en este repositorio
+## 9. Cómo trabajar en este repositorio
 
 - **Las decisiones de diseño se confirman antes de implementar.** Es la forma de trabajar
   acordada con el dueño del proyecto: primero se decide, luego se escribe código. Si una
@@ -415,9 +518,16 @@ del jefe.
   tablas y columnas. Si cambias el tipo de un campo en una entidad, la base de datos de
   desarrollo se queda como estaba y no avisa: hay que migrarla a mano (o esperar a
   Flyway). En el mini-PC no afecta, porque allí la base nace de cero desde las entidades.
+- **Para `ng serve` antes de `.\mvnw.cmd package`.** `npm ci` borra `node_modules`, y el
+  servidor de desarrollo tiene `esbuild.exe` abierto: en Windows da un `EPERM` cuyo
+  mensaje no menciona en ningún momento la causa real.
 - Si pruebas la API con PowerShell, **no uses `-o $null` en `curl.exe`**: PowerShell
   descarta el argumento, curl se come el siguiente parámetro como nombre de fichero y
   acabas haciendo un GET donde creías hacer un DELETE, con un "204" falso en pantalla.
   Usa una ruta de fichero real. Pasó, y dio por buenos dos borrados que nunca ocurrieron.
+- En Windows, **`localhost` resuelve primero a `::1`**. Ha mordido dos veces: con
+  PostgreSQL (la conexión acababa en un relay de WSL) y con `ng serve` (que escucha solo
+  en `::1`, así que `127.0.0.1:4200` no responde). Ante un "conexión rechazada" o un
+  "autenticación fallida" raro, comprueba primero IPv4 contra IPv6.
 - No hay tests automatizados todavía. Si añades alguno, que no dependa de un PostgreSQL
   real levantado a mano.

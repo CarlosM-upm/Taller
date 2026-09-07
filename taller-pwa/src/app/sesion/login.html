@@ -1,0 +1,62 @@
+<div class="pantalla-login">
+  <mat-card class="tarjeta">
+    @if (enviando()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    <mat-card-header class="cabecera">
+      <mat-icon class="logo">handyman</mat-icon>
+      <div>
+        <mat-card-title>Taller de Herrería</mat-card-title>
+        <mat-card-subtitle>Pedidos, trabajos y albaranes</mat-card-subtitle>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form (ngSubmit)="entrar()">
+        <mat-form-field appearance="outline">
+          <mat-label>Usuario</mat-label>
+          <input
+            matInput
+            name="usuario"
+            autocomplete="username"
+            autocapitalize="none"
+            autocorrect="off"
+            [ngModel]="usuario()"
+            (ngModelChange)="usuario.set($event)"
+            [disabled]="enviando()"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Contraseña</mat-label>
+          <input
+            matInput
+            type="password"
+            name="contrasena"
+            autocomplete="current-password"
+            [ngModel]="contrasena()"
+            (ngModelChange)="contrasena.set($event)"
+            [disabled]="enviando()"
+          />
+        </mat-form-field>
+
+        @if (fallo()) {
+          <p class="fallo">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ fallo() }}</span>
+          </p>
+        }
+
+        <button
+          matButton="filled"
+          type="submit"
+          class="boton-entrar"
+          [disabled]="enviando()"
+        >
+          {{ enviando() ? 'Entrando…' : 'Entrar' }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

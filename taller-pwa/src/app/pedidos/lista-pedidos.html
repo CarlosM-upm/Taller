@@ -1,0 +1,43 @@
+@if (cargando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <h2>Pedidos</h2>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (!cargando() && pedidos().length === 0) {
+    <p class="aviso-vacio">Todavía no hay pedidos registrados.</p>
+  } @else {
+    @for (pedido of pedidos(); track pedido.id) {
+      <mat-card class="pedido">
+        <mat-card-content>
+          <div class="fila">
+            <span class="cliente crece">{{ pedido.cliente }}</span>
+            <span class="fecha">{{ pedido.fecha | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <p class="descripcion">{{ pedido.descripcion }}</p>
+          <div class="fila pie">
+            <mat-icon class="icono-pie">person</mat-icon>
+            <span class="crece">{{ pedido.trabajador }}</span>
+            @if (pedido.fotoIds.length > 0) {
+              <mat-icon class="icono-pie">photo_library</mat-icon>
+              <span>{{ pedido.fotoIds.length }}</span>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</div>

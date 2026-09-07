@@ -93,14 +93,33 @@ declare el navegador.
     ├── pedido/                    Entidad, repository, service, controller y DTOs
     ├── trabajo/                   Ciclo borrador -> enviado
     ├── albaran/                   Se genera desde un trabajo enviado
-    ├── foto/                      Entidad Foto compartida por las tres
+    ├── foto/                      Entidad Foto y validación de imágenes
     ├── config/                    Contador de numeración de albaranes
-    ├── comun/                     Manejo de errores y CORS
+    ├── comun/                     Errores, CORS y reenvío de la PWA
     └── seguridad/                 Login y roles TRABAJADOR / JEFE
+
+El cliente está fuera, en la carpeta hermana `taller-pwa/`.
+
+## Empaquetar para el taller
+
+    .\mvnw.cmd package
+
+Genera **un solo jar** con la API y la PWA dentro, que es lo que se lleva al
+mini-PC. No hace falta Node allí: el cliente ya va compilado.
+
+**Antes hay que parar `ng serve`** si lo tienes abierto: el empaquetado borra
+`node_modules` y el servidor de desarrollo mantiene ficheros abiertos, lo que
+provoca un error `EPERM` bastante críptico.
+
+Para probar el resultado:
+
+    java -jar target\herreria-0.0.1-SNAPSHOT.jar
+
+y abre http://localhost:8080
 
 ## Pendiente (siguientes sesiones)
 
-- PWA en Angular (tablet y ordenador del jefe)
+- Terminar la PWA: alta de pedidos, ciclo de trabajos, albaranes y firma
 - Generación de PDFs
 - Migraciones con Flyway antes de producción
 - Copia de seguridad nocturna y arranque automático (systemd)

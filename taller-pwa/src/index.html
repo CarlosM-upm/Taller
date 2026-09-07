@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Taller de Herrería</title>
+    <base href="/" />
+    <!-- viewport-fit y user-scalable: es una aplicación de tablet, no una web -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#005cbb" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <!--
+      Las tipografías y los iconos NO se cargan desde Google Fonts.
+      El servidor del taller no tiene internet: si se dejaran los enlaces
+      al CDN, los iconos aparecerían como palabras sueltas ("delete",
+      "photo_camera") y la letra caería a la del sistema.
+      Se sirven desde node_modules a través de src/styles.scss.
+    -->
+  </head>
+  <body>
+    <app-root></app-root>
+    <noscript>Esta aplicación necesita JavaScript para funcionar.</noscript>
+  </body>
+</html>

@@ -19,6 +19,17 @@
 
     <properties>
         <java.version>21</java.version>
+        <!--
+            Node solo hace falta en el equipo que COMPILA, no en el mini-PC
+            del taller: allí llega el jar ya montado. El plugin descarga esta
+            versión dentro del proyecto, así que la compilación no depende de
+            lo que cada uno tenga instalado.
+        -->
+        <node.version>v24.19.0</node.version>
+        <npm.version>11.17.0</npm.version>
+        <pwa.directorio>${project.basedir}/../taller-pwa</pwa.directorio>
+        <!-- Ponlo a true para empaquetar sin recompilar la PWA. -->
+        <pwa.skip>false</pwa.skip>
     </properties>
 
     <dependencies>
@@ -66,6 +77,83 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!--
+                Compila la PWA y la mete dentro del jar.
+
+                Va enlazado a "prepare-package" A PROPÓSITO, no a "compile":
+                así `mvnw spring-boot:run` arranca la API al instante mientras
+                se trabaja en el backend, sin esperar a npm. La PWA solo se
+                compila cuando se empaqueta de verdad:
+
+                    mvnw.cmd package        -> jar con la PWA dentro
+                    mvnw.cmd spring-boot:run -> solo backend, arranque rápido
+
+                Para saltárselo puntualmente:  -Dpwa.skip=true
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>2.0.2</version>
+                <configuration>
+                    <workingDirectory>${pwa.directorio}</workingDirectory>
+                    <installDirectory>${project.build.directory}</installDirectory>
+                    <skip>${pwa.skip}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>instalar-node-y-npm</id>
+                        <goals><goal>install-node-and-npm</goal></goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                            <npmVersion>${npm.version}</npmVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-install</id>
+                        <goals><goal>npm</goal></goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <!-- "ci" y no "install": respeta package-lock.json
+                                 al pie de la letra, así la compilación es
+                                 reproducible. -->
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>compilar-pwa</id>
+                        <goals><goal>npm</goal></goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copia la PWA compilada a los estáticos que sirve Spring Boot. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copiar-pwa-a-estaticos</id>
+                        <goals><goal>copy-resources</goal></goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <skip>${pwa.skip}</skip>
+                            <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${pwa.directorio}/dist/taller-pwa/browser</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -1,0 +1,37 @@
+<div class="marco">
+  <mat-toolbar color="primary" class="barra">
+    <mat-icon class="marca">handyman</mat-icon>
+    <span class="titulo">Taller de Herrería</span>
+    <span class="crece"></span>
+
+    <button matIconButton [matMenuTriggerFor]="menu" aria-label="Cuenta">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+    <mat-menu #menu="matMenu">
+      <div class="quien">
+        Sesión: <strong>{{ sesion.nombreRol() }}</strong>
+      </div>
+      <button mat-menu-item (click)="salir()">
+        <mat-icon>logout</mat-icon>
+        <span>Salir</span>
+      </button>
+    </mat-menu>
+  </mat-toolbar>
+
+  <main class="contenido">
+    <router-outlet />
+  </main>
+
+  <nav class="navegacion">
+    @for (apartado of apartados(); track apartado.ruta) {
+      <a
+        [routerLink]="apartado.ruta"
+        routerLinkActive="activo"
+        class="apartado"
+      >
+        <mat-icon>{{ apartado.icono }}</mat-icon>
+        <span>{{ apartado.texto }}</span>
+      </a>
+    }
+  </nav>
+</div>

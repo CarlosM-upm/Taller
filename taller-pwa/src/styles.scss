@@ -1,0 +1,84 @@
+// La tipografía Roboto y los iconos se cargan en LOCAL desde node_modules,
+// declarados en angular.json ("styles"). Nunca desde Google Fonts: el
+// servidor del taller no tiene internet, y con enlaces al CDN los iconos
+// aparecerían como palabras ("delete", "photo_camera").
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      // Densidad 0 (la más holgada de Material). Esto es una aplicación de
+      // taller: se usa de pie, con prisa y a veces con guantes, así que los
+      // objetivos táctiles deben ser grandes. No lo bajes a negativo.
+      density: 0,
+    )
+  );
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+  // En una tablet, el rebote al arrastrar y la selección accidental de texto
+  // estorban más que ayudan.
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// La clase .material-icons la genera el paquete material-icons; Angular
+// Material espera ese nombre en <mat-icon>.
+
+// ---------------------------------------------------------------------------
+// Ajustes de tamaño para uso con guantes
+// ---------------------------------------------------------------------------
+
+// Altura mínima recomendada para un objetivo táctil cómodo.
+button.mat-mdc-raised-button,
+button.mat-mdc-unelevated-button,
+button.mat-mdc-outlined-button,
+button.mat-mdc-button {
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.mat-mdc-form-field {
+  width: 100%;
+}
+
+// Utilidades mínimas, para no repetir estilos en cada pantalla.
+.contenedor {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.fila {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.fila-fin {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.crece {
+  flex: 1 1 auto;
+}
+
+.aviso-vacio {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
