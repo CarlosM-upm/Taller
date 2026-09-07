@@ -78,7 +78,16 @@ public class AuthService {
         }
         usuario.setContrasenaHash(encoder.encode(nueva));
         usuarios.save(usuario);
-        log.info("Contraseña cambiada para el usuario '{}'", usuario.getNombre());
+
+        // Cambiar la contraseña cierra TODAS las sesiones de ese usuario,
+        // incluida la de quien la está cambiando. Es lo que se espera: si se
+        // cambia la de "tablet" porque un trabajador se ha ido, los tres deben
+        // salir. Y como las sesiones no caducan nunca, sin esto el que ya
+        // estuviera dentro se quedaría dentro indefinidamente.
+        tokens.deleteByUsuario(usuario);
+
+        log.info("Contraseña cambiada para el usuario '{}'. Sus sesiones se han cerrado.",
+                usuario.getNombre());
     }
 
     private boolean esBlanco(String s) {

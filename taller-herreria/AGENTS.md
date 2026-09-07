@@ -99,13 +99,13 @@ El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 ```
 taller-pwa/src/app/
 ├── nucleo/          sesión, cliente de API, interceptores, guardias, fotos, avisos
-├── comun/           selector de fotos, galería con visor, diálogo de confirmación
+├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro
 ├── armazon/         barra superior y navegación inferior, según el rol
 ├── sesion/          pantalla de login
 ├── pedidos/         listado, alta y ficha
 ├── trabajos/        listado con filtro, alta a medias y ficha con envío
-├── albaranes/
-└── configuracion/
+├── albaranes/       listado, ficha con firma y generación desde un trabajo
+└── configuracion/   pendiente
 ```
 
 Capas y responsabilidades:
@@ -377,6 +377,12 @@ igual que abrir un favorito o reabrir la PWA instalada.
 
 ### Reglas que no se deben romper
 
+- **Las imágenes protegidas se cargan con la directiva `appSrcSeguro`, nunca con un
+  `<img src>` normal.** El navegador pide las imágenes por su cuenta, al margen de
+  HttpClient, así que **no manda la cabecera del token** y el servidor responde 401:
+  ni fotos ni firmas llegaban a verse, y encima ese 401 echaba al usuario al login.
+  La directiva las pide con HttpClient y las pinta como URL de objeto. Pasó, y lo
+  encontró la comprobación de humo.
 - **Un input obligatorio no se lee en el constructor.** Los `input.required()` de
   signals no tienen valor mientras se construye el componente: el router los inyecta
   después. Leerlos ahí lanza `NG0950`, el componente no llega a crearse y el router
@@ -387,6 +393,9 @@ igual que abrir un favorito o reabrir la PWA instalada.
   el componente trabaja con texto: el valor se veía escrito en pantalla y la aplicación
   seguía creyendo que el campo estaba vacío. Además `inputmode` abre igual el teclado
   numérico en la tablet y permite escribir "2,5" con coma, que es como se teclea aquí.
+- **El lienzo de firma necesita `touch-action: none`.** Sin eso, arrastrar el dedo hace
+  scroll en la página en lugar de dibujar y la firma no sale. Y hay que dimensionarlo
+  según `devicePixelRatio`, o el trazo se ve borroso en la tablet.
 - **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller no tiene
   internet: los iconos aparecerían como palabras sueltas ("delete", "photo_camera").
   Roboto y los iconos van desde `node_modules`, declarados en `angular.json`.
@@ -474,11 +483,18 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   admite guardar solo con lo que haya, ficha con guardado parcial, aviso de qué falta
   para poder enviar, envío con confirmación, fotos y borrado. La regla "enviado = solo
   el jefe" se refleja en la pantalla. Verificado: 30 comprobaciones.
+- **Albaranes, completos en la PWA**: listado, ficha con edición del número y la fecha,
+  DNI, fotos, borrado, y **firma del cliente en un lienzo**. Se generan desde la ficha
+  de un trabajo enviado, que además enlaza al albarán si ya existe.
+- **Dos reglas de negocio cerradas**: no se puede borrar un trabajo que ya generó
+  albarán (409 diciendo cuál), y cambiar la contraseña **cierra todas las sesiones** de
+  ese usuario, incluida la de quien la cambia. El caso que importa es la cuenta
+  `tablet`, compartida: si se va un trabajador y se cambia la contraseña, los tres
+  tienen que salir de verdad.
 
 ### Pendiente, en orden
 
-1. **Terminar la PWA**, que es el bloque grande:
-   - Albaranes: generar desde un trabajo enviado, editar, firma en lienzo y fotos.
+1. **Terminar la PWA**:
    - Configuración: contador de albaranes y cambio de contraseña.
    - Capa PWA: instalable, y no perder los formularios a medio rellenar si parpadea
      el wifi al guardar.
@@ -517,14 +533,16 @@ del jefe.
 
 ### Decisiones de negocio aún sin tomar
 
-- Borrar un trabajo que ya tiene albarán deja el albarán **huérfano**: `Albaran.trabajoId`
-  es un `Long` sin clave foránea, así que la BD no lo impide. ¿Bloquear con 409?
 - El contador de albaranes se lee e incrementa **sin bloqueo pesimista**: dos albaranes
-  simultáneos pueden tomar el mismo número. Riesgo bajo con cuatro personas, pero real.
+  simultáneos podrían tomar el mismo número. **Decidido dejarlo así**: solo el jefe crea
+  albaranes, el botón se deshabilita mientras se envía, y si aun así coincidieran, la
+  restricción única de la BD lo rechaza y `ManejadorErrores` lo traduce a un 409 con un
+  mensaje claro. Basta con reintentar.
 - La tabla `tokens_acceso` **crece indefinidamente** y los tokens se guardan en claro.
-  Cambiar la contraseña **no invalida** las sesiones abiertas. Medido: una sola tarde de
-  pruebas dejó 8 filas que nada purgará nunca. Con dos cuentas crece despacio, pero
-  nunca baja.
+  Medido: una tarde de pruebas dejó 8 filas. Con dos cuentas crece despacio y nunca
+  baja, pero en tamaño es irrelevante durante décadas. **Decidido no tocarlo**: cifrar
+  los tokens taparía un agujero que solo se abre si alguien roba el disco de copias, y
+  quien se lleve ese disco ya tiene todos los datos del negocio.
 
 ---
 

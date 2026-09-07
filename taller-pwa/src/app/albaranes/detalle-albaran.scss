@@ -18,39 +18,6 @@ h3 {
   font-size: 0.9rem;
 }
 
-.estado,
-.pendiente {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  font-size: 0.92rem;
-
-  mat-icon {
-    flex: 0 0 auto;
-  }
-}
-
-.borrador {
-  background: var(--mat-sys-tertiary-container);
-  color: var(--mat-sys-on-tertiary-container);
-}
-
-.enviado {
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
-}
-
-// Lo que falta para enviar se avisa, no se castiga: es el estado normal de un
-// borrador a medias, no un error.
-.pendiente {
-  margin-top: 12px;
-  background: var(--mat-sys-surface-container-highest);
-  color: var(--mat-sys-on-surface);
-}
-
 .dato {
   display: flex;
   flex-direction: column;
@@ -74,6 +41,12 @@ h3 {
   white-space: pre-wrap;
 }
 
+.numero {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--mat-sys-primary);
+}
+
 .destacado {
   font-size: 1.15rem;
   font-weight: 500;
@@ -89,14 +62,21 @@ form {
   margin-top: 16px;
 }
 
-.tarjeta-albaran,
+.tarjeta-firma,
 .tarjeta-fotos {
   margin-top: 12px;
 }
 
-.tarjeta-albaran .fila {
-  flex-wrap: wrap;
-  gap: 12px;
+// Fondo blanco explícito: la firma es un PNG con fondo blanco, y sobre un
+// tema oscuro sin recuadro quedaría flotando de forma extraña.
+.firma {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 12px;
 }
 
 .anadir-fotos {
@@ -104,6 +84,22 @@ form {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.origen {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.88rem;
+
+  mat-icon {
+    flex: 0 0 auto;
+  }
 }
 
 .tarjeta-fallo {

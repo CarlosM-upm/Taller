@@ -125,6 +125,32 @@
       </p>
     }
 
+    <!-- Albarán: solo para el jefe y solo si el trabajo ya está enviado -->
+    @if (!esBorrador() && sesion.esJefe()) {
+      <mat-card class="tarjeta-albaran">
+        <mat-card-content>
+          <h3>Albarán</h3>
+          @if (albaran(); as alb) {
+            <div class="fila">
+              <span class="crece">Este trabajo ya generó el albarán nº <strong>{{ alb.numero }}</strong>.</span>
+              <a matButton [routerLink]="['/albaranes', alb.id]">
+                <mat-icon>receipt_long</mat-icon>
+                Ver albarán
+              </a>
+            </div>
+          } @else {
+            <div class="fila">
+              <span class="crece ligero">Todavía no se ha generado el albarán de este trabajo.</span>
+              <button matButton="filled" [disabled]="ocupado()" (click)="generarAlbaran()">
+                <mat-icon>receipt_long</mat-icon>
+                Generar albarán
+              </button>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+
     <mat-card class="tarjeta-fotos">
       <mat-card-content>
         <h3>Fotos <span class="ligero">({{ t.fotoIds.length }} de 5)</span></h3>

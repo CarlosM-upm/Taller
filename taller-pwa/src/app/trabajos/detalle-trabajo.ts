@@ -12,8 +12,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Sesion } from '../nucleo/sesion';
-import { Trabajo, TrabajoDatos } from '../nucleo/modelos';
+import { Trabajo, TrabajoDatos, Albaran } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { DialogoGenerarAlbaran } from '../albaranes/dialogo-generar-albaran';
 import { GaleriaFotos } from '../comun/galeria-fotos';
 import { SelectorFotos } from '../comun/selector-fotos';
 
@@ -82,6 +83,16 @@ export class DetalleTrabajo implements OnInit {
   readonly errorHoras = signal<string | null>(null);
 
   readonly fotosNuevas = signal<Blob[]>([]);
+
+  /**
+   * El albarán que salió de este trabajo, si ya existe.
+   *
+   * La API no dice en el trabajo si tiene albarán, así que se busca en la
+   * lista de albaranes el que apunte a este trabajo. Es una llamada de más,
+   * pero la lista es pequeña y evita tocar el backend. Si algún día crece
+   * mucho, lo suyo sería añadir el dato a TrabajoResponse.
+   */
+  readonly albaran = signal<Albaran | null>(null);
 
   readonly esBorrador = computed(() => this.trabajo()?.estado === 'BORRADOR');
 
@@ -314,6 +325,47 @@ export class DetalleTrabajo implements OnInit {
     this.materiales.set(trabajo.materiales ?? '');
     this.horas.set(trabajo.horas !== null ? String(trabajo.horas) : '');
     this.errorHoras.set(null);
+
+    // Solo tiene sentido buscar el albarán si el trabajo está enviado y quien
+    // mira es el jefe: para el trabajador, /api/albaranes responde 403.
+    if (trabajo.estado === 'ENVIADO' && this.sesion.esJefe()) {
+      this.buscarAlbaran(trabajo.id);
+    } else {
+      this.albaran.set(null);
+    }
+  }
+
+  private buscarAlbaran(trabajoId: number): void {
+    this.api.albaranes().subscribe({
+      next: (lista) => this.albaran.set(lista.find((a) => a.trabajoId === trabajoId) ?? null),
+      // Si falla, simplemente no se enseña el enlace. No es información
+      // crítica y no merece molestar al usuario con un aviso.
+      error: () => this.albaran.set(null),
+    });
+  }
+
+  generarAlbaran(): void {
+    const t = this.trabajo();
+    if (!t || this.ocupado()) return;
+
+    this.dialogo
+      .open(DialogoGenerarAlbaran, { width: '440px' })
+      .afterClosed()
+      .subscribe((datos) => {
+        if (!datos) return;
+        this.ocupado.set(true);
+        this.api.crearAlbaranDesdeTrabajo(t.id, datos).subscribe({
+          next: (albaran) => {
+            this.ocupado.set(false);
+            this.avisos.correcto(`Albarán nº ${albaran.numero} generado`);
+            this.router.navigate(['/albaranes', albaran.id]);
+          },
+          error: (fallo) => {
+            this.ocupado.set(false);
+            this.avisos.error(fallo, 'No se ha podido generar el albarán');
+          },
+        });
+      });
   }
 
   /** Devuelve null si las horas no valen, tras marcar el error. */

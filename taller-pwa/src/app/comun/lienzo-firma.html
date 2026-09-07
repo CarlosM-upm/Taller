@@ -1,0 +1,30 @@
+<h2 mat-dialog-title>Firma del cliente</h2>
+
+<mat-dialog-content>
+  <p class="instruccion">Firme dentro del recuadro con el dedo.</p>
+
+  <canvas
+    #lienzo
+    class="lienzo"
+    (pointerdown)="empezar($event)"
+    (pointermove)="mover($event)"
+    (pointerup)="terminar($event)"
+    (pointercancel)="terminar($event)"
+    (pointerleave)="terminar($event)"
+  ></canvas>
+
+  @if (!hayTrazo()) {
+    <p class="aviso">Todavía no hay nada firmado.</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" (click)="cancelar()">Cancelar</button>
+  <button matButton type="button" [disabled]="!hayTrazo()" (click)="limpiar()">
+    <mat-icon>refresh</mat-icon>
+    Limpiar
+  </button>
+  <button matButton="filled" type="button" [disabled]="!hayTrazo()" (click)="guardar()">
+    Guardar firma
+  </button>
+</mat-dialog-actions>

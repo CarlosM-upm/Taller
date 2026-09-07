@@ -1,5 +1,7 @@
 package com.taller.herreria.trabajo;
 
+import com.taller.herreria.albaran.Albaran;
+import com.taller.herreria.albaran.AlbaranRepository;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
@@ -33,10 +35,14 @@ public class TrabajoService {
 
     private final TrabajoRepository trabajoRepository;
     private final FotoRepository fotoRepository;
+    private final AlbaranRepository albaranRepository;
 
-    public TrabajoService(TrabajoRepository trabajoRepository, FotoRepository fotoRepository) {
+    public TrabajoService(TrabajoRepository trabajoRepository,
+                          FotoRepository fotoRepository,
+                          AlbaranRepository albaranRepository) {
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
+        this.albaranRepository = albaranRepository;
     }
 
     /** Crea un trabajo en estado BORRADOR, con los datos que haya (pueden estar a medias). */
@@ -105,8 +111,29 @@ public class TrabajoService {
     public void borrar(Long id) {
         Trabajo trabajo = buscarOFallar(id);
         exigirJefeSiEnviado(trabajo, "borrar");
+        exigirQueNoTengaAlbaran(trabajo);
         fotoRepository.deleteByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, trabajo.getId());
         trabajoRepository.delete(trabajo);
+    }
+
+    /**
+     * Un albarán es un documento que se imprimió y que el cliente firmó, y el
+     * trabajo del que salió es su respaldo. Borrar ese trabajo dejaría el
+     * albarán apuntando a un id que ya no existe.
+     *
+     * El albarán no perdería datos —es una copia instantánea y guarda lo suyo—,
+     * pero sí se perdería el rastro hacia su origen, así que se bloquea y se
+     * dice cuál es el albarán, para que el jefe pueda decidir.
+     *
+     * La base de datos no lo impide por su cuenta: `trabajo_id` es un Long
+     * normal, sin clave foránea.
+     */
+    private void exigirQueNoTengaAlbaran(Trabajo trabajo) {
+        albaranRepository.findByTrabajoId(trabajo.getId()).ifPresent(albaran -> {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El trabajo " + trabajo.getId() + " ya tiene el albarán nº "
+                            + albaran.getNumero() + ": borre antes el albarán");
+        });
     }
 
     // ---------- Fotos ----------

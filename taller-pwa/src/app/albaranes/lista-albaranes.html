@@ -1,0 +1,64 @@
+@if (cargando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <h2 class="crece">Albaranes</h2>
+    <button matIconButton aria-label="Recargar" [disabled]="cargando()" (click)="cargar()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (!cargando() && albaranes().length === 0) {
+    <p class="aviso-vacio">
+      Todavía no hay albaranes.<br />
+      Se generan desde la ficha de un trabajo que ya esté enviado.
+    </p>
+  } @else {
+    @for (albaran of albaranes(); track albaran.id) {
+      <mat-card class="albaran" [routerLink]="['/albaranes', albaran.id]">
+        <mat-card-content>
+          <div class="fila">
+            <span class="numero">Nº {{ albaran.numero }}</span>
+            <span class="cliente crece">{{ albaran.cliente }}</span>
+            <span class="fecha">{{ albaran.fecha | date: 'dd/MM/yyyy' }}</span>
+          </div>
+
+          <p class="descripcion">{{ albaran.descripcion }}</p>
+
+          <div class="fila pie">
+            <mat-icon class="icono-pie">person</mat-icon>
+            <span>{{ albaran.trabajador }}</span>
+            <span class="crece"></span>
+            @if (albaran.tieneFirma) {
+              <span class="etiqueta firmado">
+                <mat-icon class="icono-pie">draw</mat-icon>
+                Firmado
+              </span>
+            } @else {
+              <span class="etiqueta sin-firmar">Sin firmar</span>
+            }
+            @if (albaran.fotoIds.length > 0) {
+              <mat-icon class="icono-pie">photo_library</mat-icon>
+              <span>{{ albaran.fotoIds.length }}</span>
+            }
+            <mat-icon class="icono-pie">chevron_right</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</div>

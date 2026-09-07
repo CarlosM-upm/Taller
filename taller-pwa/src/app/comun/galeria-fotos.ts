@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { VisorFoto } from './visor-foto';
+import { SrcSeguro } from './src-seguro';
 
 /**
  * Muestra las fotos que ya están guardadas en el servidor.
@@ -11,13 +12,12 @@ import { VisorFoto } from './visor-foto';
  * una, para poder usarla igual con pedidos, trabajos y albaranes sin que el
  * componente sepa nada de ninguno.
  *
- * Las imágenes se piden con <img src>, así que el token no viaja en la
- * cabecera. Funciona porque el navegador manda la petición al mismo origen y
- * el backend deja abierta la lectura de fotos a cualquiera que haya entrado.
+ * Las imágenes se cargan con la directiva appSrcSeguro y no con un src normal:
+ * un <img src> no manda la cabecera del token y el servidor devolvería 401.
  */
 @Component({
   selector: 'app-galeria-fotos',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule],
+  imports: [MatButtonModule, MatDialogModule, MatIconModule, SrcSeguro],
   templateUrl: './galeria-fotos.html',
   styleUrl: './galeria-fotos.scss',
 })

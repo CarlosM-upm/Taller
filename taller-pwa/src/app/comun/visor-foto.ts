@@ -2,17 +2,18 @@ import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { SrcSeguro } from './src-seguro';
 
 /** Ve una foto a tamaño completo. Se cierra tocando en cualquier sitio. */
 @Component({
   selector: 'app-visor-foto',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule],
+  imports: [MatButtonModule, MatDialogModule, MatIconModule, SrcSeguro],
   template: `
     <div class="visor" (click)="cerrar()">
       <button matIconButton class="cerrar" aria-label="Cerrar">
         <mat-icon>close</mat-icon>
       </button>
-      <img [src]="datos.url" alt="Foto a tamaño completo" />
+      <img [appSrcSeguro]="datos.url" alt="Foto a tamaño completo" />
     </div>
   `,
   styles: `

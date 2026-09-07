@@ -1,0 +1,175 @@
+@if (cargando() || ocupado()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <a matIconButton routerLink="/albaranes" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <h2 class="crece">Albarán</h2>
+
+    @if (albaran() && !editando()) {
+      <button matIconButton aria-label="Editar" [disabled]="ocupado()" (click)="empezarEdicion()">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button matIconButton aria-label="Borrar" [disabled]="ocupado()" (click)="borrar()">
+        <mat-icon>delete</mat-icon>
+      </button>
+    }
+  </div>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (albaran(); as a) {
+    <mat-card>
+      <mat-card-content>
+        @if (editando()) {
+          <form (ngSubmit)="guardar()">
+            <mat-form-field appearance="outline">
+              <mat-label>Número de albarán</mat-label>
+              <input matInput name="numero" type="text" inputmode="numeric" [ngModel]="numero()" (ngModelChange)="numero.set($event)" [disabled]="ocupado()" />
+              <mat-hint>Cámbialo solo para reencauzar la serie</mat-hint>
+              @if (errores()['numero']) { <mat-error>{{ errores()['numero'] }}</mat-error> }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Fecha</mat-label>
+              <input matInput name="fecha" type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" [disabled]="ocupado()" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Cliente</mat-label>
+              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
+              @if (errores()['cliente']) { <mat-error>{{ errores()['cliente'] }}</mat-error> }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>DNI del cliente</mat-label>
+              <input matInput name="dniCliente" [ngModel]="dniCliente()" (ngModelChange)="dniCliente.set($event)" [disabled]="ocupado()" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Trabajador</mat-label>
+              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Descripción</mat-label>
+              <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="ocupado()"></textarea>
+            </mat-form-field>
+
+            <div class="fila-fin acciones">
+              <button matButton type="button" [disabled]="ocupado()" (click)="cancelarEdicion()">Cancelar</button>
+              <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+            </div>
+          </form>
+        } @else {
+          <div class="dato">
+            <span class="etiqueta">Número</span>
+            <span class="valor numero">Nº {{ a.numero }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Fecha</span>
+            <span class="valor">{{ a.fecha | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Cliente</span>
+            <span class="valor destacado">{{ a.cliente }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">DNI del cliente</span>
+            <span class="valor">{{ a.dniCliente || '—' }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Trabajador</span>
+            <span class="valor">{{ a.trabajador }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Descripción</span>
+            <span class="valor">{{ a.descripcion }}</span>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Firma -->
+    <mat-card class="tarjeta-firma">
+      <mat-card-content>
+        <h3>Firma del cliente</h3>
+
+        @if (a.tieneFirma) {
+          <img class="firma" [appSrcSeguro]="urlFirma()" alt="Firma del cliente" />
+          <div class="fila-fin">
+            <button matButton [disabled]="ocupado()" (click)="firmar()">
+              <mat-icon>draw</mat-icon>
+              Volver a firmar
+            </button>
+          </div>
+        } @else {
+          <p class="ligero">Este albarán todavía no está firmado.</p>
+          <div class="fila-fin">
+            <button matButton="filled" [disabled]="ocupado()" (click)="firmar()">
+              <mat-icon>draw</mat-icon>
+              Recoger firma
+            </button>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Fotos -->
+    <mat-card class="tarjeta-fotos">
+      <mat-card-content>
+        <h3>Fotos <span class="ligero">({{ a.fotoIds.length }} de 5)</span></h3>
+
+        @if (a.fotoIds.length === 0) {
+          <p class="ligero">Este albarán no tiene fotos.</p>
+        } @else {
+          <app-galeria-fotos
+            [fotoIds]="a.fotoIds"
+            [urlDe]="urlFoto()"
+            [puedeBorrar]="true"
+            [desactivado]="ocupado()"
+            (borrar)="borrarFoto($event)"
+          />
+        }
+
+        @if (huecos() > 0) {
+          <div class="anadir-fotos">
+            <app-selector-fotos
+              [huecos]="huecos()"
+              [desactivado]="ocupado()"
+              (cambio)="fotosNuevas.set($event)"
+            />
+            @if (fotosNuevas().length > 0) {
+              <div class="fila-fin">
+                <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
+                  Subir {{ fotosNuevas().length }} foto(s)
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <p class="origen">
+      <mat-icon>info</mat-icon>
+      <span>
+        Salió del trabajo nº {{ a.trabajoId }}. Es una copia: lo que cambies aquí
+        no modifica aquel trabajo.
+      </span>
+    </p>
+  }
+</div>

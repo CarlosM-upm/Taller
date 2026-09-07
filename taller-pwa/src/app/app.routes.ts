@@ -52,6 +52,11 @@ export const routes: Routes = [
         loadComponent: () => import('./albaranes/lista-albaranes').then((m) => m.ListaAlbaranes),
       },
       {
+        path: 'albaranes/:id',
+        canActivate: [guardiaJefe],
+        loadComponent: () => import('./albaranes/detalle-albaran').then((m) => m.DetalleAlbaran),
+      },
+      {
         path: 'configuracion',
         canActivate: [guardiaJefe],
         loadComponent: () => import('./configuracion/configuracion').then((m) => m.Configuracion),

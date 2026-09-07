@@ -8,7 +8,7 @@
           aria-label="Ver la foto a tamaño completo"
           (click)="ver(fotoId)"
         >
-          <img [src]="urlDe()(fotoId)" alt="Foto" loading="lazy" />
+          <img [appSrcSeguro]="urlDe()(fotoId)" alt="Foto" />
         </button>
 
         @if (puedeBorrar()) {

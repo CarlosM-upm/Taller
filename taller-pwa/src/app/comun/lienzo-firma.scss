@@ -1,0 +1,34 @@
+.instruccion {
+  margin: 0 0 12px;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.92rem;
+}
+
+.lienzo {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 2px dashed var(--mat-sys-outline);
+  border-radius: 8px;
+  background: #fff;
+  // IMPRESCINDIBLE: sin esto, arrastrar el dedo hace scroll en la página en
+  // lugar de dibujar, y la firma no llega a salir.
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.aviso {
+  margin: 8px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+mat-dialog-actions {
+  padding: 16px 24px;
+  gap: 8px;
+}
+
+button {
+  min-height: 48px;
+}
