@@ -1,4 +1,8 @@
 import { expect, Page, test } from '@playwright/test';
+import { join } from 'node:path';
+
+/** Imagen real (PNG de 64x64) para las pruebas de subida. */
+const FOTO = join(__dirname, 'ficheros', 'foto-prueba.png');
 
 /**
  * Recorre la aplicación como lo haría una persona del taller.
@@ -68,6 +72,18 @@ async function imagenCargada(page: Page, selector: string): Promise<boolean> {
     const imagen = img as HTMLImageElement;
     return imagen.complete && imagen.naturalWidth > 0;
   });
+}
+
+/**
+ * Pulsa el botón de borrar de la cabecera y confirma en el diálogo.
+ *
+ * Se usa getByLabel y no getByRole('button', {name:'Borrar'}) porque ese
+ * nombre también lo tienen el botón de cada foto ("Borrar esta foto") y el del
+ * diálogo. El aria-label de la cabecera es exactamente "Borrar".
+ */
+async function borrarYConfirmar(page: Page, textoDelBoton = 'Borrar') {
+  await page.getByLabel('Borrar', { exact: true }).click();
+  await page.getByRole('button', { name: textoDelBoton, exact: true }).last().click();
 }
 
 async function entrar(page: Page, cuenta: { usuario: string; contrasena: string }) {
@@ -144,8 +160,7 @@ test('un pedido se crea, se abre y se borra', async ({ page }) => {
   await expect(page.getByText('Fecha de entrada')).toBeVisible();
 
   // Borrar (solo el jefe puede)
-  await page.getByRole('button', { name: 'Borrar' }).click();
-  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
   await expect(page.getByText(cliente)).toHaveCount(0);
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
@@ -186,8 +201,7 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
   await expect(page.getByText(/Enviado el/)).toBeVisible({ timeout: 15_000 });
 
   // Limpieza
-  await page.getByRole('button', { name: 'Borrar' }).click();
-  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
@@ -264,22 +278,75 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   await page.getByText(cliente).first().click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/);
   await expect(page.getByText(/ya generó el albarán/)).toBeVisible();
-  await page.getByRole('button', { name: 'Borrar' }).click();
-  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await borrarYConfirmar(page);
   await expect(page.getByText(/ya tiene el albarán/)).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/\/trabajos\/\d+$/); // sigue ahí, no se borró
 
   // 7. Limpieza: primero el albarán, después el trabajo
   await page.goto(urlAlbaran);
-  await page.getByRole('button', { name: 'Borrar' }).click();
-  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
 
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.getByText(cliente).first().click();
-  await page.getByRole('button', { name: 'Borrar' }).click();
-  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('las fotos se suben, se ven y se borran', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  const cliente = `${MARCA} fotos`;
+
+  await entrar(page, CUENTAS.jefe);
+
+  // Alta de pedido CON foto desde el propio formulario: es el camino que hará
+  // el trabajador con la tablet, foto incluida.
+  await page.getByRole('link', { name: 'Nuevo pedido' }).click();
+  await page.getByLabel('Cliente').fill(cliente);
+  await page.getByLabel('Trabajador').fill('Ana');
+  await page.getByLabel('Qué han pedido').fill('Pedido con foto');
+
+  await page.locator('input[type=file]').setInputFiles(FOTO);
+  // La miniatura aparece antes de guardar: la foto se reduce al elegirla.
+  await expect(page.getByAltText('Foto pendiente de subir')).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: 'Guardar pedido' }).click();
+  await expect(page).toHaveURL(/\/pedidos\/\d+$/, { timeout: 20_000 });
+
+  // Y aquí lo importante: que la foto guardada se DESCARGUE de verdad.
+  // Un <img> con la fuente rota seguiría estando visible.
+  await expect(page.getByText('(1 de 5)')).toBeVisible();
+  await expect
+    .poll(() => imagenCargada(page, '.galeria img'), { timeout: 15_000 })
+    .toBe(true);
+
+  // Verla a tamaño completo
+  await page.getByRole('button', { name: 'Ver la foto a tamaño completo' }).click();
+  await expect
+    .poll(() => imagenCargada(page, 'img[alt="Foto a tamaño completo"]'), { timeout: 15_000 })
+    .toBe(true);
+  await page.getByRole('button', { name: 'Cerrar' }).click();
+
+  // Añadir una segunda desde la ficha
+  await page.locator('input[type=file]').setInputFiles(FOTO);
+  await page.getByRole('button', { name: /Subir 1 foto/ }).click();
+  await expect(page.getByText('(2 de 5)')).toBeVisible({ timeout: 15_000 });
+
+  // Borrar una
+  await page.getByRole('button', { name: 'Borrar esta foto' }).first().click();
+  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await expect(page.getByText('(1 de 5)')).toBeVisible({ timeout: 15_000 });
+
+  // En el listado se ve el contador de fotos
+  await page.getByRole('link', { name: 'Volver' }).click();
+  await expect(page.getByText(cliente).first()).toBeVisible();
+
+  // Limpieza
+  await page.getByText(cliente).first().click();
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
