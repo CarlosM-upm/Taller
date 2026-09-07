@@ -1,0 +1,39 @@
+<div class="selector">
+  @if (elegidas().length > 0) {
+    <div class="miniaturas">
+      @for (foto of elegidas(); track foto.miniatura) {
+        <div class="miniatura">
+          <img [src]="foto.miniatura" alt="Foto pendiente de subir" />
+          <button
+            matIconButton
+            class="quitar"
+            type="button"
+            aria-label="Quitar esta foto"
+            [disabled]="desactivado()"
+            (click)="quitar($index)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (puedeAnadir()) {
+    <label class="anadir">
+      <input
+        type="file"
+        accept="image/jpeg,image/png"
+        multiple
+        capture="environment"
+        (change)="alElegir($event)"
+      />
+      <mat-icon>add_a_photo</mat-icon>
+      <span>Añadir fotos</span>
+    </label>
+  } @else if (procesando()) {
+    <p class="estado">Preparando las fotos…</p>
+  } @else if (elegidas().length >= huecos()) {
+    <p class="estado">Máximo de fotos alcanzado</p>
+  }
+</div>

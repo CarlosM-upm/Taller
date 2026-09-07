@@ -99,9 +99,10 @@ El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 ```
 taller-pwa/src/app/
 ├── nucleo/          sesión, cliente de API, interceptores, guardias, fotos, avisos
+├── comun/           selector de fotos, galería con visor, diálogo de confirmación
 ├── armazon/         barra superior y navegación inferior, según el rol
 ├── sesion/          pantalla de login
-├── pedidos/
+├── pedidos/         listado, alta y ficha
 ├── trabajos/
 ├── albaranes/
 └── configuracion/
@@ -437,11 +438,14 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   núcleo completo (sesión, cliente de API con los 32 endpoints, interceptores de token
   y de errores, guardias, servicio de fotos) y listado de pedidos. Empaquetado dentro
   del jar y verificado ejecutándolo: 14 comprobaciones, 14 correctas.
+- **Pedidos, completos en la PWA**: listado, alta con fotos, ficha, edición y borrado
+  para el jefe, y borrado de fotos sueltas. Con componentes reutilizables en `comun/`
+  (selector de fotos, galería con visor y diálogo de confirmación) que servirán igual
+  para trabajos y albaranes. Verificado contra la API real: 19 comprobaciones.
 
 ### Pendiente, en orden
 
 1. **Terminar la PWA**, que es el bloque grande:
-   - Pedidos: alta con fotos, detalle, edición y borrado (jefe).
    - Trabajos: ciclo borrador → enviado, fotos, y mostrar la lista de campos que
      faltan que ya devuelve el backend al intentar enviar.
    - Albaranes: generar desde un trabajo enviado, editar, firma en lienzo y fotos.

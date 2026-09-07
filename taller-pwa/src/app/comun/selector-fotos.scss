@@ -1,0 +1,66 @@
+.selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.miniaturas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.miniatura {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-high);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.quitar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  // Más pequeño que el resto de botones a propósito: va encima de la foto y
+  // no debe taparla, pero sigue siendo alcanzable con el dedo.
+  width: 36px;
+  height: 36px;
+}
+
+// El input real se oculta: el <label> entero hace de botón, lo que da un
+// objetivo táctil grande en vez del botón diminuto del navegador.
+.anadir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 0 20px;
+  border: 2px dashed var(--mat-sys-outline);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--mat-sys-primary);
+  font-weight: 500;
+  user-select: none;
+
+  input {
+    display: none;
+  }
+}
+
+.estado {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}

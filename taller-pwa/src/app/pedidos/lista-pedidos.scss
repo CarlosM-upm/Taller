@@ -1,10 +1,15 @@
-h2 {
+.cabecera {
   margin: 8px 0 16px;
+}
+
+h2 {
+  margin: 0;
   font: var(--mat-sys-headline-small);
 }
 
 .pedido {
   margin-bottom: 12px;
+  cursor: pointer;
 }
 
 .cliente {
@@ -20,7 +25,12 @@ h2 {
 
 .descripcion {
   margin: 8px 0;
-  color: var(--mat-sys-on-surface);
+  // Dos líneas como mucho: la lista debe poder recorrerse de un vistazo.
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .pie {
@@ -36,4 +46,12 @@ h2 {
 
 .tarjeta-fallo {
   border-left: 4px solid var(--mat-sys-error);
+}
+
+// Flotante sobre la lista, por encima de la navegación inferior.
+.flotante {
+  position: fixed;
+  right: 20px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 5;
 }

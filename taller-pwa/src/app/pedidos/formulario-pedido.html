@@ -1,0 +1,75 @@
+@if (guardando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <a matIconButton routerLink="/pedidos" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <h2 class="crece">Nuevo pedido</h2>
+  </div>
+
+  <mat-card>
+    <mat-card-content>
+      <form (ngSubmit)="guardar()">
+        <mat-form-field appearance="outline">
+          <mat-label>Cliente</mat-label>
+          <input
+            matInput
+            name="cliente"
+            [ngModel]="cliente()"
+            (ngModelChange)="cliente.set($event)"
+            [disabled]="guardando()"
+          />
+          @if (errores()['cliente']) {
+            <mat-error>{{ errores()['cliente'] }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Trabajador</mat-label>
+          <input
+            matInput
+            name="trabajador"
+            [ngModel]="trabajador()"
+            (ngModelChange)="trabajador.set($event)"
+            [disabled]="guardando()"
+          />
+          @if (errores()['trabajador']) {
+            <mat-error>{{ errores()['trabajador'] }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Qué han pedido</mat-label>
+          <textarea
+            matInput
+            name="descripcion"
+            rows="4"
+            [ngModel]="descripcion()"
+            (ngModelChange)="descripcion.set($event)"
+            [disabled]="guardando()"
+          ></textarea>
+          @if (errores()['descripcion']) {
+            <mat-error>{{ errores()['descripcion'] }}</mat-error>
+          }
+        </mat-form-field>
+
+        <h3>Fotos <span class="ligero">(máximo {{ maxFotos }})</span></h3>
+        <app-selector-fotos
+          [huecos]="maxFotos"
+          [desactivado]="guardando()"
+          (cambio)="fotos.set($event)"
+        />
+
+        <div class="fila-fin acciones">
+          <a matButton routerLink="/pedidos">Cancelar</a>
+          <button matButton="filled" type="submit" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar pedido' }}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,118 @@
+@if (cargando() || ocupado()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <a matIconButton routerLink="/pedidos" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <h2 class="crece">Pedido</h2>
+
+    @if (pedido() && sesion.esJefe() && !editando()) {
+      <button matIconButton aria-label="Editar" [disabled]="ocupado()" (click)="empezarEdicion()">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button matIconButton aria-label="Borrar" [disabled]="ocupado()" (click)="borrarPedido()">
+        <mat-icon>delete</mat-icon>
+      </button>
+    }
+  </div>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (pedido(); as p) {
+    <mat-card>
+      <mat-card-content>
+        @if (editando()) {
+          <form (ngSubmit)="guardar()">
+            <mat-form-field appearance="outline">
+              <mat-label>Cliente</mat-label>
+              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
+              @if (errores()['cliente']) { <mat-error>{{ errores()['cliente'] }}</mat-error> }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Trabajador</mat-label>
+              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
+              @if (errores()['trabajador']) { <mat-error>{{ errores()['trabajador'] }}</mat-error> }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Qué han pedido</mat-label>
+              <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="ocupado()"></textarea>
+              @if (errores()['descripcion']) { <mat-error>{{ errores()['descripcion'] }}</mat-error> }
+            </mat-form-field>
+
+            <div class="fila-fin acciones">
+              <button matButton type="button" [disabled]="ocupado()" (click)="cancelarEdicion()">Cancelar</button>
+              <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+            </div>
+          </form>
+        } @else {
+          <div class="dato">
+            <span class="etiqueta">Cliente</span>
+            <span class="valor destacado">{{ p.cliente }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Fecha de entrada</span>
+            <span class="valor">{{ p.fecha | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Trabajador</span>
+            <span class="valor">{{ p.trabajador }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Qué han pedido</span>
+            <span class="valor">{{ p.descripcion }}</span>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="tarjeta-fotos">
+      <mat-card-content>
+        <h3>Fotos <span class="ligero">({{ p.fotoIds.length }} de 5)</span></h3>
+
+        @if (p.fotoIds.length === 0) {
+          <p class="ligero">Este pedido no tiene fotos.</p>
+        } @else {
+          <app-galeria-fotos
+            [fotoIds]="p.fotoIds"
+            [urlDe]="urlFoto()"
+            [puedeBorrar]="sesion.esJefe()"
+            [desactivado]="ocupado()"
+            (borrar)="borrarFoto($event)"
+          />
+        }
+
+        @if (huecos() > 0) {
+          <div class="anadir-fotos">
+            <app-selector-fotos
+              [huecos]="huecos()"
+              [desactivado]="ocupado()"
+              (cambio)="fotosNuevas.set($event)"
+            />
+            @if (fotosNuevas().length > 0) {
+              <div class="fila-fin">
+                <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
+                  Subir {{ fotosNuevas().length }} foto(s)
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

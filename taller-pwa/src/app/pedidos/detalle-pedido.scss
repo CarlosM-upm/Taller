@@ -1,0 +1,72 @@
+.cabecera {
+  margin: 8px 0 16px;
+}
+
+h2 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+h3 {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-medium);
+}
+
+.ligero {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+.dato {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+
+  & + .dato {
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+.etiqueta {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.valor {
+  font-size: 1rem;
+  white-space: pre-wrap;
+}
+
+.destacado {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.acciones {
+  margin-top: 16px;
+}
+
+.tarjeta-fotos {
+  margin-top: 12px;
+}
+
+.anadir-fotos {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tarjeta-fallo {
+  border-left: 4px solid var(--mat-sys-error);
+}

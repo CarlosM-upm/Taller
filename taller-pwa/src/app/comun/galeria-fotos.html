@@ -1,0 +1,29 @@
+@if (fotoIds().length > 0) {
+  <div class="galeria">
+    @for (fotoId of fotoIds(); track fotoId) {
+      <div class="foto">
+        <button
+          type="button"
+          class="lienzo"
+          aria-label="Ver la foto a tamaño completo"
+          (click)="ver(fotoId)"
+        >
+          <img [src]="urlDe()(fotoId)" alt="Foto" loading="lazy" />
+        </button>
+
+        @if (puedeBorrar()) {
+          <button
+            matIconButton
+            class="borrar"
+            type="button"
+            aria-label="Borrar esta foto"
+            [disabled]="desactivado()"
+            (click)="borrar.emit(fotoId)"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+      </div>
+    }
+  </div>
+}

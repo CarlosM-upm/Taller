@@ -3,7 +3,12 @@
 }
 
 <div class="contenedor">
-  <h2>Pedidos</h2>
+  <div class="fila cabecera">
+    <h2 class="crece">Pedidos</h2>
+    <button matIconButton aria-label="Recargar" [disabled]="cargando()" (click)="cargar()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
 
   @if (fallo()) {
     <mat-card class="tarjeta-fallo">
@@ -18,10 +23,13 @@
       </mat-card-content>
     </mat-card>
   } @else if (!cargando() && pedidos().length === 0) {
-    <p class="aviso-vacio">Todavía no hay pedidos registrados.</p>
+    <p class="aviso-vacio">
+      Todavía no hay pedidos.<br />
+      Usa el botón de abajo para apuntar el primero.
+    </p>
   } @else {
     @for (pedido of pedidos(); track pedido.id) {
-      <mat-card class="pedido">
+      <mat-card class="pedido" [routerLink]="['/pedidos', pedido.id]">
         <mat-card-content>
           <div class="fila">
             <span class="cliente crece">{{ pedido.cliente }}</span>
@@ -35,9 +43,14 @@
               <mat-icon class="icono-pie">photo_library</mat-icon>
               <span>{{ pedido.fotoIds.length }}</span>
             }
+            <mat-icon class="icono-pie">chevron_right</mat-icon>
           </div>
         </mat-card-content>
       </mat-card>
     }
   }
 </div>
+
+<a matFab class="flotante" routerLink="/pedidos/nuevo" aria-label="Nuevo pedido">
+  <mat-icon>add</mat-icon>
+</a>

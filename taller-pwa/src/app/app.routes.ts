@@ -23,6 +23,16 @@ export const routes: Routes = [
         loadComponent: () => import('./pedidos/lista-pedidos').then((m) => m.ListaPedidos),
       },
       {
+        // Antes que ':id', o "nuevo" se interpretaría como un identificador.
+        path: 'pedidos/nuevo',
+        loadComponent: () =>
+          import('./pedidos/formulario-pedido').then((m) => m.FormularioPedido),
+      },
+      {
+        path: 'pedidos/:id',
+        loadComponent: () => import('./pedidos/detalle-pedido').then((m) => m.DetallePedido),
+      },
+      {
         path: 'trabajos',
         loadComponent: () => import('./trabajos/lista-trabajos').then((m) => m.ListaTrabajos),
       },
