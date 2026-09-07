@@ -73,7 +73,10 @@
 
             <mat-form-field appearance="outline">
               <mat-label>Horas</mat-label>
-              <input matInput name="horas" type="number" inputmode="decimal" step="0.01" min="0" [ngModel]="horas()" (ngModelChange)="horas.set($event)" [disabled]="ocupado()" />
+              <!-- type="text" y no "number": ver el comentario en
+                   formulario-trabajo.html. Con number, ngModelChange emite un
+                   número y el componente trabaja con texto. -->
+              <input matInput name="horas" type="text" inputmode="decimal" placeholder="2,5" [ngModel]="horas()" (ngModelChange)="horas.set($event)" [disabled]="ocupado()" />
               <span matTextSuffix>h</span>
               @if (errorHoras()) { <mat-error>{{ errorHoras() }}</mat-error> }
             </mat-form-field>

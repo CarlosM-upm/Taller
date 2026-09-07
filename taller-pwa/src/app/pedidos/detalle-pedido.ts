@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -47,7 +47,7 @@ const MAX_FOTOS = 5;
   templateUrl: './detalle-pedido.html',
   styleUrl: './detalle-pedido.scss',
 })
-export class DetallePedido {
+export class DetallePedido implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
   private readonly dialogo = inject(MatDialog);
@@ -79,8 +79,17 @@ export class DetallePedido {
     return (fotoId: number) => this.api.urlFotoPedido(id, fotoId);
   });
 
-  constructor() {
-    // El input de ruta ya está resuelto cuando se construye el componente.
+  /**
+   * OJO: la carga va en ngOnInit y NO en el constructor.
+   *
+   * Un input obligatorio de tipo signal todavía no tiene valor mientras se
+   * construye el componente: el router lo inyecta después. Leer this.id()
+   * en el constructor lanza NG0950 ("Input is required but no value is
+   * available yet"), el componente no llega a crearse y el router aborta la
+   * navegación. El efecto que se ve es que pinchar en la lista no hace nada,
+   * sin ningún aviso. Ocurrió, y por eso existe e2e/humo.spec.ts.
+   */
+  ngOnInit(): void {
     this.cargar();
   }
 

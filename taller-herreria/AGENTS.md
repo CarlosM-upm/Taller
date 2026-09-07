@@ -377,6 +377,16 @@ igual que abrir un favorito o reabrir la PWA instalada.
 
 ### Reglas que no se deben romper
 
+- **Un input obligatorio no se lee en el constructor.** Los `input.required()` de
+  signals no tienen valor mientras se construye el componente: el router los inyecta
+  después. Leerlos ahí lanza `NG0950`, el componente no llega a crearse y el router
+  **aborta la navegación en silencio**. Lo que se ve es que pinchar en una lista no
+  hace nada. Usa `ngOnInit`. Pasó con las dos fichas de detalle.
+- **En los campos numéricos, `type="text"` con `inputmode="decimal"`, no
+  `type="number"`.** Con `number`, Angular emite un número por `ngModelChange` mientras
+  el componente trabaja con texto: el valor se veía escrito en pantalla y la aplicación
+  seguía creyendo que el campo estaba vacío. Además `inputmode` abre igual el teclado
+  numérico en la tablet y permite escribir "2,5" con coma, que es como se teclea aquí.
 - **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller no tiene
   internet: los iconos aparecerían como palabras sueltas ("delete", "photo_camera").
   Roboto y los iconos van desde `node_modules`, declarados en `angular.json`.
@@ -406,6 +416,24 @@ igual que abrir un favorito o reabrir la PWA instalada.
 - La versión de Node está fijada en el `pom.xml` (`node.version`). El plugin descarga
   esa misma versión al compilar, así el jar no depende de lo que cada uno tenga
   instalado. El mini-PC **no necesita Node**: recibe el jar ya montado.
+
+### Comprobación de humo en navegador
+
+```
+npm run humo        # en taller-pwa, con la API arrancada en el 8080
+```
+
+`e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
+entra, da de alta un pedido y un trabajo, los recorre y los borra. **Falla si aparece
+cualquier error en la consola del navegador o cualquier excepción sin capturar.**
+
+Existe por un motivo concreto, y conviene recordarlo: las tres primeras pantallas se
+dieron por buenas con decenas de comprobaciones contra la API con curl, y aun así tenían
+dos fallos que dejaban pantallas en blanco o campos que no se recogían. **Probar la API
+no es probar la aplicación.** Si tocas la PWA, pasa esto antes de darlo por hecho.
+
+Los datos de prueba llevan la hora en el nombre y se borran al terminar. Si una ejecución
+falla a mitad puede dejar algo: se reconoce porque el cliente empieza por `PRUEBA-HUMO`.
 
 ---
 
@@ -535,5 +563,6 @@ del jefe.
   PostgreSQL (la conexión acababa en un relay de WSL) y con `ng serve` (que escucha solo
   en `::1`, así que `127.0.0.1:4200` no responde). Ante un "conexión rechazada" o un
   "autenticación fallida" raro, comprueba primero IPv4 contra IPv6.
-- No hay tests automatizados todavía. Si añades alguno, que no dependa de un PostgreSQL
-  real levantado a mano.
+- No hay tests automatizados del backend todavía. Si añades alguno, que no dependa de un
+  PostgreSQL real levantado a mano. La PWA **sí** tiene una comprobación de humo en
+  navegador (`npm run humo`, ver §7): pásala antes de dar por buena cualquier pantalla.

@@ -58,16 +58,34 @@ que no explica la causa.
 El resultado es un único jar que sirve la API y la PWA a la vez. En el taller
 se abre `http://<ip-del-servidor>:8080`.
 
+## Comprobación de humo
+
+Con la API arrancada en el 8080:
+
+    npm run humo
+
+Abre la aplicación en el Chrome que ya tienes instalado (no descarga
+navegadores), entra, da de alta un pedido y un trabajo, los recorre y los
+borra. **Falla si aparece cualquier error en la consola del navegador.**
+
+Levanta `ng serve` él solo si no lo tienes abierto, y lo reutiliza si sí.
+
+Pásala siempre antes de dar por buena una pantalla. Las tres primeras se
+dieron por terminadas tras decenas de comprobaciones contra la API, y aun así
+tenían dos fallos que solo se veían al abrirlas en un navegador.
+
 ## Estructura
 
     src/app/
     ├── nucleo/          sesión, cliente de API, interceptores, guardias, fotos
+    ├── comun/           selector de fotos, galería con visor, confirmaciones
     ├── armazon/         barra superior y navegación inferior, según el rol
     ├── sesion/          pantalla de login
     ├── pedidos/
     ├── trabajos/
     ├── albaranes/
     └── configuracion/
+    e2e/                 comprobación de humo en navegador
 
 ## Cosas que conviene no romper
 
@@ -78,3 +96,7 @@ se abre `http://<ip-del-servidor>:8080`.
   de hoy confunde más que avisar de que no hay conexión.
 - **Las fotos se reducen antes de subirlas** y se corrige su orientación EXIF,
   o las hechas en vertical se ven tumbadas.
+- **Un input obligatorio no se lee en el constructor**, sino en `ngOnInit`:
+  el router lo inyecta después de construir el componente.
+- **Campos numéricos con `type="text"` e `inputmode="decimal"`**, no
+  `type="number"`. Ver el comentario en `formulario-trabajo.html`.

@@ -43,13 +43,21 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Horas</mat-label>
+          <!--
+            type="text" con inputmode="decimal", NO type="number".
+            Con type="number" Angular emite un número por ngModelChange, no
+            texto, y el resto del componente trabaja con texto: el valor se veía
+            escrito en pantalla pero la aplicación seguía creyendo que faltaba.
+            Además inputmode="decimal" abre igualmente el teclado numérico en la
+            tablet, y así se admite escribir "2,5" con coma, que es como se
+            teclea aquí.
+          -->
           <input
             matInput
             name="horas"
-            type="number"
+            type="text"
             inputmode="decimal"
-            step="0.01"
-            min="0"
+            placeholder="2,5"
             [ngModel]="horas()"
             (ngModelChange)="horas.set($event)"
             [disabled]="guardando()"
