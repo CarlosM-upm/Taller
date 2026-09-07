@@ -1,0 +1,90 @@
+@if (cargando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <h2 class="crece">Trabajos</h2>
+    <button matIconButton aria-label="Recargar" [disabled]="cargando()" (click)="cargar()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <mat-button-toggle-group
+    class="filtro"
+    [value]="filtro()"
+    (change)="filtro.set($event.value)"
+    aria-label="Filtrar trabajos"
+  >
+    <mat-button-toggle value="TODOS">Todos</mat-button-toggle>
+    <mat-button-toggle value="BORRADOR">
+      Sin terminar
+      @if (cuantosBorradores() > 0) {
+        <span class="cuenta">{{ cuantosBorradores() }}</span>
+      }
+    </mat-button-toggle>
+    <mat-button-toggle value="ENVIADO">Enviados</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (!cargando() && visibles().length === 0) {
+    <p class="aviso-vacio">
+      @if (filtro() === 'TODOS') {
+        Todavía no hay trabajos.<br />Usa el botón de abajo para empezar uno.
+      } @else if (filtro() === 'BORRADOR') {
+        No hay ningún trabajo a medias.
+      } @else {
+        Todavía no se ha enviado ningún trabajo.
+      }
+    </p>
+  } @else {
+    @for (trabajo of visibles(); track trabajo.id) {
+      <mat-card class="trabajo" [routerLink]="['/trabajos', trabajo.id]">
+        <mat-card-content>
+          <div class="fila">
+            <span class="cliente crece">{{ trabajo.cliente || 'Sin cliente todavía' }}</span>
+            @if (trabajo.estado === 'BORRADOR') {
+              <span class="etiqueta borrador">Sin terminar</span>
+            } @else {
+              <span class="fecha">{{ trabajo.fecha | date: 'dd/MM/yyyy' }}</span>
+            }
+          </div>
+
+          <p class="descripcion">{{ trabajo.descripcion || 'Sin describir' }}</p>
+
+          <div class="fila pie">
+            @if (trabajo.trabajador) {
+              <mat-icon class="icono-pie">person</mat-icon>
+              <span>{{ trabajo.trabajador }}</span>
+            }
+            @if (trabajo.horas !== null) {
+              <mat-icon class="icono-pie">schedule</mat-icon>
+              <span>{{ trabajo.horas }} h</span>
+            }
+            <span class="crece"></span>
+            @if (trabajo.fotoIds.length > 0) {
+              <mat-icon class="icono-pie">photo_library</mat-icon>
+              <span>{{ trabajo.fotoIds.length }}</span>
+            }
+            <mat-icon class="icono-pie">chevron_right</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</div>
+
+<a matFab class="flotante" routerLink="/trabajos/nuevo" aria-label="Nuevo trabajo">
+  <mat-icon>add</mat-icon>
+</a>

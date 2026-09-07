@@ -1,0 +1,160 @@
+@if (cargando() || ocupado()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <a matIconButton routerLink="/trabajos" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <h2 class="crece">Trabajo</h2>
+
+    @if (trabajo() && puedeEditar()) {
+      <button matIconButton aria-label="Borrar" [disabled]="ocupado()" (click)="borrar()">
+        <mat-icon>delete</mat-icon>
+      </button>
+    }
+  </div>
+
+  @if (fallo()) {
+    <mat-card class="tarjeta-fallo">
+      <mat-card-content>
+        <p class="fila">
+          <mat-icon>cloud_off</mat-icon>
+          <span class="crece">{{ fallo() }}</span>
+        </p>
+        <div class="fila-fin">
+          <button matButton (click)="cargar()">Reintentar</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  } @else if (trabajo(); as t) {
+    <!-- Estado -->
+    @if (esBorrador()) {
+      <p class="estado borrador">
+        <mat-icon>edit_note</mat-icon>
+        <span>Sin terminar. Guarda lo que quieras y envíalo cuando esté completo.</span>
+      </p>
+    } @else {
+      <p class="estado enviado">
+        <mat-icon>check_circle</mat-icon>
+        <span>
+          Enviado el {{ t.fecha | date: 'dd/MM/yyyy' }}.
+          @if (!sesion.esJefe()) {
+            A partir de aquí solo el jefe puede modificarlo.
+          }
+        </span>
+      </p>
+    }
+
+    <mat-card>
+      <mat-card-content>
+        @if (puedeEditar()) {
+          <form (ngSubmit)="guardar()">
+            <mat-form-field appearance="outline">
+              <mat-label>Cliente</mat-label>
+              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Trabajador</mat-label>
+              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Qué se ha hecho</mat-label>
+              <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="ocupado()"></textarea>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Materiales</mat-label>
+              <textarea matInput name="materiales" rows="3" [ngModel]="materiales()" (ngModelChange)="materiales.set($event)" [disabled]="ocupado()"></textarea>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Horas</mat-label>
+              <input matInput name="horas" type="number" inputmode="decimal" step="0.01" min="0" [ngModel]="horas()" (ngModelChange)="horas.set($event)" [disabled]="ocupado()" />
+              <span matTextSuffix>h</span>
+              @if (errorHoras()) { <mat-error>{{ errorHoras() }}</mat-error> }
+            </mat-form-field>
+
+            <div class="fila-fin acciones">
+              <button matButton type="submit" [disabled]="ocupado() || !hayCambios()">
+                {{ hayCambios() ? 'Guardar' : 'Sin cambios' }}
+              </button>
+              @if (esBorrador()) {
+                <button matButton="filled" type="button" [disabled]="ocupado()" (click)="enviar()">
+                  Enviar
+                </button>
+              }
+            </div>
+          </form>
+        } @else {
+          <div class="dato">
+            <span class="etiqueta">Cliente</span>
+            <span class="valor destacado">{{ t.cliente }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Trabajador</span>
+            <span class="valor">{{ t.trabajador }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Qué se ha hecho</span>
+            <span class="valor">{{ t.descripcion }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Materiales</span>
+            <span class="valor">{{ t.materiales }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Horas</span>
+            <span class="valor">{{ t.horas }} h</span>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Qué falta para poder enviarlo -->
+    @if (esBorrador() && faltan().length > 0) {
+      <p class="pendiente">
+        <mat-icon>pending_actions</mat-icon>
+        <span>Para poder enviarlo falta: <strong>{{ faltan().join(', ') }}</strong></span>
+      </p>
+    }
+
+    <mat-card class="tarjeta-fotos">
+      <mat-card-content>
+        <h3>Fotos <span class="ligero">({{ t.fotoIds.length }} de 5)</span></h3>
+
+        @if (t.fotoIds.length === 0) {
+          <p class="ligero">Este trabajo no tiene fotos.</p>
+        } @else {
+          <app-galeria-fotos
+            [fotoIds]="t.fotoIds"
+            [urlDe]="urlFoto()"
+            [puedeBorrar]="puedeEditar()"
+            [desactivado]="ocupado()"
+            (borrar)="borrarFoto($event)"
+          />
+        }
+
+        @if (puedeEditar() && huecos() > 0) {
+          <div class="anadir-fotos">
+            <app-selector-fotos
+              [huecos]="huecos()"
+              [desactivado]="ocupado()"
+              (cambio)="fotosNuevas.set($event)"
+            />
+            @if (fotosNuevas().length > 0) {
+              <div class="fila-fin">
+                <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
+                  Subir {{ fotosNuevas().length }} foto(s)
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

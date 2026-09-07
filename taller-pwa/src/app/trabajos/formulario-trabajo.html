@@ -1,0 +1,72 @@
+@if (guardando()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+<div class="contenedor">
+  <div class="fila cabecera">
+    <a matIconButton routerLink="/trabajos" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <h2 class="crece">Nuevo trabajo</h2>
+  </div>
+
+  <p class="explicacion">
+    <mat-icon>info</mat-icon>
+    <span>
+      Apunta lo que tengas. Puedes guardarlo a medias y terminarlo otro día:
+      hasta que no lo envíes, sigue siendo un borrador.
+    </span>
+  </p>
+
+  <mat-card>
+    <mat-card-content>
+      <form (ngSubmit)="guardar()">
+        <mat-form-field appearance="outline">
+          <mat-label>Cliente</mat-label>
+          <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="guardando()" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Trabajador</mat-label>
+          <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="guardando()" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Qué se ha hecho</mat-label>
+          <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="guardando()"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Materiales</mat-label>
+          <textarea matInput name="materiales" rows="3" placeholder="2 m de perfil, 4 tornillos…" [ngModel]="materiales()" (ngModelChange)="materiales.set($event)" [disabled]="guardando()"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Horas</mat-label>
+          <input
+            matInput
+            name="horas"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0"
+            [ngModel]="horas()"
+            (ngModelChange)="horas.set($event)"
+            [disabled]="guardando()"
+          />
+          <span matTextSuffix>h</span>
+          @if (errorHoras()) {
+            <mat-error>{{ errorHoras() }}</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="fila-fin acciones">
+          <a matButton routerLink="/trabajos">Cancelar</a>
+          <button matButton="filled" type="submit" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar borrador' }}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -103,7 +103,7 @@ taller-pwa/src/app/
 ├── armazon/         barra superior y navegación inferior, según el rol
 ├── sesion/          pantalla de login
 ├── pedidos/         listado, alta y ficha
-├── trabajos/
+├── trabajos/        listado con filtro, alta a medias y ficha con envío
 ├── albaranes/
 └── configuracion/
 ```
@@ -442,12 +442,14 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   para el jefe, y borrado de fotos sueltas. Con componentes reutilizables en `comun/`
   (selector de fotos, galería con visor y diálogo de confirmación) que servirán igual
   para trabajos y albaranes. Verificado contra la API real: 19 comprobaciones.
+- **Trabajos, completos en la PWA**: listado con filtro borrador/enviado, alta que
+  admite guardar solo con lo que haya, ficha con guardado parcial, aviso de qué falta
+  para poder enviar, envío con confirmación, fotos y borrado. La regla "enviado = solo
+  el jefe" se refleja en la pantalla. Verificado: 30 comprobaciones.
 
 ### Pendiente, en orden
 
 1. **Terminar la PWA**, que es el bloque grande:
-   - Trabajos: ciclo borrador → enviado, fotos, y mostrar la lista de campos que
-     faltan que ya devuelve el backend al intentar enviar.
    - Albaranes: generar desde un trabajo enviado, editar, firma en lienzo y fotos.
    - Configuración: contador de albaranes y cambio de contraseña.
    - Capa PWA: instalable, y no perder los formularios a medio rellenar si parpadea

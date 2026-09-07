@@ -37,6 +37,16 @@ export const routes: Routes = [
         loadComponent: () => import('./trabajos/lista-trabajos').then((m) => m.ListaTrabajos),
       },
       {
+        // Antes que ':id', o "nuevo" se tomaría por un identificador.
+        path: 'trabajos/nuevo',
+        loadComponent: () =>
+          import('./trabajos/formulario-trabajo').then((m) => m.FormularioTrabajo),
+      },
+      {
+        path: 'trabajos/:id',
+        loadComponent: () => import('./trabajos/detalle-trabajo').then((m) => m.DetalleTrabajo),
+      },
+      {
         path: 'albaranes',
         canActivate: [guardiaJefe],
         loadComponent: () => import('./albaranes/lista-albaranes').then((m) => m.ListaAlbaranes),
