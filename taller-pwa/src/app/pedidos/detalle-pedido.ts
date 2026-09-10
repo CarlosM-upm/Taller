@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { Descargas } from '../nucleo/descargas';
 import { Sesion } from '../nucleo/sesion';
 import { Pedido } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
@@ -52,6 +53,7 @@ export class DetallePedido implements OnInit {
   private readonly router = inject(Router);
   private readonly dialogo = inject(MatDialog);
   private readonly avisos = inject(Avisos);
+  private readonly descargas = inject(Descargas);
   readonly sesion = inject(Sesion);
 
   private readonly selector = viewChild(SelectorFotos);
@@ -107,6 +109,21 @@ export class DetallePedido implements OnInit {
         this.fallo.set(this.avisos.textoDe(fallo, 'No se ha podido cargar el pedido'));
       },
     });
+  }
+
+  /** Solo jefe: el backend responde 403 al trabajador aunque fuerce la URL. */
+  descargarPdf(): void {
+    const pedido = this.pedido();
+    if (!pedido || this.ocupado()) return;
+
+    this.ocupado.set(true);
+    this.descargas
+      .descargar(
+        this.api.urlPdfPedido(pedido.id),
+        `pedido-${pedido.id}.pdf`,
+        'No se ha podido descargar el pedido en PDF'
+      )
+      .then(() => this.ocupado.set(false));
   }
 
   empezarEdicion(): void {

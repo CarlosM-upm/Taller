@@ -25,6 +25,7 @@
             versión dentro del proyecto, así que la compilación no depende de
             lo que cada uno tenga instalado.
         -->
+        <openhtmltopdf.version>1.1.22</openhtmltopdf.version>
         <node.version>v24.19.0</node.version>
         <npm.version>11.17.0</npm.version>
         <pwa.directorio>${project.basedir}/../taller-pwa</pwa.directorio>
@@ -55,6 +56,25 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
+            Documentos PDF. La plantilla se escribe en HTML con Thymeleaf y
+            openhtmltopdf la convierte: ajustar el diseño de un albarán es
+            editar CSS, no recompilar código Java.
+
+            No se empaqueta ninguna tipografía: el CSS pide Helvetica, que
+            PDFBox resuelve con las fuentes estándar del PDF. Su codificación
+            WinAnsi cubre los acentos y la eñe del castellano.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
         </dependency>
 
         <!-- Migraciones del esquema. Manda Flyway, no Hibernate. -->

@@ -9,6 +9,11 @@
     </a>
     <h2 class="crece">Trabajo</h2>
 
+    @if (trabajo() && sesion.esJefe()) {
+      <button matIconButton aria-label="Descargar PDF del trabajo" [disabled]="ocupado()" (click)="descargarPdf()">
+        <mat-icon>picture_as_pdf</mat-icon>
+      </button>
+    }
     @if (trabajo() && puedeEditar()) {
       <button matIconButton aria-label="Borrar" [disabled]="ocupado()" (click)="borrar()">
         <mat-icon>delete</mat-icon>

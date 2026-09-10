@@ -59,6 +59,15 @@ logging:
     com.taller.herreria: INFO
 
 taller:
+  documento:
+    # Encabezan los PDF de pedidos, trabajos y albaranes.
+    # RELLENAR CON LOS DATOS REALES DEL TALLER antes de ponerlo en marcha:
+    # un albarán que se entrega a un cliente los lleva siempre.
+    nombre: Taller de herrería
+    direccion: ""
+    telefono: ""
+    cif: ""
+
   cors:
     # Orígenes autorizados para la PWA, separados por comas.
     # En desarrollo, "ng serve" (4200). Cuando el servidor del taller tenga

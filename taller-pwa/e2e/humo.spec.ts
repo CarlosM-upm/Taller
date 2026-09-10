@@ -1,4 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /** Imagen real (PNG de 64x64) para las pruebas de subida. */
@@ -84,6 +85,28 @@ async function imagenCargada(page: Page, selector: string): Promise<boolean> {
 async function borrarYConfirmar(page: Page, textoDelBoton = 'Borrar') {
   await page.getByLabel('Borrar', { exact: true }).click();
   await page.getByRole('button', { name: textoDelBoton, exact: true }).last().click();
+}
+
+/**
+ * Pulsa un botón de descarga y comprueba que llega un PDF de verdad.
+ *
+ * No basta con que el botón no dé error: el fichero se pide con HttpClient y
+ * se guarda desde una URL de objeto, así que hay varios sitios donde puede
+ * quedarse por el camino sin que la pantalla se entere. Se miran los primeros
+ * bytes ("%PDF-") porque un cuerpo de error guardado con nombre .pdf también
+ * "se descarga".
+ */
+async function descargarPdf(page: Page, etiqueta: string, nombreEsperado: RegExp) {
+  const esperaDescarga = page.waitForEvent('download', { timeout: 30_000 });
+  await page.getByLabel(etiqueta).click();
+  const descarga = await esperaDescarga;
+
+  expect(descarga.suggestedFilename()).toMatch(nombreEsperado);
+
+  const ruta = await descarga.path();
+  const contenido = await readFile(ruta);
+  expect(contenido.subarray(0, 5).toString('ascii'), `${etiqueta}: no es un PDF`).toBe('%PDF-');
+  expect(contenido.length, `${etiqueta}: el PDF está vacío`).toBeGreaterThan(1000);
 }
 
 async function entrar(page: Page, cuenta: { usuario: string; contrasena: string }) {
@@ -376,6 +399,77 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
   await expect(page.getByText(`El próximo albarán llevará el número ${original}`)).toBeVisible({
     timeout: 15_000,
   });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  const cliente = `${MARCA} pdf`;
+
+  await entrar(page, CUENTAS.jefe);
+
+  // 1. Pedido
+  await page.getByRole('link', { name: 'Nuevo pedido' }).click();
+  await page.getByLabel('Cliente').fill(cliente);
+  await page.getByLabel('Trabajador').fill('Ana');
+  await page.getByLabel('Qué han pedido').fill('Reja de prueba para el PDF');
+  await page.getByRole('button', { name: 'Guardar pedido' }).click();
+  await expect(page).toHaveURL(/\/pedidos\/\d+$/, { timeout: 20_000 });
+  const urlPedido = page.url();
+
+  await descargarPdf(page, 'Descargar PDF del pedido', /^pedido-\d+\.pdf$/);
+
+  // 2. Trabajo enviado
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+  await page.getByLabel('Cliente').fill(cliente);
+  await page.getByLabel('Trabajador').fill('Ana');
+  await page.getByLabel('Qué se ha hecho').fill('Barandilla para el PDF');
+  await page.getByLabel('Materiales').fill('Tubo de 40');
+  await page.getByLabel('Horas').fill('3,5');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+
+  await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+  await expect(page.getByText(/Enviado el/)).toBeVisible({ timeout: 15_000 });
+
+  await descargarPdf(page, 'Descargar PDF del trabajo', /^trabajo-\d+\.pdf$/);
+
+  // 3. Albarán, que es el documento que de verdad se imprime
+  await page.getByRole('button', { name: 'Generar albarán' }).click();
+  await page.getByLabel('DNI del cliente').fill('12345678Z');
+  await page.getByRole('button', { name: 'Generar', exact: true }).click();
+  await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 15_000 });
+  const urlAlbaran = page.url();
+
+  await descargarPdf(page, 'Descargar PDF del albarán', /^albaran-\d+\.pdf$/);
+
+  // 4. El trabajador no tiene botón. (Quien manda es el backend, que responde
+  //    403 aunque se fuerce la URL; esto solo comprueba que no se le ofrece.)
+  await page.evaluate(() => localStorage.clear());
+  await entrar(page, CUENTAS.tablet);
+  await page.goto(urlPedido);
+  await expect(page.getByText(cliente).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByLabel('Descargar PDF del pedido')).toHaveCount(0);
+
+  // 5. Limpieza, de vuelta como jefe: albarán, trabajo y pedido
+  await page.evaluate(() => localStorage.clear());
+  await entrar(page, CUENTAS.jefe);
+
+  await page.goto(urlAlbaran);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
+
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByText(cliente).first().click();
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+
+  await page.goto(urlPedido);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });

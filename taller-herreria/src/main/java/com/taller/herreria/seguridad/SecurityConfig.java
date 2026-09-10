@@ -68,6 +68,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/trabajos/*/albaran").hasRole("JEFE")
                 .requestMatchers("/api/config/**").hasRole("JEFE")
 
+                // Solo JEFE: los documentos PDF. Los de albarán ya entran por
+                // la regla de arriba; estos dos hay que nombrarlos porque el
+                // resto de /api/pedidos y /api/trabajos lo ve el trabajador.
+                .requestMatchers(HttpMethod.GET, "/api/pedidos/*/pdf").hasRole("JEFE")
+                .requestMatchers(HttpMethod.GET, "/api/trabajos/*/pdf").hasRole("JEFE")
+
                 // Solo JEFE: editar y borrar pedidos, incluidas sus fotos.
                 // Decidido así: el pedido nace ya finalizado, no tiene borrador,
                 // así que una vez creado es territorio del jefe.

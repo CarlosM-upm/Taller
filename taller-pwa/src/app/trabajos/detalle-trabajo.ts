@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { Descargas } from '../nucleo/descargas';
 import { Sesion } from '../nucleo/sesion';
 import { Trabajo, TrabajoDatos, Albaran } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
@@ -64,6 +65,7 @@ export class DetalleTrabajo implements OnInit {
   private readonly router = inject(Router);
   private readonly dialogo = inject(MatDialog);
   private readonly avisos = inject(Avisos);
+  private readonly descargas = inject(Descargas);
   readonly sesion = inject(Sesion);
 
   private readonly selector = viewChild(SelectorFotos);
@@ -240,6 +242,24 @@ export class DetalleTrabajo implements OnInit {
         enviarAhora();
       }
     });
+  }
+
+  /**
+   * Solo jefe. Un borrador también se puede imprimir: sale con guiones donde
+   * falten datos, que es lo que el jefe quiere ver si lo repasa en papel.
+   */
+  descargarPdf(): void {
+    const t = this.trabajo();
+    if (!t || this.ocupado()) return;
+
+    this.ocupado.set(true);
+    this.descargas
+      .descargar(
+        this.api.urlPdfTrabajo(t.id),
+        `trabajo-${t.id}.pdf`,
+        'No se ha podido descargar el trabajo en PDF'
+      )
+      .then(() => this.ocupado.set(false));
   }
 
   borrar(): void {

@@ -79,6 +79,11 @@ export class ApiTaller {
     return `/api/pedidos/${id}/fotos/${fotoId}`;
   }
 
+  /** Solo jefe. Se descarga con el servicio Descargas, que sí manda el token. */
+  urlPdfPedido(id: number): string {
+    return `/api/pedidos/${id}/pdf`;
+  }
+
   // --- Trabajos ------------------------------------------------------------
 
   trabajos(estado?: EstadoTrabajo): Observable<Trabajo[]> {
@@ -118,6 +123,11 @@ export class ApiTaller {
 
   urlFotoTrabajo(id: number, fotoId: number): string {
     return `/api/trabajos/${id}/fotos/${fotoId}`;
+  }
+
+  /** Solo jefe. */
+  urlPdfTrabajo(id: number): string {
+    return `/api/trabajos/${id}/pdf`;
   }
 
   // --- Albaranes (solo jefe) -----------------------------------------------
@@ -163,6 +173,11 @@ export class ApiTaller {
 
   urlFotoAlbaran(id: number, fotoId: number): string {
     return `/api/albaranes/${id}/fotos/${fotoId}`;
+  }
+
+  /** El documento que se imprime y se archiva. */
+  urlPdfAlbaran(id: number): string {
+    return `/api/albaranes/${id}/pdf`;
   }
 
   // --- Configuración (solo jefe) -------------------------------------------

@@ -4,6 +4,8 @@ import com.taller.herreria.albaran.dto.AlbaranCrear;
 import com.taller.herreria.albaran.dto.AlbaranPatch;
 import com.taller.herreria.albaran.dto.AlbaranResponse;
 import com.taller.herreria.config.ConfiguracionService;
+import com.taller.herreria.documento.Documento;
+import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
@@ -18,7 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lógica de negocio de los albaranes (territorio del jefe).
@@ -37,15 +41,18 @@ public class AlbaranService {
     private final TrabajoRepository trabajoRepository;
     private final FotoRepository fotoRepository;
     private final ConfiguracionService configuracion;
+    private final GeneradorPdf generadorPdf;
 
     public AlbaranService(AlbaranRepository albaranRepository,
                           TrabajoRepository trabajoRepository,
                           FotoRepository fotoRepository,
-                          ConfiguracionService configuracion) {
+                          ConfiguracionService configuracion,
+                          GeneradorPdf generadorPdf) {
         this.albaranRepository = albaranRepository;
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.configuracion = configuracion;
+        this.generadorPdf = generadorPdf;
     }
 
     /**
@@ -105,6 +112,31 @@ public class AlbaranService {
     @Transactional(readOnly = true)
     public AlbaranResponse obtener(Long id) {
         return aRespuesta(buscarOFallar(id));
+    }
+
+    /**
+     * Documento PDF del albarán: el que se imprime, se firma en papel si hace
+     * falta y se archiva. Lleva la firma recogida en pantalla y las fotos.
+     */
+    @Transactional(readOnly = true)
+    public Documento pdf(Long id) {
+        Albaran albaran = buscarOFallar(id);
+        List<Foto> fotos = fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.ALBARAN, id);
+
+        // HashMap y no Map.of: la firma puede no existir todavía y Map.of no admite nulos.
+        Map<String, Object> datos = new HashMap<>();
+        datos.put("numero", albaran.getNumero());
+        datos.put("fecha", GeneradorPdf.fecha(albaran.getFecha()));
+        datos.put("cliente", GeneradorPdf.texto(albaran.getCliente()));
+        datos.put("dniCliente", GeneradorPdf.texto(albaran.getDniCliente()));
+        datos.put("trabajador", GeneradorPdf.texto(albaran.getTrabajador()));
+        datos.put("descripcion", GeneradorPdf.texto(albaran.getDescripcion()));
+        datos.put("firma", GeneradorPdf.imagen(albaran.getFirmaTipoContenido(), albaran.getFirma()));
+        datos.put("fotos", GeneradorPdf.imagenes(fotos));
+
+        // El albarán se identifica por su número, no por su id interno.
+        return new Documento("albaran-" + albaran.getNumero() + ".pdf",
+                generadorPdf.generar("albaran", datos));
     }
 
     /** Edición parcial por el jefe, incluido el número (validando que no choque). */

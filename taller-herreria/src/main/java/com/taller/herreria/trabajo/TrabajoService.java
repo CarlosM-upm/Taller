@@ -2,6 +2,8 @@ package com.taller.herreria.trabajo;
 
 import com.taller.herreria.albaran.Albaran;
 import com.taller.herreria.albaran.AlbaranRepository;
+import com.taller.herreria.documento.Documento;
+import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
@@ -19,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lógica de negocio de los trabajos realizados.
@@ -36,13 +39,16 @@ public class TrabajoService {
     private final TrabajoRepository trabajoRepository;
     private final FotoRepository fotoRepository;
     private final AlbaranRepository albaranRepository;
+    private final GeneradorPdf generadorPdf;
 
     public TrabajoService(TrabajoRepository trabajoRepository,
                           FotoRepository fotoRepository,
-                          AlbaranRepository albaranRepository) {
+                          AlbaranRepository albaranRepository,
+                          GeneradorPdf generadorPdf) {
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.albaranRepository = albaranRepository;
+        this.generadorPdf = generadorPdf;
     }
 
     /** Crea un trabajo en estado BORRADOR, con los datos que haya (pueden estar a medias). */
@@ -67,6 +73,36 @@ public class TrabajoService {
     @Transactional(readOnly = true)
     public TrabajoResponse obtener(Long id) {
         return aRespuesta(buscarOFallar(id));
+    }
+
+    /**
+     * Documento PDF del trabajo. Solo jefe (la regla vive en SecurityConfig).
+     *
+     * Un borrador también se puede imprimir: sale con guiones donde falten
+     * datos, que es justo lo que el jefe quiere ver si lo repasa en papel.
+     */
+    @Transactional(readOnly = true)
+    public Documento pdf(Long id) {
+        Trabajo trabajo = buscarOFallar(id);
+        List<Foto> fotos = fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, id);
+
+        byte[] contenido = generadorPdf.generar("trabajo", Map.of(
+                "id", trabajo.getId(),
+                "estado", trabajo.esBorrador() ? "Borrador" : "Enviado",
+                "fecha", GeneradorPdf.fecha(trabajo.getFecha()),
+                "cliente", GeneradorPdf.texto(trabajo.getCliente()),
+                "trabajador", GeneradorPdf.texto(trabajo.getTrabajador()),
+                "descripcion", GeneradorPdf.texto(trabajo.getDescripcion()),
+                "materiales", GeneradorPdf.texto(trabajo.getMateriales()),
+                "horas", horasDeDocumento(trabajo.getHoras()),
+                "fotos", GeneradorPdf.imagenes(fotos)));
+
+        return new Documento("trabajo-" + trabajo.getId() + ".pdf", contenido);
+    }
+
+    /** En el documento las horas se escriben como se leen aquí: con coma. */
+    private static String horasDeDocumento(BigDecimal horas) {
+        return horas == null ? GeneradorPdf.VACIO : horas.toPlainString().replace('.', ',') + " h";
     }
 
     /**

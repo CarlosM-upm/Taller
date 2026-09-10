@@ -10,6 +10,9 @@
     <h2 class="crece">Albarán</h2>
 
     @if (albaran() && !editando()) {
+      <button matIconButton aria-label="Descargar PDF del albarán" [disabled]="ocupado()" (click)="descargarPdf()">
+        <mat-icon>picture_as_pdf</mat-icon>
+      </button>
       <button matIconButton aria-label="Editar" [disabled]="ocupado()" (click)="empezarEdicion()">
         <mat-icon>edit</mat-icon>
       </button>

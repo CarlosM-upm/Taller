@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { Descargas } from '../nucleo/descargas';
 import { Albaran } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 import { GaleriaFotos } from '../comun/galeria-fotos';
@@ -55,6 +56,7 @@ export class DetalleAlbaran implements OnInit {
   private readonly router = inject(Router);
   private readonly dialogo = inject(MatDialog);
   private readonly avisos = inject(Avisos);
+  private readonly descargas = inject(Descargas);
 
   private readonly selector = viewChild(SelectorFotos);
 
@@ -164,6 +166,21 @@ export class DetalleAlbaran implements OnInit {
           this.avisos.error(fallo, 'No se han podido guardar los cambios');
         },
       });
+  }
+
+  /** El documento para imprimir y archivar: lleva la firma y las fotos. */
+  descargarPdf(): void {
+    const a = this.albaran();
+    if (!a || this.ocupado()) return;
+
+    this.ocupado.set(true);
+    this.descargas
+      .descargar(
+        this.api.urlPdfAlbaran(a.id),
+        `albaran-${a.numero}.pdf`,
+        'No se ha podido descargar el albarán en PDF'
+      )
+      .then(() => this.ocupado.set(false));
   }
 
   firmar(): void {

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+  Piezas compartidas por los tres documentos: el estilo, la cabecera con los
+  datos del taller y la rejilla de fotos.
+
+  OJO: el resultado de estas plantillas lo parsea openhtmltopdf con un lector
+  de XML, no de HTML. Todo debe ir cerrado (<img ... />, <br />) y las
+  entidades HTML como &nbsp; no existen: usa &#160;. Un tag sin cerrar no da
+  una página fea, da una excepción al generar.
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<style th:fragment="estilo">
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm 15mm;
+    /* Numeración al pie: un albarán de varias páginas se archiva suelto y
+       hay que poder saber si falta alguna. */
+    @bottom-center {
+      content: "Página " counter(page) " de " counter(pages);
+      font-family: Helvetica, sans-serif;
+      font-size: 8pt;
+      color: #777;
+    }
+  }
+
+  /* Helvetica es una de las fuentes estándar del PDF: no hay que empaquetar
+     ningún fichero de tipografía y los acentos y la eñe salen bien. */
+  body {
+    font-family: Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #111;
+    margin: 0;
+  }
+
+  .cabecera {
+    border-bottom: 1.5pt solid #333;
+    padding-bottom: 6pt;
+    margin-bottom: 14pt;
+  }
+  .cabecera .taller {
+    font-size: 15pt;
+    font-weight: bold;
+    letter-spacing: 0.3pt;
+  }
+  .cabecera .taller-datos {
+    font-size: 8.5pt;
+    color: #555;
+    margin-top: 2pt;
+  }
+
+  .titulo-fila {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12pt;
+  }
+  .titulo-fila td { padding: 0; vertical-align: bottom; }
+  .titulo {
+    font-size: 14pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .titulo-fecha {
+    text-align: right;
+    font-size: 10pt;
+    color: #333;
+  }
+
+  table.datos {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14pt;
+  }
+  table.datos td {
+    padding: 5pt 0;
+    vertical-align: top;
+    border-bottom: 0.5pt solid #ddd;
+  }
+  table.datos td.etiqueta {
+    width: 34mm;
+    color: #555;
+    font-size: 9pt;
+  }
+  .destacado { font-weight: bold; }
+
+  .bloque { margin-bottom: 14pt; }
+  .bloque h2 {
+    font-size: 9pt;
+    color: #555;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0 0 4pt 0;
+    /* Que un título no se quede solo al final de una página con su contenido
+       en la siguiente. Pasaba con "FOTOGRAFÍAS" en los albaranes de cinco
+       fotos: el título arriba, medio folio en blanco debajo, y las fotos en
+       la página siguiente. */
+    page-break-after: avoid;
+  }
+  /* Las descripciones se teclean con saltos de línea; sin esto se aplastan
+     en un párrafo corrido. */
+  .texto { white-space: pre-wrap; }
+
+  .firma-caja {
+    border: 0.5pt solid #999;
+    padding: 8pt;
+    width: 80mm;
+  }
+  .firma-caja .firma-titulo {
+    font-size: 9pt;
+    color: #555;
+    margin-bottom: 4pt;
+  }
+  .firma-caja img { max-height: 28mm; max-width: 74mm; }
+  .firma-caja .firma-pie {
+    font-size: 8.5pt;
+    color: #555;
+    border-top: 0.5pt solid #ccc;
+    margin-top: 6pt;
+    padding-top: 4pt;
+  }
+  .sin-firma {
+    color: #777;
+    font-style: italic;
+    height: 28mm;
+  }
+
+  .foto {
+    display: inline-block;
+    width: 48%;
+    margin: 0 1% 8pt 0;
+    /* Que una foto no se parta por la mitad entre dos páginas. */
+    page-break-inside: avoid;
+  }
+  .foto img {
+    width: 100%;
+    border: 0.5pt solid #ccc;
+  }
+
+  .generado {
+    margin-top: 18pt;
+    font-size: 8pt;
+    color: #888;
+    border-top: 0.5pt solid #ddd;
+    padding-top: 4pt;
+  }
+</style>
+
+<div th:fragment="cabecera" class="cabecera">
+  <div class="taller" th:text="${taller.nombre}">Taller</div>
+  <div class="taller-datos" th:unless="${#strings.isEmpty(taller.datos)}"
+       th:text="${taller.datos}">Dirección · Tel. · CIF</div>
+</div>
+
+<table th:fragment="titulo(titulo, referencia, fecha)" class="titulo-fila">
+  <tr>
+    <td class="titulo" th:text="${referencia} != null ? ${titulo} + ' Nº ' + ${referencia} : ${titulo}">Documento</td>
+    <td class="titulo-fecha" th:text="'Fecha: ' + ${fecha}">Fecha</td>
+  </tr>
+</table>
+
+<div th:fragment="fotos" class="bloque" th:if="${!#lists.isEmpty(fotos)}">
+  <h2 th:text="${#lists.size(fotos)} == 1 ? 'Fotografía' : 'Fotografías'">Fotografías</h2>
+  <div class="foto" th:each="foto : ${fotos}">
+    <img th:src="${foto}" alt="" />
+  </div>
+</div>
+
+<div th:fragment="generado" class="generado"
+     th:text="'Generado el ' + ${generadoEl} + ' · ' + ${taller.nombre}">Generado</div>
+
+</body>
+</html>

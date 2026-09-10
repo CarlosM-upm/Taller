@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" />
+  <title th:text="'Pedido ' + ${id}">Pedido</title>
+  <th:block th:replace="~{documentos/_comun :: estilo}" />
+</head>
+<body>
+
+<th:block th:replace="~{documentos/_comun :: cabecera}" />
+<th:block th:replace="~{documentos/_comun :: titulo('Pedido', ${id}, ${fecha})}" />
+
+<table class="datos">
+  <tr>
+    <td class="etiqueta">Cliente</td>
+    <td class="destacado" th:text="${cliente}">Cliente</td>
+  </tr>
+  <tr>
+    <td class="etiqueta">Recogido por</td>
+    <td th:text="${trabajador}">Trabajador</td>
+  </tr>
+</table>
+
+<div class="bloque">
+  <h2>Descripción del pedido</h2>
+  <div class="texto" th:text="${descripcion}">Descripción</div>
+</div>
+
+<th:block th:replace="~{documentos/_comun :: fotos}" />
+<th:block th:replace="~{documentos/_comun :: generado}" />
+
+</body>
+</html>

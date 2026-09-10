@@ -1,5 +1,6 @@
 package com.taller.herreria.pedido;
 
+import com.taller.herreria.documento.RespuestaPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.pedido.dto.PedidoPatch;
 import com.taller.herreria.pedido.dto.PedidoRequest;
@@ -42,6 +43,12 @@ public class PedidoController {
     @GetMapping("/{id}")
     public PedidoResponse obtener(@PathVariable Long id) {
         return servicio.obtener(id);
+    }
+
+    /** Documento PDF del pedido (solo jefe). */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        return RespuestaPdf.de(servicio.pdf(id));
     }
 
     /** Edición parcial (solo jefe). */

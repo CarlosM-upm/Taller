@@ -1,5 +1,7 @@
 package com.taller.herreria.pedido;
 
+import com.taller.herreria.documento.Documento;
+import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
@@ -13,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lógica de negocio de los pedidos.
@@ -27,10 +30,13 @@ public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final FotoRepository fotoRepository;
+    private final GeneradorPdf generadorPdf;
 
-    public PedidoService(PedidoRepository pedidoRepository, FotoRepository fotoRepository) {
+    public PedidoService(PedidoRepository pedidoRepository, FotoRepository fotoRepository,
+                         GeneradorPdf generadorPdf) {
         this.pedidoRepository = pedidoRepository;
         this.fotoRepository = fotoRepository;
+        this.generadorPdf = generadorPdf;
     }
 
     public PedidoResponse crear(PedidoRequest datos) {
@@ -47,6 +53,29 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public PedidoResponse obtener(Long id) {
         return aRespuesta(buscarOFallar(id));
+    }
+
+    /**
+     * Documento PDF del pedido. Solo jefe (la regla vive en SecurityConfig).
+     *
+     * Las fotos van dentro del documento, no aparte: así el PDF archivado se
+     * entiende solo, sin tener que abrir la aplicación para ver de qué encargo
+     * se hablaba.
+     */
+    @Transactional(readOnly = true)
+    public Documento pdf(Long id) {
+        Pedido pedido = buscarOFallar(id);
+        List<Foto> fotos = fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.PEDIDO, id);
+
+        byte[] contenido = generadorPdf.generar("pedido", Map.of(
+                "id", pedido.getId(),
+                "fecha", GeneradorPdf.fecha(pedido.getFecha()),
+                "cliente", GeneradorPdf.texto(pedido.getCliente()),
+                "trabajador", GeneradorPdf.texto(pedido.getTrabajador()),
+                "descripcion", GeneradorPdf.texto(pedido.getDescripcion()),
+                "fotos", GeneradorPdf.imagenes(fotos)));
+
+        return new Documento("pedido-" + pedido.getId() + ".pdf", contenido);
     }
 
     /** Edición parcial: solo se tocan los campos que vienen informados. Solo jefe. */

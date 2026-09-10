@@ -1,5 +1,6 @@
 package com.taller.herreria.trabajo;
 
+import com.taller.herreria.documento.RespuestaPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.trabajo.dto.TrabajoDatos;
 import com.taller.herreria.trabajo.dto.TrabajoResponse;
@@ -41,6 +42,12 @@ public class TrabajoController {
     @GetMapping("/{id}")
     public TrabajoResponse obtener(@PathVariable Long id) {
         return servicio.obtener(id);
+    }
+
+    /** Documento PDF del trabajo (solo jefe). */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        return RespuestaPdf.de(servicio.pdf(id));
     }
 
     /** Guardar avances del borrador ("sigo otro día") o edición del jefe. */

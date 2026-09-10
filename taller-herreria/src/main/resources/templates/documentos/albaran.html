@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8" />
+  <title th:text="'Albarán ' + ${numero}">Albarán</title>
+  <th:block th:replace="~{documentos/_comun :: estilo}" />
+</head>
+<body>
+
+<th:block th:replace="~{documentos/_comun :: cabecera}" />
+<th:block th:replace="~{documentos/_comun :: titulo('Albarán', ${numero}, ${fecha})}" />
+
+<table class="datos">
+  <tr>
+    <td class="etiqueta">Cliente</td>
+    <td class="destacado" th:text="${cliente}">Cliente</td>
+  </tr>
+  <tr>
+    <td class="etiqueta">DNI / NIF</td>
+    <td th:text="${dniCliente}">DNI</td>
+  </tr>
+  <tr>
+    <td class="etiqueta">Trabajador</td>
+    <td th:text="${trabajador}">Trabajador</td>
+  </tr>
+</table>
+
+<div class="bloque">
+  <h2>Concepto</h2>
+  <div class="texto" th:text="${descripcion}">Descripción</div>
+</div>
+
+<div class="bloque firma-caja">
+  <div class="firma-titulo">Recibí conforme. Firma del cliente:</div>
+  <img th:if="${firma}" th:src="${firma}" alt="Firma del cliente" />
+  <div th:unless="${firma}" class="sin-firma">(sin firmar)</div>
+  <div class="firma-pie" th:text="${cliente} + ' · ' + ${dniCliente}">Cliente</div>
+</div>
+
+<th:block th:replace="~{documentos/_comun :: fotos}" />
+<th:block th:replace="~{documentos/_comun :: generado}" />
+
+</body>
+</html>

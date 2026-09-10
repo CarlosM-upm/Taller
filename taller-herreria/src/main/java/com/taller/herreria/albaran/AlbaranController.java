@@ -2,6 +2,7 @@ package com.taller.herreria.albaran;
 
 import com.taller.herreria.albaran.dto.AlbaranPatch;
 import com.taller.herreria.albaran.dto.AlbaranResponse;
+import com.taller.herreria.documento.RespuestaPdf;
 import com.taller.herreria.foto.Foto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,6 +31,12 @@ public class AlbaranController {
     @GetMapping("/{id}")
     public AlbaranResponse obtener(@PathVariable Long id) {
         return servicio.obtener(id);
+    }
+
+    /** Documento PDF del albarán: el que se imprime y se archiva. */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        return RespuestaPdf.de(servicio.pdf(id));
     }
 
     /** Edición parcial, incluido el número (con validación de choques). */

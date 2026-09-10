@@ -35,7 +35,8 @@ dentro del jar del backend — ver §7).
 | Backend | Java 21 + Spring Boot 3.4 + Maven |
 | Base de datos | PostgreSQL 17 en Docker |
 | Cliente | PWA en Angular 22 + Angular Material (carpeta `taller-pwa/`) |
-| Documentos | PDF (no Word — ver §8) |
+| Documentos | PDF: plantilla HTML con Thymeleaf + openhtmltopdf (no Word — ver §8) |
+| Servidor | Ubuntu + systemd, copias a USB y SAI con NUT (carpeta `infra/`) |
 
 ### Particularidades del entorno de desarrollo
 
@@ -88,19 +89,21 @@ src/main/java/com/taller/herreria/
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
 ├── trabajo/     Trabajo, Repository, Service, Controller, dto/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
+├── documento/   GeneradorPdf, Documento y RespuestaPdf (los comparten las tres)
 ├── foto/        Foto, FotoRepository y ValidadorImagen (los comparten las tres)
 ├── config/      Configuracion: el contador de albaranes
 ├── comun/       Transversal: manejo de errores, CORS y reenvío de la PWA
 └── seguridad/   Usuario, TokenAcceso, filtro, SecurityConfig, AuthService
 
-src/main/resources/db/migration/   Migraciones de Flyway (V1__, V2__…)
+src/main/resources/db/migration/          Migraciones de Flyway (V1__, V2__…)
+src/main/resources/templates/documentos/  Plantillas HTML de los PDF
 ```
 
 El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 
 ```
 taller-pwa/src/app/
-├── nucleo/          sesión, API, interceptores, guardias, fotos, borrador local
+├── nucleo/          sesión, API, interceptores, guardias, fotos, descargas, borrador local
 ├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro
 ├── armazon/         barra superior, aviso de sin red y navegación según el rol
 ├── sesion/          pantalla de login
@@ -108,6 +111,16 @@ taller-pwa/src/app/
 ├── trabajos/        listado con filtro, alta a medias y ficha con envío
 ├── albaranes/       listado, ficha con firma y generación desde un trabajo
 └── configuracion/   contador de albaranes y cambio de contraseña
+```
+
+Y fuera de los dos proyectos, en la raíz del repositorio:
+
+```
+DESPLIEGUE.md   Guía paso a paso para montarlo en el taller (necesita el hardware)
+infra/
+├── systemd/    Unidades: base de datos, aplicación y la copia con su timer
+├── copia/      copia-nocturna.sh y probar-restauracion.sh
+└── sai/        Configuración de NUT para el SAI (sin probar: falta el aparato)
 ```
 
 Capas y responsabilidades:
@@ -282,7 +295,9 @@ Solo JEFE:
 - Todo lo de albaranes, incluida su creación desde un trabajo.
 - La configuración del contador (`/api/config/**`).
 - Editar y borrar pedidos (PATCH y DELETE sobre `/api/pedidos/**`).
-- Generar y ver PDFs (cuando existan).
+- Los documentos PDF de las tres entidades. Los de albarán ya entran por la
+  regla de `/api/albaranes/**`; los de pedido y trabajo están nombrados aparte
+  en `SecurityConfig` porque el resto de esas rutas sí las ve el trabajador.
 
 Ambos roles:
 - Crear y consultar pedidos.
@@ -324,6 +339,7 @@ PUT    /api/password
 POST   /api/pedidos                   crear (fecha automática)
 GET    /api/pedidos
 GET    /api/pedidos/{id}
+GET    /api/pedidos/{id}/pdf          JEFE
 PATCH  /api/pedidos/{id}              JEFE
 DELETE /api/pedidos/{id}              JEFE
 POST   /api/pedidos/{id}/fotos        multipart, campo "fotos", máx 5
@@ -333,6 +349,7 @@ DELETE /api/pedidos/{id}/fotos/{fid}  JEFE
 POST   /api/trabajos                  crear borrador (campos opcionales)
 GET    /api/trabajos?estado=borrador|enviado
 GET    /api/trabajos/{id}
+GET    /api/trabajos/{id}/pdf         JEFE
 PATCH  /api/trabajos/{id}             enviado → solo JEFE
 POST   /api/trabajos/{id}/enviar      valida completitud + estampa fecha
 DELETE /api/trabajos/{id}             enviado → solo JEFE
@@ -343,6 +360,7 @@ DELETE /api/trabajos/{id}/fotos/{fid}
 POST   /api/trabajos/{id}/albaran     JEFE — crea el albarán desde el trabajo
 GET    /api/albaranes                 JEFE
 GET    /api/albaranes/{id}            JEFE
+GET    /api/albaranes/{id}/pdf        JEFE — el documento que se imprime
 PATCH  /api/albaranes/{id}            JEFE — incluido el número
 DELETE /api/albaranes/{id}            JEFE
 PUT    /api/albaranes/{id}/firma      JEFE — multipart, campo "firma"
@@ -366,7 +384,15 @@ zone.js). Sin NgRx: para esta aplicación sería sobreingeniería.
 
 Se empaqueta **dentro del jar de Spring Boot** y se sirve desde el propio backend.
 Un solo servicio en el mini-PC, sin nginx que mantener en una máquina sin pantalla.
-La tablet y el equipo del jefe abren `http://<ip-fija>:8080` e instalan desde ahí.
+La tablet y el equipo del jefe abren `http://<ip-fija>:8080`.
+
+**Matiz importante, descubierto al preparar el despliegue:** por `http://` a una IP
+**no se puede instalar como PWA de verdad ni se registra el service worker**. Los
+navegadores solo tratan como origen seguro `localhost` y `https://`. La aplicación
+funciona entera (pedidos, trabajos, albaranes, fotos y firma); lo que no hay es
+instalación real ni caché de la aplicación, así que en la tablet se usa "Añadir a
+pantalla de inicio". Para tenerlas haría falta un certificado propio para la IP fija
+instalado en los dos aparatos. Está explicado en `DESPLIEGUE.md` §10.
 
 Consecuencia: en producción cliente y API comparten origen, así que **el CORS de
 `comun/ConfiguracionCors` no llega a usarse**. En desarrollo tampoco, porque
@@ -385,6 +411,11 @@ igual que abrir un favorito o reabrir la PWA instalada.
   ni fotos ni firmas llegaban a verse, y encima ese 401 echaba al usuario al login.
   La directiva las pide con HttpClient y las pinta como URL de objeto. Pasó, y lo
   encontró la comprobación de humo.
+- **Los PDF se descargan con `nucleo/descargas`, nunca con un enlace directo ni
+  `window.open`.** Es el mismo problema que el de las imágenes: el navegador
+  pediría el fichero por su cuenta, sin la cabecera del token, y recibiría un
+  401 que además echaría al usuario al login. El servicio lo pide con
+  HttpClient y lo guarda desde una URL de objeto.
 - **Un input obligatorio no se lee en el constructor.** Los `input.required()` de
   signals no tienen valor mientras se construye el componente: el router los inyecta
   después. Leerlos ahí lanza `NG0950`, el componente no llega a crearse y el router
@@ -436,9 +467,15 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 8
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 9
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
-del albarán, subida y descarga de fotos, y el contador de albaranes.
+del albarán, subida y descarga de fotos, el contador de albaranes y la descarga de los
+tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
+guardado con nombre .pdf también "se descarga").
+
+Ojo: cada ejecución consume dos números de la serie de albaranes. El contador solo
+avanza, y los albaranes de prueba se borran pero su número no se devuelve. Es
+inofensivo en desarrollo; si molesta, se reencauza desde Ajustes.
 
 Existe por un motivo concreto, y conviene recordarlo: las tres primeras pantallas se
 dieron por buenas con decenas de comprobaciones contra la API con curl, y aun así tenían
@@ -448,6 +485,12 @@ darlo por hecho.
 
 Las imágenes se comprueban con `naturalWidth`, no con `toBeVisible()`: un `<img>` con la
 fuente rota sigue estando visible y pasaría por bueno.
+
+Los botones se localizan por su `aria-label` exacto, no por el texto visible ("Borrar"):
+en cuanto hay fotos en pantalla conviven varios botones "Borrar" (el general, el de cada
+foto, el del diálogo de confirmación) y un selector por texto se vuelve ambiguo. Con eso,
+el ayudante `borrarYConfirmar()` daba por bueno un borrado que en realidad no había
+ocurrido — un falso positivo silencioso, justo lo que esta comprobación existe para evitar.
 
 Los datos de prueba llevan la hora en el nombre y se borran al terminar. Si una ejecución
 falla a mitad puede dejar algo: se reconoce porque el cliente empieza por `PRUEBA-HUMO`.
@@ -511,44 +554,87 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   y Hibernate solo comprueba que concuerda. Verificados los dos caminos: sobre la base
   de desarrollo que ya tenía tablas (baseline, no toca nada) y sobre una base vacía
   (aplica la V1 y la aplicación arranca y funciona).
+- **Documentos PDF de las tres entidades, solo JEFE.** Decisión cerrada (llevaba dos
+  aplazamientos): **plantilla HTML con Thymeleaf convertida con openhtmltopdf**, y no
+  dibujarlo por código. El motivo es de mantenimiento: ajustar un albarán —márgenes,
+  el logotipo, mover un bloque— es editar `templates/documentos/`, no recompilar Java.
+  Llevan las **fotos al final** y, el albarán, la **firma del cliente**. La cabecera
+  con los datos fiscales del taller sale de `taller.documento` en la configuración.
+  Verificado de tres formas: la API devuelve los tres PDF y rechaza al trabajador con
+  403; los documentos se han **rasterizado a imagen y mirado uno a uno** (que era el
+  motivo de elegir HTML); y la comprobación de humo los descarga desde la interfaz.
+  No se empaqueta ninguna tipografía: el CSS pide Helvetica, que es una de las fuentes
+  estándar del PDF y cubre acentos y eñes.
+  Dos cosas que cuestan tiempo si no se saben:
+  **Thymeleaf cachea las plantillas**, así que tocar el HTML o el CSS y volver a pedir
+  el PDF devuelve exactamente el mismo fichero: hay que reiniciar la aplicación para
+  ver el cambio. Y **el lector de openhtmltopdf es de XML**, no de HTML: un `<img>` o
+  un `<br>` sin cerrar no da una página fea, da una excepción al generar.
+  Comprobado también el caso de varias páginas (cinco fotos y una descripción larga):
+  la rejilla no parte ninguna foto, el pie numera bien ("Página 2 de 2") y los títulos
+  llevan `page-break-after: avoid` porque "FOTOGRAFÍAS" se quedaba solo al final de una
+  página, con medio folio en blanco y las fotos en la siguiente.
+- **Infraestructura del servidor escrita y probada** (`infra/`, y `DESPLIEGUE.md` en la
+  raíz):
+  - Unidades `systemd` para la base de datos y la aplicación, encadenadas: la de la
+    base de datos no se da por arrancada hasta que PostgreSQL **responde de verdad**
+    (`pg_isready` en bucle), y la aplicación reintenta cada 10 s. Es el caso de la
+    mañana: si la base tarda, nadie tiene que subir a tocar el mini-PC.
+  - **Copia diaria a USB con 30 días de histórico**, y su timer con `Persistent=true`
+    porque el servidor se apaga por la noche: si a las 20:30 estaba apagado, la copia
+    se hace al arrancar por la mañana en vez de perderse.
+  - Probado de verdad en la WSL (systemd real): la copia **se genera, se verifica y
+    restaura** con las fotos dentro (25 kB de imágenes recuperados); el borrado de las
+    de más de 30 días deja las correctas; y con el destino **sin montar la copia falla
+    en lugar de escribir** en el disco del sistema, que es el error que llena el disco
+    en silencio y deja al taller sin copias sin que nadie se entere.
+  - `probar-restauracion.sh` restaura en una base aparte y la borra: comprobar que la
+    copia **restaura** es la parte que casi nadie hace.
+  - Configuración del SAI con NUT, con espera de 3 minutos para no reaccionar a
+    microcortes. **Escrita pero sin probar**: no había aparato.
+- **Los secretos ya pueden salir del repositorio**: `docker-compose.yml` lee
+  `POSTGRES_PASSWORD` de un `.env` (con `cambiame` como valor por defecto para
+  desarrollo), y `application-local.yml.ejemplo` es la plantilla de lo que se rellena
+  en el servidor. Ambos destinos están en `.gitignore` (verificado con
+  `git check-ignore`).
 
-### Pendiente, en orden
+### Pendiente
 
-1. **Generación de PDFs** para las tres entidades. Solo JEFE.
-   Se decidió **PDF y no Word**: son documentos finales, no editables, que se imprimen y
-   archivan; la edición se hace en la aplicación y luego se regenera el documento.
-   **Falta decidir cómo**: plantilla HTML convertida a PDF (más fácil de ajustar
-   visualmente) o dibujarlo por código con OpenPDF (control total, cada cambio es
-   código). Se ha aplazado dos veces; hay que elegir antes de empezar.
-2. **Infraestructura del servidor**, todo sin empezar (no existe ni un fichero):
-   - Servicio `systemd` para que API y base de datos arranquen solas al encender.
-     Se puede escribir y probar aquí: la WSL de este portátil es Ubuntu 26.04 con
-     systemd real (`systemctl is-system-running` responde `running`).
-   - **Copia de seguridad nocturna** a un **disco USB** dedicado, 30 días de histórico.
-     Un solo disco (se descartó la rotación de dos). Conviene probar que la copia
-     **restaura**, no solo que se genera: es la parte que casi nadie comprueba.
-   - Integración con el **SAI**: detectar el corte por USB y apagar limpiamente si se
-     alarga, con margen para no reaccionar a microcortes.
-     **Necesita el aparato**: se puede dejar la configuración escrita, pero no probarla.
-3. **IP fija local** para el servidor, para que la tablet siempre lo encuentre.
-   Necesita el mini-PC y el router del taller. Añadirla a `taller.cors.origenes` no hace
-   falta: en producción la PWA y la API comparten origen.
-4. **Cambiar las tres contraseñas** antes de que el taller lo use: `tablet123`,
-   `jefe123` y la de PostgreSQL (`cambiame`). **Las tres están en un repositorio
-   público.** Las dos de usuario ya se pueden cambiar desde Ajustes; la de PostgreSQL
-   hay que cambiarla en el servidor y **no debe volver a git**: para eso está
-   `application-local.yml`, ya excluido en `.gitignore`.
+**Ya no queda nada que se pueda hacer sin el hardware delante.** Todo lo que falta
+está en `DESPLIEGUE.md`, en la raíz del repositorio, paso a paso y con lo que hay que
+comprobar en cada punto. En resumen:
 
-### Lo que espera a tener el hardware delante
+1. **Montar el mini-PC**: Ubuntu, Docker y Java, copiar el jar y activar las unidades
+   de `infra/systemd/`.
+2. **IP fija**, preferiblemente como reserva DHCP en el router del taller. No hay que
+   añadirla a `taller.cors.origenes`: la PWA y la API comparten origen en producción.
+3. **Las tres contraseñas**: `tablet123`, `jefe123` y la de PostgreSQL (`cambiame`).
+   **Las tres están en un repositorio público.** Las dos de usuario se cambian desde
+   Ajustes; la de PostgreSQL va en el `.env` del servidor y **hay que ponerla antes
+   del primer arranque**: una vez creado el volumen, cambiar la variable ya no cambia
+   nada y hace falta un `ALTER USER`.
+4. **Disco USB** de copias: formatear, montarlo por UUID con `nofail` en `/etc/fstab`
+   y activar el timer. Y probar la restauración allí mismo.
+5. **El SAI**: `nut-scanner` para saber el driver real, copiar la configuración de
+   `infra/sai/` y hacer las dos pruebas, la del microcorte y la del corte largo.
+6. **La BIOS**: *Restore on AC Power Loss* en **Power On** (no *Last State*: si la
+   máquina se apagó por el SAI, con *Last State* se quedaría apagada). Y probar el
+   arranque en frío cortando la corriente de verdad, que es lo que valida el resto.
+7. **La tablet**: ergonomía con guantes, fotos con la cámara real (orientación EXIF) y
+   la firma con el dedo. Y decidir si basta con el acceso directo o se quiere
+   certificado propio para instalarla como PWA de verdad (ver §7).
 
-- El SAI, completo.
-- La IP fija en el router.
-- Ergonomía táctil real (botones con guantes) e instalación de la PWA en Android.
-- Arranque en frío desde la BIOS con *Restore on AC Power Loss*.
-- Fotos de cámara de verdad, sobre todo la orientación EXIF. Esto último se puede
-  adelantar copiando al portátil unas fotos hechas con el móvil.
+### Lo único que se puede adelantar sin hardware
 
-**Topología decidida:** son **dos equipos separados**. Un mini-PC hace de servidor (sin
+Probar con **fotos hechas con un móvil de verdad**, sobre todo la orientación EXIF:
+basta con copiar unas cuantas al portátil y subirlas desde el navegador. Las fotos
+generadas por código que usa la comprobación de humo no llevan EXIF, así que esa
+corrección (`imageOrientation: 'from-image'`) nunca se ha ejercitado con una foto
+tomada en vertical.
+
+### Topología
+
+Son **dos equipos separados**. Un mini-PC hace de servidor (sin
 pantalla, arranca solo al dar corriente) y el jefe usa otro ordenador distinto que se
 conecta por red local. La PWA, por tanto, se sirve a dos clientes: la tablet y el equipo
 del jefe.
