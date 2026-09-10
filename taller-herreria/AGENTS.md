@@ -21,8 +21,10 @@ dentro del jar del backend — ver §7).
 - **Se enciende solo al dar corriente** por la mañana ("cuando se encienden los plomos"):
   BIOS configurada con *Restore on AC Power Loss = Power On*, y los servicios se lanzan
   solos al arrancar.
-- Tablet y servidor se comunican por la **red local**. La aplicación **no depende de
-  internet** para nada.
+- Tablet y servidor se comunican por la **red local**. El taller **sí tiene línea de
+  internet** en el router (se usa para instalar y actualizar el servidor), pero la
+  aplicación **no depende de ella para nada**: si la línea se cae, el taller sigue
+  trabajando igual. Mantenlo así.
 - **Se apaga cada día** al bajar los plomos, y por eso las sesiones de usuario se guardan
   en base de datos (ver §5): así nadie tiene que volver a identificarse cada mañana.
 - **No hay SAI ni copias de seguridad automáticas.** Es una decisión del dueño del
@@ -431,8 +433,10 @@ igual que abrir un favorito o reabrir la PWA instalada.
 - **El lienzo de firma necesita `touch-action: none`.** Sin eso, arrastrar el dedo hace
   scroll en la página en lugar de dibujar y la firma no sale. Y hay que dimensionarlo
   según `devicePixelRatio`, o el trazo se ve borroso en la tablet.
-- **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller no tiene
-  internet: los iconos aparecerían como palabras sueltas ("delete", "photo_camera").
+- **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller tiene internet,
+  pero la aplicación no debe depender de él: el día que se caiga la línea los iconos
+  aparecerían como palabras sueltas ("delete", "photo_camera") y la tablet quedaría
+  inservible con el servidor a dos metros y funcionando perfectamente.
   Roboto y los iconos van desde `node_modules`, declarados en `angular.json`.
   El `ng new` los pone en el CDN por defecto; ya se han quitado.
 - **Las rutas de la API son relativas** (`/api/...`), nunca con host y puerto. Así el

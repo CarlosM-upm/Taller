@@ -1,39 +1,72 @@
 # Puesta en marcha en el taller
 
-Todo lo que hay que hacer, desde el mini-PC en la caja hasta la tablet
-funcionando, en orden y sin saltarse nada.
+Guía completa, paso a paso y comando a comando, desde el mini-PC en la caja hasta
+la aplicación funcionando en la tablet.
 
 ## Cómo está planteado
 
 Es deliberadamente sencillo: **una sola máquina y nada más**.
 
-- El **mini-PC** guarda la base de datos y sirve la aplicación. No hay nada más.
+- El **mini-PC** guarda la base de datos y sirve la aplicación.
 - La **tablet** y el **ordenador del jefe** entran por el navegador, por la red
   local del taller.
 - **No hay copias de seguridad automáticas ni SAI.** El respaldo documental son
-  los **albaranes en PDF**, que el jefe se descarga desde la aplicación: cada PDF
+  los **albaranes en PDF** que el jefe se descarga desde la aplicación: cada uno
   lleva dentro el número, la fecha, el cliente, el DNI, la descripción, la firma
-  y las fotos, así que se abre en cualquier sitio sin necesidad del servidor.
-- Consecuencia a tener presente: **lo que se borra en la aplicación no se
-  recupera**, y si el disco del mini-PC falla se pierde lo que hubiera dentro.
-  Lo que el jefe haya descargado en PDF sigue siendo suyo.
+  y las fotos, así que es el documento completo y se abre sin el servidor.
+- Consecuencia asumida: **lo que se borra no se recupera**, y si falla el disco
+  del mini-PC se pierde lo que hubiera dentro.
 
-## Lo que no se puede hacer en el taller
+**El taller tiene internet en el router**, lo que hace la instalación mucho más
+sencilla: el mini-PC se conecta por el cable de red y se descarga todo solo. Aun
+así, **la aplicación no depende de internet**: si un día se cae la línea, el
+taller sigue trabajando con normalidad.
 
-**El taller no tiene internet, y la instalación sí lo necesita**: Ubuntu, Java,
-Docker y la imagen de PostgreSQL son 1-1,5 GB de descarga. Se resuelve
-**compartiendo internet desde el móvil** (Android → Ajustes → Conexión
-compartida → *Anclaje por USB*; Linux lo reconoce solo). Cuenta ese gasto de
-datos.
+---
 
-Y hay dos cosas que **tienes que traer hechas de casa**, porque allí no se
-pueden fabricar: el **USB de instalación de Ubuntu** y el **jar de la
-aplicación**.
+## Qué llevar
 
-> **Si lo prefieres, los pasos 2 al 12 se pueden hacer en tu casa** con calma,
-> internet y una mesa, y dejar para el taller solo el 1, el 5 y del 13 en
-> adelante. Ninguna configuración lleva la IP dentro, así que el mini-PC se puede
-> preparar en una red y luego moverlo a otra sin tocar un solo fichero.
+**Antes de nada, desde casa: `git push`.**
+
+El paso 8 clona el repositorio desde GitHub para traerse los ficheros de
+configuración. Si te dejas commits sin subir, en el taller te bajarás una versión
+vieja **sin `infra/`, sin `application-local.yml.ejemplo` y sin esta guía**, y no
+lo descubrirás hasta que los comandos empiecen a fallar. Compruébalo con:
+
+```bash
+git status -sb          # tiene que decir "main...origin/main" y nada de "ahead"
+```
+
+**Lo único que no se puede conseguir allí:**
+
+1. **Una memoria USB con el instalador de Ubuntu Server**, grabada en casa con
+   Rufus o balenaEtcher desde la imagen de ubuntu.com/download/server. No vale
+   copiar el fichero: tiene que ser un USB de arranque.
+2. **El jar de la aplicación**, en otra memoria USB.
+
+   > El jar **no está en GitHub**: `target/` está en `.gitignore`. Se compila en
+   > tu equipo con `.\mvnw.cmd package` desde `taller-herreria/`, y **hay que
+   > parar `ng serve` antes** o falla con un `EPERM` que no menciona la causa.
+   > Son unos 63 MB en `target/herreria-0.0.1-SNAPSHOT.jar`.
+   >
+   > Si te lo dejas, hay salida: con internet se puede compilar en el propio
+   > mini-PC (ver *Problemas típicos*), pero tarda y es incómodo.
+
+**Prestado, solo para el montaje:**
+
+- **Monitor o televisor con HDMI** y **su cable** (muchos mini-PC no lo traen).
+- **Teclado USB.**
+- Si el mini-PC tiene pocos puertos USB, un **hub** para no quedarte corto entre
+  teclado y pendrives.
+
+**Y ten a mano:**
+
+- Los **datos fiscales del taller**: nombre, dirección, teléfono y CIF. Salen
+  impresos en los albaranes que firma el cliente.
+- **Tres contraseñas nuevas** decididas: la de PostgreSQL, la de `jefe` y la de
+  `tablet`.
+- La **contraseña de administración del router**, por si optas por la reserva
+  DHCP del paso 6. Suele estar en una pegatina debajo del aparato.
 
 ---
 
@@ -45,252 +78,300 @@ Compruébalos **antes de pagar**, porque no se arreglan después:
 
 1. **BIOS con "Restore on AC Power Loss = Power On"** (según la marca: *After
    Power Failure*, *AC Back Function*, *Auto Power On*). Es lo que hace que
-   arranque solo al subir los plomos por la mañana. Hay mini-PC baratos con la
-   BIOS capada que no lo traen.
+   arranque solo al subir los plomos por la mañana.
 2. **Sin ventilador (fanless).** Es una herrería: la limadura de hierro flota en
-   el aire y **es conductora**. Un ventilador la mete dentro del equipo.
+   el aire y es **conductora**.
 
 | Componente | Mínimo | Recomendado |
 |---|---|---|
 | CPU | 2 núcleos | Intel N100 / N150 |
 | RAM | 4 GB | **16 GB** |
 | Disco | 256 GB NVMe | **512 GB NVMe de marca** |
-| Red | — | **Ethernet gigabit**, por cable |
+| Red | — | **Ethernet gigabit** |
 | USB | 2 libres | 2-3 |
-| Vídeo | HDMI | HDMI (solo para el montaje) |
 
-**NVMe de marca conocida, nunca eMMC.** La eMMC soldada de los equipos baratos
-es lenta y se desgasta con las escrituras constantes de una base de datos. Y como
-no hay SAI, el equipo recibe un corte en seco cada tarde al bajar los plomos: los
-NVMe genéricos sin DRAM son justo los que peor lo llevan.
-
-**Qué tipo buscar:** un barebones industrial fanless con chasis metálico que hace
-de disipador (categorías tipo Protectli, Qotom, OnLogic, o los genéricos N100 de
-CWWK/Topton), 180-280 €. Los de consumo (Beelink, Minisforum) son buenos y
-baratos pero **casi todos llevan ventilador**: verifica "fanless" en la ficha.
+**NVMe de marca conocida, nunca eMMC.** Como no hay SAI, el equipo recibe un
+corte en seco cada tarde al bajar los plomos, y los NVMe genéricos sin DRAM son
+justo los que peor lo llevan. Busca un **barebones industrial fanless** de chasis
+metálico (Protectli, Qotom, OnLogic, o los genéricos N100 de CWWK/Topton),
+180-280 €. Los de consumo (Beelink, Minisforum) valen, pero **casi todos llevan
+ventilador**: verifica que ponga "fanless".
 
 ### La tablet
 
 Android de 10-11", brillo alto y **funda reforzada**. Solo wifi. **No pagues por
 la cámara**: las fotos se reducen a 1600 px antes de subirse. 250-350 € con funda.
 
-### Prestado, solo para el montaje
-
-- **Monitor o televisor con HDMI** y **teclado USB**. Sin ellos no entras en la
-  BIOS ni instalas el sistema. Después el mini-PC se queda ciego.
-- **Dos memorias USB**: una para el instalador de Ubuntu y otra para los ficheros
-  del proyecto.
-- Un **cable de red** del router al mini-PC.
-
 ---
 
-## Antes de salir de casa
-
-1. **Compila el jar**: en `taller-herreria/`, `.\mvnw.cmd package`. **Para
-   `ng serve` antes** o falla con un `EPERM` que no menciona la causa real. Salen
-   unos 63 MB en `target/herreria-0.0.1-SNAPSHOT.jar`.
-
-   > El jar **no está en GitHub** (`target/` está en `.gitignore`), así que no lo
-   > puedes descargar allí. Si te lo dejas, no hay despliegue.
-
-2. **Graba el USB de Ubuntu Server** (24.04 LTS o superior) con Rufus o
-   balenaEtcher. No vale con copiar el fichero: tiene que ser un USB de arranque.
-
-3. **Copia al segundo USB** estos cinco ficheros:
-
-   | Fichero | De dónde |
-   |---|---|
-   | `herreria-0.0.1-SNAPSHOT.jar` | `taller-herreria/target/` |
-   | `docker-compose.yml` | `taller-herreria/` |
-   | `application-local.yml.ejemplo` | `taller-herreria/` |
-   | `herreria.service` | `infra/systemd/` |
-   | `herreria-bd.service` | `infra/systemd/` |
-   | `DESPLIEGUE.md` | raíz del repositorio |
-
-   No hace falta nada más: ni el código fuente del backend, ni la carpeta
-   `taller-pwa/` (la aplicación web va **dentro** del jar), ni el resto de
-   `infra/`.
-
-4. **Ten apuntado**: los **datos fiscales del taller** (nombre, dirección,
-   teléfono y CIF, que salen impresos en los albaranes) y **tres contraseñas
-   nuevas** decididas: la de PostgreSQL, la de `jefe` y la de `tablet`.
-
-5. **Averigua la contraseña de administración del router** del taller. La vas a
-   necesitar en el paso 5 y sin ella te quedas a medias. Suele estar en una
-   pegatina debajo del aparato.
-
----
-
-# En el taller, paso a paso
+# Los pasos
 
 ## 1. Colocar y conectar
 
 Piensa dónde va antes de enchufar nada. En una herrería importa más de lo normal:
 
-- **Lejos de la zona de amolar y soldar.** El polvo de hierro es conductor y va
-  donde lo lleve el aire.
+- **Lejos de la zona de amolar y soldar.** El polvo de hierro es conductor.
 - **Dentro de un armario o caja con ventilación**, mejor cerrado por delante.
-- **Levantado del suelo**, treinta centímetros como mínimo: barridos, agua de
-  fregar y golpes de carretilla.
-- **Que no vibre**: nada de apoyarlo sobre una máquina, un compresor o una
-  estantería que reciba martillazos.
-- **Con el botón de encendido accesible.** Ahora importa: es el que se usará
-  cada tarde para apagarlo bien (ver *La rutina diaria* al final).
+- **Levantado del suelo**, treinta centímetros como mínimo.
+- **Que no vibre**: nada de apoyarlo sobre una máquina o un compresor.
+- **Con el botón de encendido accesible**: es el que se usará cada tarde para
+  apagarlo bien (ver *La rutina diaria*).
 
-Conecta el **cable de red al router**, el monitor, el teclado y la corriente.
+Conecta: **cable de red al router**, monitor, teclado y corriente.
 
 **Pasa el cable de red separado de los cables de fuerza.** Si tienen que
-cruzarse, que sea en ángulo recto: la corriente de una soldadora induce ruido en
-un cable de datos que vaya pegado a ella durante metros.
+cruzarse, en ángulo recto: una soldadora induce ruido en un cable de datos que
+vaya pegado a ella durante metros.
 
 ## 2. La BIOS
 
-Enciende y entra en la BIOS (normalmente `Supr` o `F2`, a veces `Esc`). Tres
-ajustes:
+Enciende y entra en la BIOS (normalmente `Supr` o `F2`, a veces `Esc`):
 
 1. **Restore on AC Power Loss → Power On.** No lo dejes en *Last State*: si la
-   víspera se apagó, con *Last State* se quedaría apagado y por la mañana el
-   taller no tendría servidor.
-2. **Fecha y hora correctas.** Sin internet **no habrá NTP que corrija el
-   reloj**, y esa fecha acaba impresa en los albaranes que firma el cliente.
+   víspera se quedó apagada, con *Last State* seguiría apagada por la mañana.
+2. **Fecha y hora** aproximadas (luego se corregirán solas por internet).
 3. **Orden de arranque**: el USB primero, para esta vez.
 
 Guarda y sal.
 
 ## 3. Instalar Ubuntu Server
 
-Arranca del USB e instala **Ubuntu Server** (sin escritorio: la máquina no tendrá
-pantalla). Durante la instalación:
+Arranca desde el USB e instala **Ubuntu Server 24.04 LTS o superior**, sin
+escritorio. Durante la instalación:
 
-- **Marca OpenSSH server.** Es la única forma de entrar al mini-PC una vez
-  emparedado en el armario. Si se te olvida, tendrás que volver a traer monitor y
+- La red se configura sola por DHCP: el instalador ya tiene internet.
+- **Marca "Install OpenSSH server".** Es la única forma de entrar al mini-PC una
+  vez metido en el armario. Si se te olvida, tendrás que traer otra vez monitor y
   teclado.
 - Nombre del equipo: **`servidor-taller`**.
 - Crea tu usuario y **apunta la contraseña**.
 - Deja que use el disco entero.
 
-Saca el USB y reinicia.
+Al terminar, **saca el USB** y reinicia.
 
 ## 4. Primer arranque
 
-Entra en la consola con tu usuario y apunta la **MAC** de la tarjeta de red, que
-hace falta en el paso siguiente:
+Entra en la consola con tu usuario y mira qué IP le ha dado el router y cómo se
+llama la tarjeta de red:
 
 ```bash
-ip -brief link       # algo como 3c:7c:3f:xx:xx:xx
+ip -brief addr
 ```
 
-## 5. IP fija en el router
+Verás algo como `enp1s0  UP  192.168.1.137/24`. Apunta las dos cosas: el nombre
+de la interfaz (`enp1s0`, `eno1`, `enp2s0`…) y la IP actual.
 
-La tablet tiene que encontrar siempre el servidor en la misma dirección.
-
-Entra en el router del taller, busca *DHCP* → *Reserva de direcciones* (o
-*Static Lease*) y ata esa MAC a una IP fuera del rango que reparte el router, por
-ejemplo `192.168.1.50`.
-
-Si el router no permite reservas, la alternativa es fijarla en el propio equipo:
-edita `/etc/netplan/50-cloud-init.yaml`, desactiva el DHCP, escribe dirección,
-puerta de enlace y DNS, y `sudo netplan apply`.
-
-**Comprobar:** `sudo reboot` y, al volver, `ip -brief addr` da la misma IP.
-Apúntala: aparece en todo lo que viene después.
-
-## 6. Internet, con el móvil
-
-Conecta el móvil por USB y activa **Anclaje por USB**. Comprueba:
+Comprueba que hay internet:
 
 ```bash
-ping -c2 ubuntu.com
+ping -c3 ubuntu.com
 ```
 
-## 7. Ajustes base del sistema
+A partir de aquí ya puedes hacerlo todo desde otro equipo por SSH, que es más
+cómodo que teclear en el monitor prestado:
+
+```bash
+ssh tu-usuario@192.168.1.137
+```
+
+## 5. Actualizar el sistema y ajustes base
 
 ```bash
 sudo apt update && sudo apt upgrade -y
+```
 
-# Zona horaria: sin esto el servidor va en UTC y a última hora de la tarde
-# las fechas de los albaranes saldrían con el día cambiado.
+**Zona horaria.** Sin esto el servidor va en UTC, y a última hora de la tarde las
+fechas saldrían con el día cambiado en los albaranes que firma el cliente:
+
+```bash
 sudo timedatectl set-timezone Europe/Madrid
 timedatectl
+```
 
-# Que no se duerma nunca.
+En la salida deben aparecer `System clock synchronized: yes` y
+`NTP service: active`. Como hay internet, el reloj se mantiene solo y no hay que
+volver a tocarlo nunca.
+
+**Que no se duerma nunca.** En Ubuntu Server no suele pasar, pero si algún día se
+instala un escritorio encima esto ya está puesto:
+
+```bash
 sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+```
 
-# Para poder llamarlo por nombre: servidor-taller.local
+**Para poder llamarlo por su nombre** (`servidor-taller.local`) sin recordar la IP:
+
+```bash
 sudo apt install -y avahi-daemon
 ```
 
-## 8. Java, Docker y la base de datos
+## 6. La IP fija
 
-El paso que consume los datos del móvil:
+La tablet tiene que encontrar siempre el servidor en la misma dirección. Hay dos
+caminos; **con hacer uno basta**.
+
+### Opción A — Fijarla en el propio mini-PC (recomendada)
+
+No depende del router ni de tener su contraseña. Elige una IP **fuera del rango
+que reparte el router por DHCP** (mira en su panel; si reparte de `.100` a `.200`,
+la `.50` está libre). Aquí se usa `192.168.1.50`.
+
+Primero, evita que cloud-init sobrescriba la configuración en cada arranque:
 
 ```bash
-sudo apt install -y openjdk-21-jre-headless
+echo 'network: {config: disabled}' | sudo tee /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+```
+
+Crea el fichero de red (cambia `enp1s0` por tu interfaz y `192.168.1.1` por la IP
+de tu router):
+
+```bash
+sudo nano /etc/netplan/99-taller.yaml
+```
+
+Con este contenido exacto — **el sangrado importa**, son espacios, nunca
+tabuladores:
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      dhcp4: false
+      addresses:
+        - 192.168.1.50/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses: [192.168.1.1, 1.1.1.1]
+```
+
+Ajusta permisos y aplica:
+
+```bash
+sudo chmod 600 /etc/netplan/99-taller.yaml
+sudo netplan apply
+```
+
+> Si lo haces por SSH **se te cortará la conexión**, porque la IP acaba de
+> cambiar. Es normal: vuelve a entrar con `ssh tu-usuario@192.168.1.50`.
+
+### Opción B — Reserva DHCP en el router
+
+Apunta la MAC del mini-PC:
+
+```bash
+ip -brief link
+```
+
+Entra en el router, busca *DHCP* → *Reserva de direcciones* (o *Static Lease*) y
+ata esa MAC a `192.168.1.50`. La configuración vive en un solo sitio y el mini-PC
+no necesita saber nada.
+
+### Comprobar (con cualquiera de las dos)
+
+```bash
+sudo reboot
+```
+
+Y al volver:
+
+```bash
+ssh tu-usuario@192.168.1.50
+ip -brief addr        # tiene que decir 192.168.1.50
+ping -c3 ubuntu.com   # y seguir teniendo internet
+```
+
+**Apunta esa IP: aparece en todo lo que viene después.**
+
+## 7. Java y Docker
+
+```bash
+sudo apt install -y openjdk-21-jre-headless git
 curl -fsSL https://get.docker.com | sudo sh
 sudo systemctl enable --now docker
-sudo docker pull postgres:17
 ```
 
-**Comprobar:** `java -version` dice 21, `docker run --rm hello-world` funciona y
-`sudo docker images` muestra `postgres:17`.
-
-Cuando esto termine, **ya puedes soltar el móvil**: a partir de aquí no hace
-falta internet nunca más.
-
-## 9. Copiar los ficheros del proyecto
-
-Enchufa el segundo USB y móntalo:
+**Comprobar:**
 
 ```bash
-lsblk                              # localiza el USB, p. ej. sdb1
-sudo mkdir -p /mnt/usb
-sudo mount /dev/sdb1 /mnt/usb
+java -version                    # tiene que decir 21
+sudo docker run --rm hello-world # tiene que terminar sin error
 ```
 
-Crea el sitio donde vivirá la aplicación:
+## 8. Traer los ficheros del proyecto
+
+Como hay internet, los ficheros de configuración se bajan del repositorio. Lo
+único que no está ahí es el jar, que traes tú.
+
+```bash
+cd /tmp
+git clone https://github.com/CarlosM-upm/Taller.git
+```
+
+Ahora el jar. Enchufa el pendrive donde lo traes y móntalo:
+
+```bash
+lsblk                       # localiza el pendrive, p. ej. sdb1
+sudo mkdir -p /mnt/usb
+sudo mount /dev/sdb1 /mnt/usb
+ls /mnt/usb                 # comprueba que ves el jar
+```
+
+> **Alternativa sin pendrive:** desde tu portátil, en la carpeta del proyecto:
+> `scp taller-herreria/target/herreria-0.0.1-SNAPSHOT.jar tu-usuario@192.168.1.50:/tmp/`
+
+Crea el usuario y el directorio de la aplicación, y coloca todo:
 
 ```bash
 sudo useradd --system --home-dir /opt/herreria --shell /usr/sbin/nologin herreria
 sudo mkdir -p /opt/herreria/logs
 
 sudo cp /mnt/usb/herreria-0.0.1-SNAPSHOT.jar /opt/herreria/herreria.jar
-sudo cp /mnt/usb/docker-compose.yml           /opt/herreria/
-sudo cp /mnt/usb/application-local.yml.ejemplo /opt/herreria/
-sudo cp /mnt/usb/DESPLIEGUE.md                /opt/herreria/
-sudo cp /mnt/usb/herreria.service /mnt/usb/herreria-bd.service /etc/systemd/system/
+sudo cp /tmp/Taller/taller-herreria/docker-compose.yml /opt/herreria/
+sudo cp /tmp/Taller/taller-herreria/application-local.yml.ejemplo /opt/herreria/
+sudo cp /tmp/Taller/DESPLIEGUE.md /opt/herreria/
+
+sudo cp /tmp/Taller/infra/systemd/herreria.service /etc/systemd/system/
+sudo cp /tmp/Taller/infra/systemd/herreria-bd.service /etc/systemd/system/
 
 sudo chown -R herreria:herreria /opt/herreria
 sudo chmod 644 /etc/systemd/system/herreria*.service
 ```
 
-Copiar esta guía al propio servidor no es un capricho: el día que haya un
-problema, allí no hay internet para consultarla.
-
-## 10. Contraseña de la base de datos y configuración
+## 9. Contraseña de la base de datos y configuración
 
 > **Esto hay que hacerlo ANTES del primer arranque de PostgreSQL.** La contraseña
 > se fija al crear la base de datos. Si arrancas primero y la cambias después, el
 > contenedor seguirá con la vieja y verás un `password authentication failed`
-> incomprensible. (Si te pasa, la solución está al final, en *Problemas típicos*.)
+> incomprensible. (Si te pasa, la solución está en *Problemas típicos*.)
 
 ```bash
 printf 'POSTGRES_PASSWORD=%s\n' 'LA-QUE-HAYAS-DECIDIDO' | sudo tee /opt/herreria/.env
 sudo chmod 600 /opt/herreria/.env
 sudo chown root:root /opt/herreria/.env
+```
 
+Ahora la configuración de la aplicación:
+
+```bash
 sudo mv /opt/herreria/application-local.yml.ejemplo /opt/herreria/application-local.yml
 sudo nano /opt/herreria/application-local.yml
+```
+
+Rellena **dos cosas**:
+
+- `password:` → **la misma contraseña** que acabas de poner en el `.env`.
+- `taller.documento` → **los datos fiscales reales del taller**. Encabezan los
+  albaranes que se entregan al cliente.
+
+```bash
 sudo chown herreria:herreria /opt/herreria/application-local.yml
 sudo chmod 600 /opt/herreria/application-local.yml
 ```
 
-En `application-local.yml` rellena dos cosas:
-
-- **La misma contraseña** que acabas de poner en el `.env`.
-- **Los datos fiscales del taller** (`taller.documento`): encabezan los albaranes
-  que se entregan al cliente.
-
-## 11. Arrancar
+## 10. Arrancar
 
 ```bash
 sudo systemctl daemon-reload
@@ -298,31 +379,55 @@ sudo systemctl enable --now herreria-bd.service
 sudo systemctl enable --now herreria.service
 ```
 
-**Comprobar:**
+La primera vez tarda: tiene que descargar la imagen de PostgreSQL y aplicar las
+migraciones de Flyway. Un par de minutos es normal.
+
+## 11. Comprobar que funciona
 
 ```bash
 systemctl status herreria-bd.service herreria.service
-curl -si http://localhost:8080/api/pedidos | head -1            # 401
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/ # 200
 ```
 
-Un **401** en `/api/pedidos` es la respuesta correcta: la API está viva y exige
-identificarse. El **200** en la raíz es la aplicación web sirviéndose desde el
-propio jar.
+Los dos en verde (`active`). Y después:
+
+```bash
+curl -si http://localhost:8080/api/pedidos | head -1
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/
+```
+
+- El primero debe devolver **401**. Es la respuesta **correcta**: la API está viva
+  y exige identificarse.
+- El segundo debe devolver **200**: la aplicación web sirviéndose desde el jar.
+
+Si algo falla, mira `journalctl -u herreria -n 50`.
 
 ## 12. Cambiar las contraseñas de las dos cuentas
 
 Las que trae el sistema (`jefe123` y `tablet123`) **están en un repositorio
 público**. Desde cualquier navegador de la red, en `http://192.168.1.50:8080`:
 
-1. Entra como `jefe` / `jefe123` → **Ajustes** → cambiar contraseña. Al guardar
-   te echa al login: cambiar la contraseña cierra todas las sesiones de ese
-   usuario, y es a propósito.
+1. Entra como `jefe` / `jefe123` → **Ajustes** → cambiar contraseña. Al guardar te
+   echa al login: cambiar la contraseña cierra todas las sesiones de ese usuario,
+   y es a propósito.
 2. Vuelve a entrar con la nueva y repite entrando como `tablet` / `tablet123`.
 
 **Comprobar:** las contraseñas viejas ya no entran.
 
-## 13. La tablet y el ordenador del jefe
+## 13. Cortafuegos (opcional pero recomendable)
+
+Ahora que la máquina tiene internet, cuesta un minuto dejar abierto solo lo justo:
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 8080/tcp
+sudo ufw --force enable
+sudo ufw status
+```
+
+> Asegúrate de que el `allow 22` está **antes** del `enable`, o te quedas fuera
+> por SSH y tendrás que volver a conectar el monitor.
+
+## 14. La tablet y el ordenador del jefe
 
 Conecta la tablet al **mismo wifi** que el router y abre
 `http://192.168.1.50:8080`.
@@ -334,11 +439,10 @@ Conecta la tablet al **mismo wifi** que el router y abre
 
 En la tablet, además:
 
-- Ponle **la hora y la zona horaria** correctas.
+- Ponle la **hora y la zona horaria** correctas.
 - Quita el **ahorro de batería agresivo** para Chrome, o Android le cortará el
   wifi con la pantalla apagada.
-- Sube el **tiempo de apagado de pantalla** a un par de minutos: con las manos
-  ocupadas, treinta segundos es un incordio.
+- Sube el **tiempo de apagado de pantalla** a un par de minutos.
 - **Menú de Chrome → Añadir a pantalla de inicio.**
 
 Y prueba lo que solo se ve con la tablet en la mano:
@@ -350,38 +454,33 @@ Y prueba lo que solo se ve con la tablet en la mano:
 - La **firma del cliente** se dibuja con el dedo sin que la página haga scroll.
 
 En el ordenador del jefe, abre la misma dirección y **descarga el PDF de un
-albarán** para comprobar que los datos del taller salen bien en la cabecera.
+albarán**: comprueba que los datos del taller salen bien en la cabecera.
 
 ### Sobre "instalar" la aplicación en la tablet
 
 Para que Chrome ofrezca *Instalar aplicación* de verdad, el sitio tendría que
 servirse por **HTTPS**; `http://192.168.1.50:8080` no cuenta como origen seguro.
 Con el acceso directo en la pantalla de inicio **funciona todo**: pedidos,
-trabajos, albaranes, fotos, firma y PDFs. Es lo recomendable, y no requiere nada
-más.
+trabajos, albaranes, fotos, firma y PDFs. Es lo recomendable.
 
-## 14. El arranque en frío
+## 15. El arranque en frío
 
 La prueba que reproduce lo que pasa cada mañana, y **la que valida todo lo
 anterior**:
 
-1. Apaga el mini-PC: `sudo poweroff`.
+1. `sudo poweroff`
 2. **Baja los plomos** del cuadro, como al cerrar el taller.
 3. Espera unos segundos y vuelve a subirlos.
-4. Sin tocar nada más, a los dos minutos, desde el ordenador del jefe:
+4. Sin tocar nada más, espera dos minutos y abre la aplicación en la tablet.
 
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://192.168.1.50:8080/    # 200
-```
+Si entra, el taller puede empezar la jornada sin que nadie toque el servidor.
 
-O simplemente abre la página en la tablet. Si entra, el taller puede empezar la
-jornada sin que nadie toque el servidor.
-
-## 15. Recoger
+## 16. Recoger
 
 - Desconecta monitor y teclado.
 - Etiqueta el enchufe: **NO DESENCHUFAR — SERVIDOR**.
-- Deja pegada dentro del armario una hoja con: la dirección
+- Limpia lo que sobra: `rm -rf /tmp/Taller` y `sudo umount /mnt/usb`.
+- Deja pegada dentro del armario una hoja con la dirección
   `http://192.168.1.50:8080`, **cómo se apaga** (ver abajo) y un teléfono al que
   llamar. Las contraseñas **no** van en esa hoja.
 
@@ -391,33 +490,33 @@ jornada sin que nadie toque el servidor.
 
 Como no hay SAI, esto importa. **Antes de bajar los plomos por la tarde:**
 
-> **Pulsar una vez el botón de encendido del mini-PC y esperar a que se apague
-> la luz** (unos 20 segundos). Después, bajar los plomos.
+> **Pulsar una vez el botón de encendido del mini-PC y esperar a que se apague la
+> luz** (unos 20 segundos). Después, bajar los plomos.
 
 Una pulsación corta hace un **apagado limpio**: Linux cierra la base de datos
-ordenadamente antes de irse. Son cinco segundos y evitan el desgaste de cortar en
-seco con la base de datos abierta, unas 250 veces al año.
+ordenadamente antes de irse. Son cinco segundos, y evitan el desgaste de cortar en
+seco con la base de datos abierta unas 250 veces al año.
 
 Por la mañana no hay que hacer nada: al subir los plomos el equipo arranca solo.
 
-**Y una vez al mes**, que el jefe se descargue en PDF los albaranes del mes desde
-la aplicación y los guarde donde guarde los papeles del taller. Cada PDF es el
-documento completo, con firma y fotos incluidas.
+**Y una vez al mes**, que el jefe se descargue en PDF los albaranes del mes y los
+guarde donde guarde los papeles del taller. Cada PDF es el documento completo, con
+firma y fotos incluidas.
 
 ---
 
 ## Comprobación final
 
-- [ ] El mini-PC arranca solo al subir los plomos y responde en su IP fija (14).
+- [ ] El mini-PC arranca solo al subir los plomos y responde en su IP fija (15).
 - [ ] `systemctl status herreria-bd herreria` en verde después de reiniciar.
-- [ ] La **hora del servidor** es correcta (`timedatectl`).
-- [ ] Las contraseñas `jefe123`, `tablet123` y `cambiame` ya no valen (10, 12).
+- [ ] `timedatectl` dice `System clock synchronized: yes`.
+- [ ] Las contraseñas `jefe123`, `tablet123` y `cambiame` ya no valen (9, 12).
 - [ ] `/opt/herreria/.env` y `application-local.yml` con permisos 600.
-- [ ] Desde la tablet: alta de pedido con foto, trabajo enviado, albarán
-      generado, firmado y **descargado en PDF**.
+- [ ] Desde la tablet: alta de pedido con foto, trabajo enviado, albarán generado,
+      firmado y **descargado en PDF**.
 - [ ] Los **datos fiscales del taller** salen bien en la cabecera de ese PDF.
 - [ ] El jefe sabe **apagar con el botón** antes de bajar los plomos.
-- [ ] La hoja del paso 15 está pegada en el armario.
+- [ ] La hoja del paso 16 está pegada en el armario.
 
 ---
 
@@ -433,6 +532,11 @@ ssh tu-usuario@192.168.1.50        # o servidor-taller.local
 
 ```bash
 scp taller-herreria/target/herreria-0.0.1-SNAPSHOT.jar tu-usuario@192.168.1.50:/tmp/herreria.jar
+```
+
+Y en el servidor:
+
+```bash
 sudo systemctl stop herreria.service
 sudo cp /opt/herreria/herreria.jar /opt/herreria/herreria.jar.anterior   # por si acaso
 sudo mv /tmp/herreria.jar /opt/herreria/herreria.jar
@@ -442,16 +546,16 @@ sudo systemctl start herreria.service
 
 Si algo va mal: `sudo systemctl stop herreria` y restaurar `herreria.jar.anterior`.
 
-**El reloj.** Sin internet no hay NTP, y el reloj de un PC se desvía alrededor de
-un minuto al mes. Una vez al año, compáralo con el móvil y corrígelo:
+**Actualizaciones del sistema.** Con internet, Ubuntu instala sola las de
+seguridad y **no reinicia por su cuenta**. Cada varios meses, con el taller
+cerrado:
 
 ```bash
-sudo timedatectl set-time '2027-01-15 09:30:00'
+sudo apt update && sudo apt upgrade -y
+sudo reboot
 ```
 
-**Actualizaciones del sistema.** Sin internet no habrá ninguna. Es el precio de
-una máquina aislada, y es un intercambio razonable: no está expuesta a nada más
-que a la red del taller.
+Y comprueba después que la aplicación ha vuelto sola.
 
 **Dónde mirar cuando algo falla:**
 
@@ -481,12 +585,24 @@ datos responde. Si no se estabiliza en un par de minutos, mira
 `systemctl status herreria-bd`: el problema estará en Docker, no en la aplicación.
 
 **La tablet no encuentra el servidor.** Por orden: ¿está encendido el mini-PC
-(`ping 192.168.1.50`)? ¿Sigue teniendo la IP reservada en el router? ¿Está la
+(`ping 192.168.1.50`)? ¿Sigue teniendo la IP fija (`ip -brief addr`)? ¿Está la
 tablet en la red de invitados, o el router tiene el aislamiento de clientes
-activado (paso 13)? Si el router se reinició y perdió la reserva, la IP habrá
-cambiado y hay que volver al paso 5.
+activado (paso 14)? ¿Activaste el cortafuegos sin abrir el 8080 (paso 13)?
 
 **No arranca solo al subir los plomos.** La BIOS ha perdido el ajuste, casi
-siempre porque se agotó la pila de botón de la placa (se nota además en que la
-hora se va). Cámbiala y vuelve a poner *Restore on AC Power Loss = Power On*
-(paso 2).
+siempre porque se agotó la pila de botón de la placa. Cámbiala y vuelve a poner
+*Restore on AC Power Loss = Power On* (paso 2).
+
+**Te dejaste el jar en casa.** Con internet se puede compilar allí mismo, aunque
+tarda unos minutos:
+
+```bash
+sudo apt install -y openjdk-21-jdk
+cd /tmp/Taller/taller-herreria
+./mvnw package
+sudo cp target/herreria-0.0.1-SNAPSHOT.jar /opt/herreria/herreria.jar
+sudo chown herreria:herreria /opt/herreria/herreria.jar
+```
+
+El wrapper de Maven se descarga solo Node y las dependencias, así que no hay que
+instalar nada más.
