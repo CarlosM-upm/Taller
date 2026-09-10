@@ -1,0 +1,24 @@
+# Configuración del SERVIDOR DEL TALLER.
+#
+# Copiar como "application-local.yml" junto al jar (/opt/herreria/) y rellenar.
+# Ese nombre está en .gitignore a propósito: aquí va la contraseña real de
+# PostgreSQL y no debe volver nunca al repositorio.
+#
+# Lo carga herreria.service, que arranca con SPRING_PROFILES_ACTIVE=local.
+
+spring:
+  datasource:
+    # En el mini-PC, PostgreSQL corre en el propio equipo dentro de Docker.
+    # El puerto 5433 es el que publica docker-compose.yml.
+    url: jdbc:postgresql://127.0.0.1:5433/herreria
+    username: herreria
+    password: PON-AQUI-LA-CONTRASEÑA-REAL
+
+taller:
+  documento:
+    # Encabezan los albaranes que se entregan al cliente: tienen que ser los
+    # datos de verdad del taller.
+    nombre: Nombre del taller S.L.
+    direccion: Calle y número · Código postal y localidad
+    telefono: "000 00 00 00"
+    cif: X-00000000

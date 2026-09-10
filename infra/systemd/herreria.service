@@ -1,0 +1,35 @@
+[Unit]
+# La aplicación: un solo jar con la API y la PWA dentro.
+Description=Taller de herrería (API y PWA)
+Documentation=file:/opt/herreria/DESPLIEGUE.md
+Requires=herreria-bd.service
+After=herreria-bd.service
+
+[Service]
+Type=simple
+User=herreria
+Group=herreria
+WorkingDirectory=/opt/herreria
+
+# El perfil "local" carga /opt/herreria/application-local.yml, que es donde
+# vive la contraseña real de PostgreSQL. Ese fichero NO está en el repositorio
+# (.gitignore lo excluye) y hay que crearlo en el servidor.
+Environment=SPRING_PROFILES_ACTIVE=local
+ExecStart=/usr/bin/java -jar /opt/herreria/herreria.jar
+
+# Se reintenta siempre. El caso que importa es el de por la mañana: si por lo
+# que sea la base de datos tarda más de la cuenta, la aplicación se cae y
+# vuelve a intentarlo sola en diez segundos, sin que nadie tenga que subir a
+# mirar el mini-PC.
+Restart=always
+RestartSec=10
+
+# Java sale con 143 (128 + SIGTERM) cuando systemd lo para. Sin esto, un
+# "systemctl stop" normal quedaría marcado como fallo.
+SuccessExitStatus=143
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

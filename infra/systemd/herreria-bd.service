@@ -1,0 +1,29 @@
+[Unit]
+# Base de datos del taller: el PostgreSQL que vive en Docker.
+#
+# Esta unidad existe aunque el contenedor ya tenga "restart: unless-stopped"
+# porque hace falta un punto claro del que pueda depender la aplicación. Que
+# el servicio de Docker esté arrancado no significa que PostgreSQL acepte
+# conexiones todavía, y la API, si arranca antes, se cae con Flyway.
+Description=Base de datos del taller (PostgreSQL en Docker)
+Documentation=file:/opt/herreria/DESPLIEGUE.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/herreria
+
+ExecStart=/usr/bin/docker compose up -d
+
+# No se da por arrancada hasta que PostgreSQL contesta de verdad. Dos minutos
+# de margen: un mini-PC recién enchufado con un disco lento tarda lo suyo.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 60); do /usr/bin/docker exec herreria-db pg_isready -U herreria -q && exit 0; sleep 2; done; echo "PostgreSQL no responde tras 120 s"; exit 1'
+
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

@@ -9,7 +9,13 @@ services:
     environment:
       POSTGRES_DB: herreria
       POSTGRES_USER: herreria
-      POSTGRES_PASSWORD: cambiame  # cámbiala antes de ponerlo en marcha
+      # En desarrollo vale "cambiame". En el servidor del taller se pone la
+      # contraseña real en un fichero .env junto a este docker-compose.yml
+      # (POSTGRES_PASSWORD=...), que .gitignore excluye para que no acabe en
+      # el repositorio. OJO: hay que ponerla ANTES del primer arranque; una
+      # vez creado el volumen, cambiar esta variable ya no cambia nada
+      # (ver DESPLIEGUE.md).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambiame}
     ports:
       # 5433 en el equipo, 5432 dentro del contenedor.
       # El 5432 del equipo puede estar ocupado por un PostgreSQL nativo.
