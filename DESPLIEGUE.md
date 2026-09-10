@@ -427,7 +427,111 @@ sudo ufw status
 > Asegúrate de que el `allow 22` está **antes** del `enable`, o te quedas fuera
 > por SSH y tendrás que volver a conectar el monitor.
 
-## 14. La tablet y el ordenador del jefe
+## 14. Acceso remoto con Tailscale (recomendable)
+
+Para poder entrar al servidor de Zaragoza desde Madrid el día que algo falle, sin
+tener que coger el coche.
+
+**Por qué Tailscale y no abrir el puerto 22 en el router:** no hace falta IP
+pública fija ni tocar el router, funciona aunque la línea esté detrás de CGNAT
+(donde abrir puertos es imposible), y **no expone nada a internet** — un SSH
+abierto en una IP pública empieza a recibir ataques de fuerza bruta a las pocas
+horas. Es gratis para este uso: el plan personal cubre hasta 100 dispositivos.
+
+Esto **no cambia** que la aplicación no dependa de internet: si se cae la línea
+del taller, allí siguen trabajando igual; lo único que se pierde es tu acceso
+desde fuera.
+
+### En el mini-PC (Zaragoza)
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Imprime una URL para autenticarte. Ábrela en el móvil o en el portátil y entra
+con la cuenta que vayas a usar siempre (Google, GitHub o Microsoft). Después:
+
+```bash
+tailscale ip -4          # apunta la dirección, algo como 100.x.y.z
+tailscale status
+```
+
+Y deja el cortafuegos limpio para el tráfico de la red privada:
+
+```bash
+sudo ufw allow in on tailscale0
+```
+
+### ⚠️ Desactiva la caducidad de la clave
+
+**Este es el paso que no puedes saltarte.** Por defecto la clave del nodo caduca a
+los **180 días**: el mini-PC se caería de la red y, como está en Zaragoza, sin
+pantalla y a 300 km, no habría forma de volver a autenticarlo sin ir en persona.
+
+En [login.tailscale.com](https://login.tailscale.com) → **Machines** → el equipo
+`servidor-taller` → menú de los tres puntos → **Disable key expiry**.
+
+Compruébalo: en la lista de máquinas, junto al nombre, debe poner
+*Expiry disabled*.
+
+### En el ordenador de Madrid (Windows)
+
+Instala Tailscale desde [tailscale.com/download/windows](https://tailscale.com/download/windows),
+o con winget desde PowerShell:
+
+```powershell
+winget install tailscale.tailscale
+```
+
+Ábrelo e **inicia sesión con la misma cuenta** que usaste en el mini-PC. En la
+bandeja del sistema aparecerá el icono y, dentro, el servidor del taller.
+
+Comprueba desde PowerShell que se ven:
+
+```powershell
+tailscale status
+ping 100.x.y.z
+```
+
+Y entra:
+
+```powershell
+ssh tu-usuario@100.x.y.z
+```
+
+Windows 10 y 11 ya traen el cliente de SSH, no hay que instalar nada más. La
+primera vez te pedirá aceptar la huella del servidor: escribe `yes`.
+
+### MagicDNS, para no memorizar la IP
+
+En el panel de Tailscale → **DNS** → activa **MagicDNS**. A partir de ahí:
+
+```powershell
+ssh tu-usuario@servidor-taller
+```
+
+### Entrar sin teclear la contraseña (opcional)
+
+Desde PowerShell en Madrid:
+
+```powershell
+ssh-keygen -t ed25519
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh tu-usuario@servidor-taller "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+### De regalo: la aplicación desde Madrid
+
+Con Tailscale conectado también puedes abrir `http://100.x.y.z:8080` (o
+`http://servidor-taller:8080` con MagicDNS) y usar la aplicación entera, no solo
+SSH. Y si algún día el jefe quiere consultar albaranes desde casa, basta con
+instalarle Tailscale y añadir su equipo a la red. Solo lo ven los dispositivos que
+tú autorices.
+
+**Ten presente que el mini-PC se apaga cada tarde**, así que el acceso remoto
+funciona en horario de taller, no de madrugada.
+
+## 15. La tablet y el ordenador del jefe
 
 Conecta la tablet al **mismo wifi** que el router y abre
 `http://192.168.1.50:8080`.
@@ -463,7 +567,7 @@ servirse por **HTTPS**; `http://192.168.1.50:8080` no cuenta como origen seguro.
 Con el acceso directo en la pantalla de inicio **funciona todo**: pedidos,
 trabajos, albaranes, fotos, firma y PDFs. Es lo recomendable.
 
-## 15. El arranque en frío
+## 16. El arranque en frío
 
 La prueba que reproduce lo que pasa cada mañana, y **la que valida todo lo
 anterior**:
@@ -475,7 +579,7 @@ anterior**:
 
 Si entra, el taller puede empezar la jornada sin que nadie toque el servidor.
 
-## 16. Recoger
+## 17. Recoger
 
 - Desconecta monitor y teclado.
 - Etiqueta el enchufe: **NO DESENCHUFAR — SERVIDOR**.
@@ -507,7 +611,7 @@ firma y fotos incluidas.
 
 ## Comprobación final
 
-- [ ] El mini-PC arranca solo al subir los plomos y responde en su IP fija (15).
+- [ ] El mini-PC arranca solo al subir los plomos y responde en su IP fija (16).
 - [ ] `systemctl status herreria-bd herreria` en verde después de reiniciar.
 - [ ] `timedatectl` dice `System clock synchronized: yes`.
 - [ ] Las contraseñas `jefe123`, `tablet123` y `cambiame` ya no valen (9, 12).
@@ -516,7 +620,7 @@ firma y fotos incluidas.
       firmado y **descargado en PDF**.
 - [ ] Los **datos fiscales del taller** salen bien en la cabecera de ese PDF.
 - [ ] El jefe sabe **apagar con el botón** antes de bajar los plomos.
-- [ ] La hoja del paso 16 está pegada en el armario.
+- [ ] La hoja del paso 17 está pegada en el armario.
 
 ---
 
@@ -587,7 +691,7 @@ datos responde. Si no se estabiliza en un par de minutos, mira
 **La tablet no encuentra el servidor.** Por orden: ¿está encendido el mini-PC
 (`ping 192.168.1.50`)? ¿Sigue teniendo la IP fija (`ip -brief addr`)? ¿Está la
 tablet en la red de invitados, o el router tiene el aislamiento de clientes
-activado (paso 14)? ¿Activaste el cortafuegos sin abrir el 8080 (paso 13)?
+activado (paso 15)? ¿Activaste el cortafuegos sin abrir el 8080 (paso 13)?
 
 **No arranca solo al subir los plomos.** La BIOS ha perdido el ajuste, casi
 siempre porque se agotó la pila de botón de la placa. Cámbiala y vuelve a poner
