@@ -23,8 +23,12 @@ dentro del jar del backend — ver §7).
   solos al arrancar.
 - Tablet y servidor se comunican por la **red local**. La aplicación **no depende de
   internet** para nada.
-- Se apaga cada día. Por eso hay un **SAI/UPS** previsto para apagados limpios, y por eso
-  las sesiones de usuario se guardan en base de datos (ver §5).
+- **Se apaga cada día** al bajar los plomos, y por eso las sesiones de usuario se guardan
+  en base de datos (ver §5): así nadie tiene que volver a identificarse cada mañana.
+- **No hay SAI ni copias de seguridad automáticas.** Es una decisión del dueño del
+  proyecto, tomada a conciencia; el porqué y sus consecuencias están en §8. La rutina
+  acordada para apagar es **pulsar el botón del mini-PC y esperar** a que se apague antes
+  de cortar la corriente: una pulsación corta hace un apagado limpio.
 
 ---
 
@@ -36,7 +40,7 @@ dentro del jar del backend — ver §7).
 | Base de datos | PostgreSQL 17 en Docker |
 | Cliente | PWA en Angular 22 + Angular Material (carpeta `taller-pwa/`) |
 | Documentos | PDF: plantilla HTML con Thymeleaf + openhtmltopdf (no Word — ver §8) |
-| Servidor | Ubuntu + systemd, copias a USB y SAI con NUT (carpeta `infra/`) |
+| Servidor | Ubuntu + systemd: base de datos y aplicación (carpeta `infra/`) |
 
 ### Particularidades del entorno de desarrollo
 
@@ -118,9 +122,7 @@ Y fuera de los dos proyectos, en la raíz del repositorio:
 ```
 DESPLIEGUE.md   Guía paso a paso para montarlo en el taller (necesita el hardware)
 infra/
-├── systemd/    Unidades: base de datos, aplicación y la copia con su timer
-├── copia/      copia-nocturna.sh y probar-restauracion.sh
-└── sai/        Configuración de NUT para el SAI (sin probar: falta el aparato)
+└── systemd/    Dos unidades encadenadas: la base de datos y la aplicación
 ```
 
 Capas y responsabilidades:
@@ -579,19 +581,13 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   - Unidades `systemd` para la base de datos y la aplicación, encadenadas: la de la
     base de datos no se da por arrancada hasta que PostgreSQL **responde de verdad**
     (`pg_isready` en bucle), y la aplicación reintenta cada 10 s. Es el caso de la
-    mañana: si la base tarda, nadie tiene que subir a tocar el mini-PC.
-  - **Copia diaria a USB con 30 días de histórico**, y su timer con `Persistent=true`
-    porque el servidor se apaga por la noche: si a las 20:30 estaba apagado, la copia
-    se hace al arrancar por la mañana en vez de perderse.
-  - Probado de verdad en la WSL (systemd real): la copia **se genera, se verifica y
-    restaura** con las fotos dentro (25 kB de imágenes recuperados); el borrado de las
-    de más de 30 días deja las correctas; y con el destino **sin montar la copia falla
-    en lugar de escribir** en el disco del sistema, que es el error que llena el disco
-    en silencio y deja al taller sin copias sin que nadie se entere.
-  - `probar-restauracion.sh` restaura en una base aparte y la borra: comprobar que la
-    copia **restaura** es la parte que casi nadie hace.
-  - Configuración del SAI con NUT, con espera de 3 minutos para no reaccionar a
-    microcortes. **Escrita pero sin probar**: no había aparato.
+    mañana: si la base tarda, nadie tiene que subir a tocar el mini-PC. Probadas en la
+    WSL de este portátil, que lleva systemd real.
+  - Hubo además **copia diaria a USB con prueba de restauración** (probada de verdad:
+    se generaba, se verificaba y restauraba con las fotos dentro) y **configuración de
+    NUT para el SAI**. Las dos se **retiraron** al simplificar el despliegue; el porqué
+    está más abajo, en *Decisiones cerradas*. Siguen en el historial de git, en el
+    commit «Infraestructura del servidor», por si algún día se recuperan.
 - **Los secretos ya pueden salir del repositorio**: `docker-compose.yml` lee
   `POSTGRES_PASSWORD` de un `.env` (con `cambiame` como valor por defecto para
   desarrollo), y `application-local.yml.ejemplo` es la plantilla de lo que se rellena
@@ -613,14 +609,10 @@ comprobar en cada punto. En resumen:
    Ajustes; la de PostgreSQL va en el `.env` del servidor y **hay que ponerla antes
    del primer arranque**: una vez creado el volumen, cambiar la variable ya no cambia
    nada y hace falta un `ALTER USER`.
-4. **Disco USB** de copias: formatear, montarlo por UUID con `nofail` en `/etc/fstab`
-   y activar el timer. Y probar la restauración allí mismo.
-5. **El SAI**: `nut-scanner` para saber el driver real, copiar la configuración de
-   `infra/sai/` y hacer las dos pruebas, la del microcorte y la del corte largo.
-6. **La BIOS**: *Restore on AC Power Loss* en **Power On** (no *Last State*: si la
-   máquina se apagó por el SAI, con *Last State* se quedaría apagada). Y probar el
-   arranque en frío cortando la corriente de verdad, que es lo que valida el resto.
-7. **La tablet**: ergonomía con guantes, fotos con la cámara real (orientación EXIF) y
+4. **La BIOS**: *Restore on AC Power Loss* en **Power On** (no *Last State*: si la
+   víspera se quedó apagada, con *Last State* seguiría apagada por la mañana). Y probar
+   el arranque en frío cortando la corriente de verdad, que es lo que valida el resto.
+5. **La tablet**: ergonomía con guantes, fotos con la cámara real (orientación EXIF) y
    la firma con el dedo. Y decidir si basta con el acceso directo o se quiere
    certificado propio para instalarla como PWA de verdad (ver §7).
 
@@ -641,6 +633,23 @@ del jefe.
 
 ### Decisiones de negocio ya cerradas
 
+- **Sin SAI y sin copias de seguridad automáticas. Una sola máquina y nada más.**
+  Decisión expresa del dueño del proyecto, tomada después de repasar las alternativas
+  (disco USB dedicado, copia al ordenador del jefe) y de conocer el riesgo. **No la
+  reabras ni propongas copias por iniciativa propia**; si algún día cambia, el código
+  retirado está en el historial, en el commit «Infraestructura del servidor».
+  - El respaldo documental son los **albaranes en PDF** que el jefe se descarga desde
+    la aplicación: cada PDF lleva dentro número, fecha, cliente, DNI, descripción,
+    firma y fotos, así que es el documento completo y se abre sin el servidor.
+  - Consecuencia asumida: **lo que se borra no se recupera**, y si falla el disco del
+    mini-PC se pierde lo que hubiera dentro.
+  - Lo que sustituye al SAI es una **rutina, no un aparato**: pulsar el botón del
+    mini-PC y esperar a que se apague antes de bajar los plomos. Una pulsación corta
+    hace un apagado limpio (`HandlePowerKey=poweroff`, el comportamiento por defecto de
+    systemd). Por eso el equipo debe colocarse **con el botón accesible**.
+  - Por eso también el disco importa más de lo normal al comprar: sin SAI, el mini-PC
+    recibe un corte en seco cada tarde. **NVMe de marca, nunca eMMC ni genéricos sin
+    DRAM**, que son los que peor gestionan una pérdida de corriente.
 - Borrar un trabajo que ya generó albarán: **bloqueado con 409**, diciendo qué albarán
   es. Un albarán es un documento que el cliente firmó y ese trabajo es su respaldo.
 - Cambiar la contraseña **cierra todas las sesiones** del usuario, incluida la de quien
@@ -653,8 +662,8 @@ del jefe.
 - La tabla `tokens_acceso` **crece indefinidamente** y los tokens se guardan en claro.
   Medido: una tarde de pruebas dejó 8 filas. Con dos cuentas crece despacio y nunca
   baja, pero en tamaño es irrelevante durante décadas. **Decidido no tocarlo**: cifrar
-  los tokens taparía un agujero que solo se abre si alguien roba el disco de copias, y
-  quien se lleve ese disco ya tiene todos los datos del negocio.
+  los tokens taparía un agujero que solo se abre si alguien se lleva el disco del
+  servidor, y quien se lo lleve ya tiene todos los datos del negocio.
 
 ---
 
