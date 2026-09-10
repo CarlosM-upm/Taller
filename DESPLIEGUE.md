@@ -133,6 +133,19 @@ Guarda y sal.
 
 ## 3. Instalar Ubuntu Server
 
+> **El mini-PC vendrá con Windows 11 Pro y se borra entero.** Da reparo, pero la
+> licencia se paga igual y conservarla sale caro por otro lado:
+> - **Docker Desktop necesita una sesión iniciada** para arrancar, y esta máquina
+>   se enciende sola en un armario sin pantalla. Habría que dejar el inicio de
+>   sesión automático puesto en el equipo que guarda todos los datos del negocio.
+> - **Windows Update reinicia cuando le parece.** Una mañana a media faena el
+>   servidor se va a actualizar y la tablet se queda sin nada.
+> - Sin SAI, el tirón de enchufe diario lo lleva peor: mucha más escritura en
+>   segundo plano, y un corte durante una actualización acaba mal.
+>
+> Un Linux mínimo en una máquina que nadie mira es aburrido, y aburrido es justo
+> lo que quieres aquí.
+
 Arranca desde el USB e instala **Ubuntu Server 24.04 LTS o superior**, sin
 escritorio. Durante la instalación:
 

@@ -659,6 +659,12 @@ del jefe.
   - Por eso también el disco importa más de lo normal al comprar: sin SAI, el mini-PC
     recibe un corte en seco cada tarde. **NVMe de marca, nunca eMMC ni genéricos sin
     DRAM**, que son los que peor gestionan una pérdida de corriente.
+- **El servidor va con Ubuntu Server, no con el Windows que trae el mini-PC.** Se
+  valoró conservarlo y se descartó: Docker Desktop exige una sesión iniciada para
+  arrancar (y la máquina se enciende sola, sin pantalla, en un armario), Windows
+  Update reinicia por su cuenta a media jornada, y sin SAI el corte diario lo lleva
+  peor. Las unidades de `infra/systemd/` ya resuelven el encadenado y el reintento;
+  en Windows habría que rehacerlo con NSSM y el Programador de tareas.
 - Borrar un trabajo que ya generó albarán: **bloqueado con 409**, diciendo qué albarán
   es. Un albarán es un documento que el cliente firmó y ese trabajo es su respaldo.
 - Cambiar la contraseña **cierra todas las sesiones** del usuario, incluida la de quien
