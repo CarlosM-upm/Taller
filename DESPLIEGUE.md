@@ -28,36 +28,33 @@ taller sigue trabajando con normalidad.
 
 **Antes de nada, desde casa: `git push`.**
 
-El paso 8 clona el repositorio desde GitHub para traerse los ficheros de
-configuración. Si te dejas commits sin subir, en el taller te bajarás una versión
-vieja **sin `infra/`, sin `application-local.yml.ejemplo` y sin esta guía**, y no
-lo descubrirás hasta que los comandos empiecen a fallar. Compruébalo con:
+El paso 8 se lo descarga **todo** de GitHub: los ficheros de configuración del
+repositorio y el jar de la *release*. Si te dejas commits sin subir, en el taller
+te bajarás una versión vieja y no lo descubrirás hasta que los comandos empiecen
+a fallar. Compruébalo con:
 
 ```bash
 git status -sb          # tiene que decir "main...origin/main" y nada de "ahead"
 ```
+
+**Y comprueba que la release tiene el jar de la versión que vas a instalar.** Si
+has tocado el código desde la última vez, hay que recompilar y publicar una
+release nueva (ver *Mantenimiento*, al final). El repositorio tiene que seguir
+siendo **público**, o la descarga del paso 8 fallará.
 
 **Lo único que no se puede conseguir allí:**
 
 1. **Una memoria USB con el instalador de Ubuntu Server**, grabada en casa con
    Rufus o balenaEtcher desde la imagen de ubuntu.com/download/server. No vale
    copiar el fichero: tiene que ser un USB de arranque.
-2. **El jar de la aplicación**, en otra memoria USB.
 
-   > El jar **no está en GitHub**: `target/` está en `.gitignore`. Se compila en
-   > tu equipo con `.\mvnw.cmd package` desde `taller-herreria/`, y **hay que
-   > parar `ng serve` antes** o falla con un `EPERM` que no menciona la causa.
-   > Son unos 63 MB en `target/herreria-0.0.1-SNAPSHOT.jar`.
-   >
-   > Si te lo dejas, hay salida: con internet se puede compilar en el propio
-   > mini-PC (ver *Problemas típicos*), pero tarda y es incómodo.
+Y nada más. **El jar ya no hace falta llevarlo**: se descarga en el paso 8 desde
+la *release* del repositorio, que es pública.
 
 **Prestado, solo para el montaje:**
 
 - **Monitor o televisor con HDMI** y **su cable** (muchos mini-PC no lo traen).
 - **Teclado USB.**
-- Si el mini-PC tiene pocos puertos USB, un **hub** para no quedarte corto entre
-  teclado y pendrives.
 
 **Y ten a mano:**
 
@@ -302,25 +299,25 @@ sudo docker run --rm hello-world # tiene que terminar sin error
 
 ## 8. Traer los ficheros del proyecto
 
-Como hay internet, los ficheros de configuración se bajan del repositorio. Lo
-único que no está ahí es el jar, que traes tú.
+Todo se descarga de internet: los ficheros de configuración del repositorio y el
+jar de la *release*. No hace falta ningún pendrive.
 
 ```bash
 cd /tmp
 git clone https://github.com/CarlosM-upm/Taller.git
+curl -L -o /tmp/herreria.jar \
+  https://github.com/CarlosM-upm/Taller/releases/latest/download/herreria.jar
 ```
 
-Ahora el jar. Enchufa el pendrive donde lo traes y móntalo:
+**Comprueba el jar antes de seguir.** Si el repositorio dejara de ser público o
+la release cambiara de nombre, `curl` escribiría tranquilamente la página de
+error dentro del fichero y tendrías un "jar" de unos kilobytes que solo falla
+al arrancar, con un mensaje que no menciona la causa:
 
 ```bash
-lsblk                       # localiza el pendrive, p. ej. sdb1
-sudo mkdir -p /mnt/usb
-sudo mount /dev/sdb1 /mnt/usb
-ls /mnt/usb                 # comprueba que ves el jar
+ls -lh /tmp/herreria.jar          # tienen que ser unos 63 MB, no unos KB
+head -c2 /tmp/herreria.jar        # tiene que decir  PK
 ```
-
-> **Alternativa sin pendrive:** desde tu portátil, en la carpeta del proyecto:
-> `scp taller-herreria/target/herreria-0.0.1-SNAPSHOT.jar tu-usuario@192.168.1.50:/tmp/`
 
 Crea el usuario y el directorio de la aplicación, y coloca todo:
 
@@ -328,7 +325,7 @@ Crea el usuario y el directorio de la aplicación, y coloca todo:
 sudo useradd --system --home-dir /opt/herreria --shell /usr/sbin/nologin herreria
 sudo mkdir -p /opt/herreria/logs
 
-sudo cp /mnt/usb/herreria-0.0.1-SNAPSHOT.jar /opt/herreria/herreria.jar
+sudo mv /tmp/herreria.jar /opt/herreria/herreria.jar
 sudo cp /tmp/Taller/taller-herreria/docker-compose.yml /opt/herreria/
 sudo cp /tmp/Taller/taller-herreria/application-local.yml.ejemplo /opt/herreria/
 sudo cp /tmp/Taller/DESPLIEGUE.md /opt/herreria/
@@ -583,7 +580,7 @@ Si entra, el taller puede empezar la jornada sin que nadie toque el servidor.
 
 - Desconecta monitor y teclado.
 - Etiqueta el enchufe: **NO DESENCHUFAR — SERVIDOR**.
-- Limpia lo que sobra: `rm -rf /tmp/Taller` y `sudo umount /mnt/usb`.
+- Limpia lo que sobra: `rm -rf /tmp/Taller`.
 - Deja pegada dentro del armario una hoja con la dirección
   `http://192.168.1.50:8080`, **cómo se apaga** (ver abajo) y un teléfono al que
   llamar. Las contraseñas **no** van en esa hoja.
@@ -632,15 +629,29 @@ firma y fotos incluidas.
 ssh tu-usuario@192.168.1.50        # o servidor-taller.local
 ```
 
-**Actualizar la aplicación** con una versión nueva compilada en tu equipo:
+**Publicar una versión nueva.** En tu equipo, con `ng serve` parado:
 
 ```bash
-scp taller-herreria/target/herreria-0.0.1-SNAPSHOT.jar tu-usuario@192.168.1.50:/tmp/herreria.jar
+cd taller-herreria
+.\mvnw.cmd package
 ```
 
-Y en el servidor:
+Sube los cambios (`git push`) y publica una *release* nueva en GitHub →
+*Releases* → *Draft a new release*, con una etiqueta nueva (`v1.0.1`, `v1.1.0`…)
+y el jar adjunto **renombrado a `herreria.jar`**. Ese nombre es el que usa el
+comando de descarga; si cambia, la actualización deja de funcionar.
+
+**Instalarla en el servidor.** Con Tailscale montado esto se puede hacer
+**desde Madrid**, sin ir al taller:
 
 ```bash
+ssh tu-usuario@servidor-taller
+
+curl -L -o /tmp/herreria.jar \
+  https://github.com/CarlosM-upm/Taller/releases/latest/download/herreria.jar
+ls -lh /tmp/herreria.jar        # unos 63 MB, no unos KB
+head -c2 /tmp/herreria.jar      # PK
+
 sudo systemctl stop herreria.service
 sudo cp /opt/herreria/herreria.jar /opt/herreria/herreria.jar.anterior   # por si acaso
 sudo mv /tmp/herreria.jar /opt/herreria/herreria.jar
@@ -648,7 +659,9 @@ sudo chown herreria:herreria /opt/herreria/herreria.jar
 sudo systemctl start herreria.service
 ```
 
-Si algo va mal: `sudo systemctl stop herreria` y restaurar `herreria.jar.anterior`.
+Si algo va mal: `sudo systemctl stop herreria`, devolver `herreria.jar.anterior`
+a su sitio y arrancar otra vez. Hazlo **con el taller cerrado**: parar el
+servicio corta a quien esté usando la tablet.
 
 **Actualizaciones del sistema.** Con internet, Ubuntu instala sola las de
 seguridad y **no reinicia por su cuenta**. Cada varios meses, con el taller
@@ -697,8 +710,14 @@ activado (paso 15)? ¿Activaste el cortafuegos sin abrir el 8080 (paso 13)?
 siempre porque se agotó la pila de botón de la placa. Cámbiala y vuelve a poner
 *Restore on AC Power Loss = Power On* (paso 2).
 
-**Te dejaste el jar en casa.** Con internet se puede compilar allí mismo, aunque
-tarda unos minutos:
+**El jar descargado no arranca, o pesa unos pocos KB.** No es un jar: es la
+página de error de GitHub, que `curl` ha guardado dentro del fichero sin
+quejarse. Pasa si el repositorio ha dejado de ser público, si la release cambió
+de nombre o si el fichero adjunto no se llama exactamente `herreria.jar`.
+Compruébalo con `head -c2 /tmp/herreria.jar`: tiene que decir `PK`.
+
+**Última salida: compilar en el propio mini-PC.** Si la descarga no hay forma de
+arreglarla, con internet se puede construir allí mismo. Tarda unos minutos:
 
 ```bash
 sudo apt install -y openjdk-21-jdk
@@ -706,6 +725,7 @@ cd /tmp/Taller/taller-herreria
 ./mvnw package
 sudo cp target/herreria-0.0.1-SNAPSHOT.jar /opt/herreria/herreria.jar
 sudo chown herreria:herreria /opt/herreria/herreria.jar
+sudo systemctl restart herreria
 ```
 
 El wrapper de Maven se descarga solo Node y las dependencias, así que no hay que
