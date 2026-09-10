@@ -604,10 +604,15 @@ Verificado arrancando la aplicación contra PostgreSQL real:
 está en `DESPLIEGUE.md`, en la raíz del repositorio, paso a paso y con lo que hay que
 comprobar en cada punto. En resumen:
 
-1. **Montar el mini-PC**: Ubuntu, Docker y Java, copiar el jar y activar las unidades
-   de `infra/systemd/`.
-2. **IP fija**, preferiblemente como reserva DHCP en el router del taller. No hay que
-   añadirla a `taller.cors.origenes`: la PWA y la API comparten origen en producción.
+1. **Montar el mini-PC**: Ubuntu, Docker y Java, y activar las unidades de
+   `infra/systemd/`. El taller **sí tiene internet**, así que allí se descarga todo:
+   la configuración con `git clone` y el **jar desde la *release* de GitHub**
+   (`releases/latest/download/herreria.jar`). El jar no está en el repositorio
+   porque `target/` está en `.gitignore`; se publica como adjunto de la release al
+   sacar versión, y ese adjunto **tiene que llamarse exactamente `herreria.jar`**.
+2. **IP fija**, fijándola en el propio equipo con netplan (así no depende de tener
+   la contraseña del router) o como reserva DHCP. No hay que añadirla a
+   `taller.cors.origenes`: la PWA y la API comparten origen en producción.
 3. **Las tres contraseñas**: `tablet123`, `jefe123` y la de PostgreSQL (`cambiame`).
    **Las tres están en un repositorio público.** Las dos de usuario se cambian desde
    Ajustes; la de PostgreSQL va en el `.env` del servidor y **hay que ponerla antes
