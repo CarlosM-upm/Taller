@@ -1,5 +1,6 @@
 package com.taller.herreria.pedido;
 
+import com.taller.herreria.cliente.ClienteService;
 import com.taller.herreria.documento.Documento;
 import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
@@ -8,6 +9,7 @@ import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.pedido.dto.PedidoPatch;
 import com.taller.herreria.pedido.dto.PedidoRequest;
 import com.taller.herreria.pedido.dto.PedidoResponse;
+import com.taller.herreria.trabajador.TrabajadorService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,16 +33,24 @@ public class PedidoService {
     private final PedidoRepository pedidoRepository;
     private final FotoRepository fotoRepository;
     private final GeneradorPdf generadorPdf;
+    private final ClienteService clienteService;
+    private final TrabajadorService trabajadorService;
 
     public PedidoService(PedidoRepository pedidoRepository, FotoRepository fotoRepository,
-                         GeneradorPdf generadorPdf) {
+                         GeneradorPdf generadorPdf, ClienteService clienteService,
+                         TrabajadorService trabajadorService) {
         this.pedidoRepository = pedidoRepository;
         this.fotoRepository = fotoRepository;
         this.generadorPdf = generadorPdf;
+        this.clienteService = clienteService;
+        this.trabajadorService = trabajadorService;
     }
 
     public PedidoResponse crear(PedidoRequest datos) {
-        Pedido pedido = new Pedido(datos.trabajador(), datos.cliente(), datos.descripcion());
+        Pedido pedido = new Pedido(
+                trabajadorService.buscarOFallar(datos.trabajadorId()),
+                clienteService.buscarOFallar(datos.clienteId()),
+                datos.descripcion());
         pedidoRepository.save(pedido);
         return aRespuesta(pedido);
     }
@@ -70,8 +80,8 @@ public class PedidoService {
         byte[] contenido = generadorPdf.generar("pedido", Map.of(
                 "id", pedido.getId(),
                 "fecha", GeneradorPdf.fecha(pedido.getFecha()),
-                "cliente", GeneradorPdf.texto(pedido.getCliente()),
-                "trabajador", GeneradorPdf.texto(pedido.getTrabajador()),
+                "cliente", GeneradorPdf.texto(pedido.getCliente().getNombre()),
+                "trabajador", GeneradorPdf.texto(pedido.getTrabajador().getNombre()),
                 "descripcion", GeneradorPdf.texto(pedido.getDescripcion()),
                 "fotos", GeneradorPdf.imagenes(fotos)));
 
@@ -81,10 +91,10 @@ public class PedidoService {
     /** Edición parcial: solo se tocan los campos que vienen informados. Solo jefe. */
     public PedidoResponse editar(Long id, PedidoPatch cambios) {
         Pedido pedido = buscarOFallar(id);
-        if (cambios.trabajador() != null)
-            pedido.setTrabajador(exigirNoVacio(cambios.trabajador(), "trabajador"));
-        if (cambios.cliente() != null)
-            pedido.setCliente(exigirNoVacio(cambios.cliente(), "cliente"));
+        if (cambios.trabajadorId() != null)
+            pedido.setTrabajador(trabajadorService.buscarOFallar(cambios.trabajadorId()));
+        if (cambios.clienteId() != null)
+            pedido.setCliente(clienteService.buscarOFallar(cambios.clienteId()));
         if (cambios.descripcion() != null)
             pedido.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
         return aRespuesta(pedido);
@@ -158,7 +168,9 @@ public class PedidoService {
     }
 
     private PedidoResponse aRespuesta(Pedido p) {
-        return new PedidoResponse(p.getId(), p.getFecha(), p.getTrabajador(),
-                p.getCliente(), p.getDescripcion(), idsDeFotos(p.getId()));
+        return new PedidoResponse(p.getId(), p.getFecha(),
+                p.getTrabajador().getId(), p.getTrabajador().getNombre(),
+                p.getCliente().getId(), p.getCliente().getNombre(),
+                p.getDescripcion(), idsDeFotos(p.getId()));
     }
 }

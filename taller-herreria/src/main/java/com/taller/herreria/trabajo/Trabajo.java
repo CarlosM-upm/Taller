@@ -1,5 +1,7 @@
 package com.taller.herreria.trabajo;
 
+import com.taller.herreria.cliente.Cliente;
+import com.taller.herreria.trabajador.Trabajador;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -28,9 +30,21 @@ public class Trabajo {
     /** Fecha del envío definitivo. Vacía mientras el trabajo es borrador. */
     private LocalDate fecha;
 
-    private String cliente;
+    /**
+     * Referencias, no texto copiado: renombrarlos en Ajustes se refleja aquí.
+     * Admiten nulo porque un borrador puede guardarse a medias; al enviar se
+     * comprueba que estén (ver camposQueFaltan en el servicio).
+     *
+     * EAGER a propósito: con open-in-view a false el paso a DTO ocurre fuera de
+     * la transacción, y una relación perezosa lanzaría LazyInitializationException.
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "cliente_id")
+    private Cliente cliente;
 
-    private String trabajador;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "trabajador_id")
+    private Trabajador trabajador;
 
     @Column(length = 4000)
     private String descripcion;
@@ -63,14 +77,14 @@ public class Trabajo {
     public Long getId() { return id; }
     public Estado getEstado() { return estado; }
     public LocalDate getFecha() { return fecha; }
-    public String getCliente() { return cliente; }
-    public String getTrabajador() { return trabajador; }
+    public Cliente getCliente() { return cliente; }
+    public Trabajador getTrabajador() { return trabajador; }
     public String getDescripcion() { return descripcion; }
     public String getMateriales() { return materiales; }
     public BigDecimal getHoras() { return horas; }
 
-    public void setCliente(String cliente) { this.cliente = cliente; }
-    public void setTrabajador(String trabajador) { this.trabajador = trabajador; }
+    public void setCliente(Cliente cliente) { this.cliente = cliente; }
+    public void setTrabajador(Trabajador trabajador) { this.trabajador = trabajador; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     public void setMateriales(String materiales) { this.materiales = materiales; }
     public void setHoras(BigDecimal horas) { this.horas = horas; }

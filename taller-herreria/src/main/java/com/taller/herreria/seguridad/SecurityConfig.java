@@ -80,6 +80,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH,  "/api/pedidos/**").hasRole("JEFE")
                 .requestMatchers(HttpMethod.DELETE, "/api/pedidos/**").hasRole("JEFE")
 
+                // Clientes y trabajadores: el trabajador necesita LEERLOS para que
+                // los desplegables de la tablet tengan contenido, pero mantenerlos
+                // es cosa del jefe desde Ajustes. Por eso se abre solo el GET.
+                .requestMatchers(HttpMethod.GET, "/api/clientes/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/trabajadores/**").authenticated()
+                .requestMatchers("/api/clientes/**").hasRole("JEFE")
+                .requestMatchers("/api/trabajadores/**").hasRole("JEFE")
+
                 // Resto de la API: cualquier usuario autenticado (trabajador o jefe)
                 .requestMatchers("/api/**").authenticated()
 

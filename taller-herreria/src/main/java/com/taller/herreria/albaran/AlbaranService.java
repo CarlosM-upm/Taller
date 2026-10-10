@@ -4,11 +4,15 @@ import com.taller.herreria.albaran.dto.AlbaranCrear;
 import com.taller.herreria.albaran.dto.AlbaranPatch;
 import com.taller.herreria.albaran.dto.AlbaranResponse;
 import com.taller.herreria.config.ConfiguracionService;
+import com.taller.herreria.cliente.ClienteService;
 import com.taller.herreria.documento.Documento;
 import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
+import com.taller.herreria.trabajador.Trabajador;
+import com.taller.herreria.trabajador.TrabajadorService;
+import com.taller.herreria.trabajador.dto.TrabajadorDto;
 import com.taller.herreria.trabajo.Trabajo;
 import com.taller.herreria.trabajo.TrabajoRepository;
 import org.slf4j.Logger;
@@ -21,8 +25,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Lógica de negocio de los albaranes (territorio del jefe).
@@ -43,16 +49,23 @@ public class AlbaranService {
     private final ConfiguracionService configuracion;
     private final GeneradorPdf generadorPdf;
 
+    private final ClienteService clienteService;
+    private final TrabajadorService trabajadorService;
+
     public AlbaranService(AlbaranRepository albaranRepository,
                           TrabajoRepository trabajoRepository,
                           FotoRepository fotoRepository,
                           ConfiguracionService configuracion,
-                          GeneradorPdf generadorPdf) {
+                          GeneradorPdf generadorPdf,
+                          ClienteService clienteService,
+                          TrabajadorService trabajadorService) {
         this.albaranRepository = albaranRepository;
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.configuracion = configuracion;
         this.generadorPdf = generadorPdf;
+        this.clienteService = clienteService;
+        this.trabajadorService = trabajadorService;
     }
 
     /**
@@ -87,7 +100,7 @@ public class AlbaranService {
         }
 
         Albaran albaran = new Albaran(numero, fecha, trabajo.getCliente(), dni,
-                trabajo.getTrabajador(), trabajo.getDescripcion(), trabajoId);
+                Set.of(trabajo.getTrabajador()), trabajo.getDescripcion(), trabajoId);
         albaranRepository.save(albaran);
 
         // Instantánea: copiamos las fotos del trabajo como fotos PROPIAS del albarán
@@ -127,9 +140,9 @@ public class AlbaranService {
         Map<String, Object> datos = new HashMap<>();
         datos.put("numero", albaran.getNumero());
         datos.put("fecha", GeneradorPdf.fecha(albaran.getFecha()));
-        datos.put("cliente", GeneradorPdf.texto(albaran.getCliente()));
+        datos.put("cliente", GeneradorPdf.texto(albaran.getCliente().getNombre()));
         datos.put("dniCliente", GeneradorPdf.texto(albaran.getDniCliente()));
-        datos.put("trabajador", GeneradorPdf.texto(albaran.getTrabajador()));
+        datos.put("trabajador", GeneradorPdf.texto(nombresDe(albaran)));
         datos.put("descripcion", GeneradorPdf.texto(albaran.getDescripcion()));
         datos.put("firma", GeneradorPdf.imagen(albaran.getFirmaTipoContenido(), albaran.getFirma()));
         datos.put("fotos", GeneradorPdf.imagenes(fotos));
@@ -155,11 +168,20 @@ public class AlbaranService {
             albaran.setNumero(cambios.numero());
         }
         if (cambios.fecha() != null) albaran.setFecha(cambios.fecha());
-        if (cambios.cliente() != null)
-            albaran.setCliente(exigirNoVacio(cambios.cliente(), "cliente"));
+        if (cambios.clienteId() != null)
+            albaran.setCliente(clienteService.buscarOFallar(cambios.clienteId()));
         if (cambios.dniCliente() != null) albaran.setDniCliente(cambios.dniCliente().trim());
-        if (cambios.trabajador() != null)
-            albaran.setTrabajador(exigirNoVacio(cambios.trabajador(), "trabajador"));
+        if (cambios.trabajadorIds() != null) {
+            if (cambios.trabajadorIds().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "El albarán tiene que llevar al menos un trabajador");
+            }
+            Set<Trabajador> nuevos = new LinkedHashSet<>();
+            for (Long idTrabajador : cambios.trabajadorIds()) {
+                nuevos.add(trabajadorService.buscarOFallar(idTrabajador));
+            }
+            albaran.setTrabajadores(nuevos);
+        }
         if (cambios.descripcion() != null)
             albaran.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
 
@@ -251,8 +273,17 @@ public class AlbaranService {
     }
 
     private AlbaranResponse aRespuesta(Albaran a) {
-        return new AlbaranResponse(a.getId(), a.getNumero(), a.getFecha(), a.getCliente(),
-                a.getDniCliente(), a.getTrabajador(), a.getDescripcion(),
-                a.getFirma() != null, a.getTrabajoId(), idsDeFotos(a.getId()));
+        return new AlbaranResponse(a.getId(), a.getNumero(), a.getFecha(),
+                a.getCliente().getId(), a.getCliente().getNombre(), a.getDniCliente(),
+                a.getTrabajadores().stream().map(TrabajadorDto.Resumen::de).toList(),
+                a.getDescripcion(), a.getFirma() != null, a.getTrabajoId(),
+                idsDeFotos(a.getId()));
+    }
+
+    /** Los nombres de los trabajadores, para la línea del PDF. */
+    private static String nombresDe(Albaran albaran) {
+        return albaran.getTrabajadores().stream()
+                .map(Trabajador::getNombre)
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 }

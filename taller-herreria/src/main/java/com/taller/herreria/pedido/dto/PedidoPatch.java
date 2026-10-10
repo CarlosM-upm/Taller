@@ -5,7 +5,7 @@ package com.taller.herreria.pedido.dto;
  * Todos los campos son opcionales: solo se cambia lo que venga informado.
  */
 public record PedidoPatch(
-        String trabajador,
-        String cliente,
+        Long trabajadorId,
+        Long clienteId,
         String descripcion
 ) { }

@@ -1,8 +1,12 @@
 package com.taller.herreria.albaran;
 
+import com.taller.herreria.cliente.Cliente;
+import com.taller.herreria.trabajador.Trabajador;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Albarán. Solo lo crea el jefe, siempre a partir de un trabajo ENVIADO
@@ -30,13 +34,27 @@ public class Albaran {
     @Column(nullable = false)
     private LocalDate fecha;
 
-    @Column(nullable = false)
-    private String cliente;      // copiado del trabajo
+    /**
+     * Cliente y trabajadores son REFERENCIAS, no copias. Es la excepción a que
+     * el albarán sea una instantánea: renombrarlos en Ajustes se refleja aquí,
+     * incluso en albaranes ya firmados, para poder corregir erratas.
+     */
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
 
     private String dniCliente;   // lo teclea el jefe
 
-    @Column(nullable = false)
-    private String trabajador;   // copiado del trabajo
+    /**
+     * Varios, porque un albarán puede unificar trabajos de distintas personas.
+     * EAGER explícito: ManyToMany es LAZY por defecto y el paso a DTO ocurre
+     * fuera de la transacción (open-in-view a false).
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "albaran_trabajadores",
+            joinColumns = @JoinColumn(name = "albaran_id"),
+            inverseJoinColumns = @JoinColumn(name = "trabajador_id"))
+    private Set<Trabajador> trabajadores = new LinkedHashSet<>();
 
     @Column(nullable = false, length = 4000)
     private String descripcion;  // copiada del trabajo
@@ -58,13 +76,13 @@ public class Albaran {
 
     protected Albaran() { } // requerido por JPA
 
-    public Albaran(Long numero, LocalDate fecha, String cliente, String dniCliente,
-                   String trabajador, String descripcion, Long trabajoId) {
+    public Albaran(Long numero, LocalDate fecha, Cliente cliente, String dniCliente,
+                   Set<Trabajador> trabajadores, String descripcion, Long trabajoId) {
         this.numero = numero;
         this.fecha = fecha;
         this.cliente = cliente;
         this.dniCliente = dniCliente;
-        this.trabajador = trabajador;
+        this.trabajadores = new LinkedHashSet<>(trabajadores);
         this.descripcion = descripcion;
         this.trabajoId = trabajoId;
     }
@@ -72,9 +90,9 @@ public class Albaran {
     public Long getId() { return id; }
     public Long getNumero() { return numero; }
     public LocalDate getFecha() { return fecha; }
-    public String getCliente() { return cliente; }
+    public Cliente getCliente() { return cliente; }
     public String getDniCliente() { return dniCliente; }
-    public String getTrabajador() { return trabajador; }
+    public Set<Trabajador> getTrabajadores() { return trabajadores; }
     public String getDescripcion() { return descripcion; }
     public byte[] getFirma() { return firma; }
     public String getFirmaTipoContenido() { return firmaTipoContenido; }
@@ -82,9 +100,12 @@ public class Albaran {
 
     public void setNumero(Long numero) { this.numero = numero; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
-    public void setCliente(String cliente) { this.cliente = cliente; }
+    public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public void setDniCliente(String dniCliente) { this.dniCliente = dniCliente; }
-    public void setTrabajador(String trabajador) { this.trabajador = trabajador; }
+
+    public void setTrabajadores(Set<Trabajador> trabajadores) {
+        this.trabajadores = new LinkedHashSet<>(trabajadores);
+    }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
     public void setFirma(byte[] firma, String tipoContenido) {

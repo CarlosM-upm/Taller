@@ -2,6 +2,7 @@ package com.taller.herreria.trabajo;
 
 import com.taller.herreria.albaran.Albaran;
 import com.taller.herreria.albaran.AlbaranRepository;
+import com.taller.herreria.cliente.ClienteService;
 import com.taller.herreria.documento.Documento;
 import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
@@ -10,6 +11,7 @@ import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.seguridad.SeguridadUtils;
 import com.taller.herreria.trabajo.dto.TrabajoDatos;
 import com.taller.herreria.trabajo.dto.TrabajoResponse;
+import com.taller.herreria.trabajador.TrabajadorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,14 +43,21 @@ public class TrabajoService {
     private final AlbaranRepository albaranRepository;
     private final GeneradorPdf generadorPdf;
 
+    private final ClienteService clienteService;
+    private final TrabajadorService trabajadorService;
+
     public TrabajoService(TrabajoRepository trabajoRepository,
                           FotoRepository fotoRepository,
                           AlbaranRepository albaranRepository,
-                          GeneradorPdf generadorPdf) {
+                          GeneradorPdf generadorPdf,
+                          ClienteService clienteService,
+                          TrabajadorService trabajadorService) {
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.albaranRepository = albaranRepository;
         this.generadorPdf = generadorPdf;
+        this.clienteService = clienteService;
+        this.trabajadorService = trabajadorService;
     }
 
     /** Crea un trabajo en estado BORRADOR, con los datos que haya (pueden estar a medias). */
@@ -90,8 +99,8 @@ public class TrabajoService {
                 "id", trabajo.getId(),
                 "estado", trabajo.esBorrador() ? "Borrador" : "Enviado",
                 "fecha", GeneradorPdf.fecha(trabajo.getFecha()),
-                "cliente", GeneradorPdf.texto(trabajo.getCliente()),
-                "trabajador", GeneradorPdf.texto(trabajo.getTrabajador()),
+                "cliente", GeneradorPdf.texto(trabajo.getCliente() == null ? null : trabajo.getCliente().getNombre()),
+                "trabajador", GeneradorPdf.texto(trabajo.getTrabajador() == null ? null : trabajo.getTrabajador().getNombre()),
                 "descripcion", GeneradorPdf.texto(trabajo.getDescripcion()),
                 "materiales", GeneradorPdf.texto(trabajo.getMateriales()),
                 "horas", horasDeDocumento(trabajo.getHoras()),
@@ -212,10 +221,10 @@ public class TrabajoService {
 
     private void aplicarDatos(Trabajo trabajo, TrabajoDatos datos) {
         boolean borrador = trabajo.esBorrador();
-        if (datos.cliente() != null)
-            trabajo.setCliente(normalizar(datos.cliente(), borrador, "cliente"));
-        if (datos.trabajador() != null)
-            trabajo.setTrabajador(normalizar(datos.trabajador(), borrador, "trabajador"));
+        if (datos.clienteId() != null)
+            trabajo.setCliente(clienteService.buscarOFallar(datos.clienteId()));
+        if (datos.trabajadorId() != null)
+            trabajo.setTrabajador(trabajadorService.buscarOFallar(datos.trabajadorId()));
         if (datos.descripcion() != null)
             trabajo.setDescripcion(normalizar(datos.descripcion(), borrador, "descripción"));
         if (datos.materiales() != null)
@@ -247,8 +256,8 @@ public class TrabajoService {
     /** Campos obligatorios para poder ENVIAR (mientras es borrador pueden faltar). */
     private List<String> camposQueFaltan(Trabajo t) {
         List<String> faltan = new ArrayList<>();
-        if (esBlanco(t.getCliente())) faltan.add("cliente");
-        if (esBlanco(t.getTrabajador())) faltan.add("trabajador");
+        if (t.getCliente() == null) faltan.add("cliente");
+        if (t.getTrabajador() == null) faltan.add("trabajador");
         if (esBlanco(t.getDescripcion())) faltan.add("descripción");
         if (esBlanco(t.getMateriales())) faltan.add("materiales");
         if (t.getHoras() == null) faltan.add("horas");
@@ -291,7 +300,10 @@ public class TrabajoService {
 
     private TrabajoResponse aRespuesta(Trabajo t) {
         return new TrabajoResponse(t.getId(), t.getEstado().name(), t.getFecha(),
-                t.getCliente(), t.getTrabajador(), t.getDescripcion(),
-                t.getMateriales(), t.getHoras(), idsDeFotos(t.getId()));
+                t.getCliente() == null ? null : t.getCliente().getId(),
+                t.getCliente() == null ? null : t.getCliente().getNombre(),
+                t.getTrabajador() == null ? null : t.getTrabajador().getId(),
+                t.getTrabajador() == null ? null : t.getTrabajador().getNombre(),
+                t.getDescripcion(), t.getMateriales(), t.getHoras(), idsDeFotos(t.getId()));
     }
 }
