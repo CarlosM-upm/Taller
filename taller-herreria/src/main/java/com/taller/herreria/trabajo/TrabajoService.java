@@ -25,7 +25,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 /**
@@ -77,14 +79,22 @@ public class TrabajoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TrabajoResponse> listar(String estado) {
+    public List<TrabajoResponse> listar(String estado, Long clienteId) {
         List<Trabajo> trabajos;
-        if (estado == null) {
+        if (estado == null && clienteId == null) {
             trabajos = trabajoRepository.findAll();
-        } else {
+        } else if (estado == null) {
+            trabajos = trabajoRepository.findByClienteId(clienteId);
+        } else if (clienteId == null) {
             trabajos = trabajoRepository.findByEstado(parsearEstado(estado));
+        } else {
+            trabajos = trabajoRepository.findByEstadoAndClienteId(parsearEstado(estado), clienteId);
         }
-        return trabajos.stream().map(this::aRespuesta).toList();
+
+        // De una sola consulta, para no preguntar por cada trabajo si ya está
+        // facturado.
+        Set<Long> facturados = new HashSet<>(albaranRepository.idsDeTrabajosFacturados());
+        return trabajos.stream().map(t -> aRespuesta(t, facturados.contains(t.getId()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -186,9 +196,9 @@ public class TrabajoService {
      * normal, sin clave foránea.
      */
     private void exigirQueNoTengaAlbaran(Trabajo trabajo) {
-        albaranRepository.findByTrabajoId(trabajo.getId()).ifPresent(albaran -> {
+        albaranRepository.findPorTrabajo(trabajo.getId()).ifPresent(albaran -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "El trabajo " + trabajo.getId() + " ya tiene el albarán nº "
+                    "El trabajo " + trabajo.getId() + " está en el albarán nº "
                             + albaran.getNumero() + ": borre antes el albarán");
         });
     }
@@ -335,11 +345,15 @@ public class TrabajoService {
     }
 
     private TrabajoResponse aRespuesta(Trabajo t) {
+        return aRespuesta(t, albaranRepository.findPorTrabajo(t.getId()).isPresent());
+    }
+
+    private TrabajoResponse aRespuesta(Trabajo t, boolean enAlbaran) {
         return new TrabajoResponse(t.getId(), t.getEstado().name(), t.getFecha(),
                 t.getCliente() == null ? null : t.getCliente().getId(),
                 t.getCliente() == null ? null : t.getCliente().getNombre(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getId(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getNombre(),
-                t.getDescripcion(), materialesDe(t.getId()), t.getHoras(), idsDeFotos(t.getId()));
+                t.getDescripcion(), materialesDe(t.getId()), t.getHoras(), idsDeFotos(t.getId()), enAlbaran);
     }
 }

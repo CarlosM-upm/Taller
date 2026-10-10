@@ -22,5 +22,7 @@ public record TrabajoResponse(
         String descripcion,
         List<MaterialDto> materiales,
         BigDecimal horas,
-        List<Long> fotoIds
+        List<Long> fotoIds,
+        /** Si ya está incluido en algún albarán: entonces no se puede volver a facturar. */
+        boolean enAlbaran
 ) { }

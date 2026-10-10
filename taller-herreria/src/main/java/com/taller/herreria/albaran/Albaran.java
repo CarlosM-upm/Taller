@@ -10,17 +10,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Albarán. Solo lo crea el jefe, siempre a partir de un trabajo ENVIADO
- * (relación uno a uno). Al crearse COPIA los datos del trabajo (instantánea):
+ * Albarán. Solo lo crea el jefe, a partir de uno o varios trabajos ENVIADOS del
+ * mismo cliente. Al crearse COPIA los datos del trabajo (instantánea):
  * a partir de ahí el jefe los edita sin tocar el trabajo original.
  * El número es único y sale del contador editable de configuración.
  */
 @Entity
 @Table(name = "albaranes",
-       uniqueConstraints = {
-           @UniqueConstraint(name = "uq_albaran_numero", columnNames = "numero"),
-           @UniqueConstraint(name = "uq_albaran_trabajo", columnNames = "trabajo_id")
-       })
+       uniqueConstraints = @UniqueConstraint(name = "uq_albaran_numero", columnNames = "numero"))
 public class Albaran {
 
     @Id
@@ -78,21 +75,30 @@ public class Albaran {
 
     private String firmaTipoContenido;
 
-    /** Trabajo del que nació (uno a uno). */
+    /**
+     * Trabajos de los que nació. Normalmente uno, pero puede unificar varios
+     * del mismo cliente en un único documento.
+     *
+     * EAGER explícito, como el resto: el paso a DTO ocurre fuera de la
+     * transacción con open-in-view a false.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "albaran_trabajos",
+            joinColumns = @JoinColumn(name = "albaran_id"))
     @Column(name = "trabajo_id", nullable = false)
-    private Long trabajoId;
+    private Set<Long> trabajoIds = new LinkedHashSet<>();
 
     protected Albaran() { } // requerido por JPA
 
     public Albaran(Long numero, LocalDate fecha, Cliente cliente, String dniCliente,
-                   Set<Trabajador> trabajadores, String descripcion, Long trabajoId) {
+                   Set<Trabajador> trabajadores, String descripcion, Set<Long> trabajoIds) {
         this.numero = numero;
         this.fecha = fecha;
         this.cliente = cliente;
         this.dniCliente = dniCliente;
         this.trabajadores = new LinkedHashSet<>(trabajadores);
         this.descripcion = descripcion;
-        this.trabajoId = trabajoId;
+        this.trabajoIds = new LinkedHashSet<>(trabajoIds);
     }
 
     public Long getId() { return id; }
@@ -105,7 +111,7 @@ public class Albaran {
     public BigDecimal getHoras() { return horas; }
     public byte[] getFirma() { return firma; }
     public String getFirmaTipoContenido() { return firmaTipoContenido; }
-    public Long getTrabajoId() { return trabajoId; }
+    public Set<Long> getTrabajoIds() { return trabajoIds; }
 
     public void setNumero(Long numero) { this.numero = numero; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }

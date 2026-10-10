@@ -20,6 +20,6 @@ public record AlbaranResponse(
         BigDecimal horas,
         List<MaterialDto> materiales,
         boolean tieneFirma,
-        Long trabajoId,
+        List<Long> trabajoIds,
         List<Long> fotoIds
 ) { }

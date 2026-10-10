@@ -1,9 +1,11 @@
 package com.taller.herreria.albaran;
 
 import com.taller.herreria.albaran.dto.AlbaranPatch;
+import com.taller.herreria.albaran.dto.AlbaranUnificar;
 import com.taller.herreria.albaran.dto.AlbaranResponse;
 import com.taller.herreria.documento.RespuestaPdf;
 import com.taller.herreria.foto.Foto;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,18 @@ public class AlbaranController {
     @GetMapping("/{id}")
     public AlbaranResponse obtener(@PathVariable Long id) {
         return servicio.obtener(id);
+    }
+
+    /**
+     * Un albarán unificado a partir de varios trabajos del mismo cliente.
+     *
+     * Va aquí y no colgando de un trabajo (como POST /api/trabajos/{id}/albaran)
+     * porque no nace de ninguno en concreto: nace de una selección.
+     */
+    @PostMapping("/unificado")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AlbaranResponse unificar(@Valid @RequestBody AlbaranUnificar peticion) {
+        return servicio.crearDesdeTrabajos(peticion.trabajoIds(), peticion.datos());
     }
 
     /** Documento PDF del albarán: el que se imprime y se archiva. */

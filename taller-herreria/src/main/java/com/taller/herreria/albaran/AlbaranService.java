@@ -4,6 +4,7 @@ import com.taller.herreria.albaran.dto.AlbaranCrear;
 import com.taller.herreria.albaran.dto.AlbaranPatch;
 import com.taller.herreria.albaran.dto.AlbaranResponse;
 import com.taller.herreria.config.ConfiguracionService;
+import com.taller.herreria.cliente.Cliente;
 import com.taller.herreria.cliente.ClienteService;
 import com.taller.herreria.documento.Documento;
 import com.taller.herreria.documento.GeneradorPdf;
@@ -28,6 +29,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +40,9 @@ import java.util.Set;
 
 /**
  * Lógica de negocio de los albaranes (territorio del jefe).
- * Reglas clave: nace de un trabajo ENVIADO, uno a uno, copia (instantánea)
- * de datos y fotos, número tomado del contador editable.
+ * Reglas clave: nace de uno o varios trabajos ENVIADOS del mismo cliente,
+ * copia (instantánea) de datos, materiales y fotos, y número tomado del
+ * contador editable.
  */
 @Service
 @Transactional
@@ -44,7 +50,12 @@ public class AlbaranService {
 
     private static final Logger log = LoggerFactory.getLogger(AlbaranService.class);
 
-    public static final int MAX_FOTOS = 5;
+    /**
+     * Más alto que en pedidos y trabajos (5): un albarán unificado junta las
+     * fotos de varios trabajos, y tres visitas con cinco fotos cada una no
+     * caben en cinco. Entran las que quepan y el jefe borra las que sobren.
+     */
+    public static final int MAX_FOTOS = 15;
 
     private final AlbaranRepository albaranRepository;
     private final TrabajoRepository trabajoRepository;
@@ -74,25 +85,60 @@ public class AlbaranService {
         this.materialRepository = materialRepository;
     }
 
-    /**
-     * Crear el albarán a partir de un trabajo. La operación estrella:
-     * valida (trabajo existe, está ENVIADO, no tiene ya albarán),
-     * copia los datos, COPIA las fotos (instantánea independiente)
-     * y toma el número del contador, que avanza solo.
-     */
+    /** Un solo trabajo: el caso de siempre, que no es más que unificar una lista de uno. */
     public AlbaranResponse crearDesdeTrabajo(Long trabajoId, AlbaranCrear datos) {
-        Trabajo trabajo = trabajoRepository.findById(trabajoId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No existe el trabajo " + trabajoId));
+        return crearDesdeTrabajos(List.of(trabajoId), datos);
+    }
 
-        if (trabajo.esBorrador()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "El trabajo " + trabajoId + " aún es un borrador: debe enviarse antes de generar su albarán");
+    /**
+     * Albarán a partir de uno o varios trabajos ENVIADOS del mismo cliente.
+     *
+     * Unificar es juntar: las descripciones se concatenan en el orden en que se
+     * hicieron, los trabajadores se acumulan sin repetir, las horas se suman y
+     * los materiales del mismo nombre se agrupan sumando cantidades. Todo queda
+     * editable por el jefe: esto es el punto de partida, no el resultado final.
+     */
+    public AlbaranResponse crearDesdeTrabajos(List<Long> trabajoIds, AlbaranCrear datos) {
+        if (trabajoIds == null || trabajoIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Indique al menos un trabajo");
         }
-        if (albaranRepository.existsByTrabajoId(trabajoId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "El trabajo " + trabajoId + " ya tiene albarán (relación uno a uno)");
+        // Un mismo trabajo repetido en la lista duplicaría horas y materiales.
+        List<Long> ids = new ArrayList<>(new LinkedHashSet<>(trabajoIds));
+
+        List<Trabajo> trabajos = new ArrayList<>();
+        for (Long id : ids) {
+            Trabajo trabajo = trabajoRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "No existe el trabajo " + id));
+            if (trabajo.esBorrador()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El trabajo " + id + " aún es un borrador: debe enviarse antes "
+                                + "de generar su albarán");
+            }
+            albaranRepository.findPorTrabajo(id).ifPresent(existente -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El trabajo " + id + " ya está en el albarán nº " + existente.getNumero());
+            });
+            trabajos.add(trabajo);
         }
+
+        // Mezclar clientes daría un albarán que no es de nadie. Es el único
+        // campo que no se puede unificar.
+        Cliente cliente = trabajos.get(0).getCliente();
+        for (Trabajo trabajo : trabajos) {
+            if (!trabajo.getCliente().getId().equals(cliente.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Todos los trabajos tienen que ser del mismo cliente: el "
+                                + trabajos.get(0).getId() + " es de " + cliente.getNombre()
+                                + " y el " + trabajo.getId() + " de "
+                                + trabajo.getCliente().getNombre());
+            }
+        }
+
+        // En el orden en que se hicieron, para que la descripción se lea como el
+        // histórico del mes. Un trabajo enviado siempre tiene fecha.
+        trabajos.sort(Comparator.comparing(Trabajo::getFecha).thenComparing(Trabajo::getId));
 
         LocalDate fecha = (datos != null && datos.fecha() != null) ? datos.fecha() : LocalDate.now();
         String dni = (datos != null) ? datos.dniCliente() : null;
@@ -105,32 +151,72 @@ public class AlbaranService {
                     "Ajuste el próximo número en la configuración.");
         }
 
-        Albaran albaran = new Albaran(numero, fecha, trabajo.getCliente(), dni,
-                Set.of(trabajo.getTrabajador()), trabajo.getDescripcion(), trabajoId);
-        albaran.setHoras(trabajo.getHoras());
+        Set<Trabajador> trabajadores = new LinkedHashSet<>();
+        Set<Long> idsUnificados = new LinkedHashSet<>();
+        StringBuilder descripcion = new StringBuilder();
+        BigDecimal horas = BigDecimal.ZERO;
+
+        for (Trabajo trabajo : trabajos) {
+            trabajadores.add(trabajo.getTrabajador());
+            idsUnificados.add(trabajo.getId());
+            if (trabajo.getDescripcion() != null && !trabajo.getDescripcion().isBlank()) {
+                if (descripcion.length() > 0) descripcion.append("\n\n");
+                descripcion.append(trabajo.getDescripcion().trim());
+            }
+            if (trabajo.getHoras() != null) horas = horas.add(trabajo.getHoras());
+        }
+
+        Albaran albaran = new Albaran(numero, fecha, cliente, dni, trabajadores,
+                descripcion.toString(), idsUnificados);
+        albaran.setHoras(horas);
         albaranRepository.save(albaran);
 
-        // Instantánea: los materiales del trabajo se copian como PROPIOS del
-        // albarán, igual que las fotos. A partir de aquí el jefe les pone precio
-        // y los edita sin tocar el trabajo original.
-        for (Material original : materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
-                Material.OrigenTipo.TRABAJO, trabajoId)) {
-            materialRepository.save(new Material(Material.OrigenTipo.ALBARAN, albaran.getId(),
-                    original.getNombre(), original.getCantidad()));
-        }
+        copiarMateriales(trabajos, albaran.getId());
+        int fotos = copiarFotos(trabajos, albaran.getId());
 
-        // Instantánea: copiamos las fotos del trabajo como fotos PROPIAS del albarán
-        List<Foto> fotosDelTrabajo = fotoRepository
-                .findByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, trabajoId);
-        for (Foto original : fotosDelTrabajo) {
-            fotoRepository.save(new Foto(Foto.OrigenTipo.ALBARAN, albaran.getId(),
-                    original.getTipoContenido(), original.getDatos()));
-        }
-
-        log.info("Albarán {} creado desde el trabajo {} ({} fotos copiadas)",
-                numero, trabajoId, fotosDelTrabajo.size());
+        log.info("Albarán {} creado desde {} trabajo(s) {} ({} fotos copiadas)",
+                numero, trabajos.size(), idsUnificados, fotos);
 
         return aRespuesta(albaran);
+    }
+
+    /**
+     * Los materiales de todos los trabajos, agrupando por nombre: si en dos
+     * visitas se gastaron tornillos, sale una línea con la suma y no dos líneas
+     * iguales. Se comparan sin distinguir mayúsculas ni espacios sobrantes, que
+     * es como los escribe una persona.
+     */
+    private void copiarMateriales(List<Trabajo> trabajos, Long albaranId) {
+        Map<String, Material> porNombre = new LinkedHashMap<>();
+        for (Trabajo trabajo : trabajos) {
+            for (Material original : materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
+                    Material.OrigenTipo.TRABAJO, trabajo.getId())) {
+                String clave = original.getNombre().trim().toLowerCase();
+                Material acumulado = porNombre.get(clave);
+                if (acumulado == null) {
+                    porNombre.put(clave, new Material(Material.OrigenTipo.ALBARAN, albaranId,
+                            original.getNombre().trim(), original.getCantidad()));
+                } else {
+                    acumulado.setCantidad(acumulado.getCantidad().add(original.getCantidad()));
+                }
+            }
+        }
+        porNombre.values().forEach(materialRepository::save);
+    }
+
+    /** Las fotos de todos los trabajos, hasta el máximo que admite un albarán. */
+    private int copiarFotos(List<Trabajo> trabajos, Long albaranId) {
+        int copiadas = 0;
+        for (Trabajo trabajo : trabajos) {
+            for (Foto original : fotoRepository.findByOrigenTipoAndOrigenId(
+                    Foto.OrigenTipo.TRABAJO, trabajo.getId())) {
+                if (copiadas >= MAX_FOTOS) return copiadas;
+                fotoRepository.save(new Foto(Foto.OrigenTipo.ALBARAN, albaranId,
+                        original.getTipoContenido(), original.getDatos()));
+                copiadas++;
+            }
+        }
+        return copiadas;
     }
 
     @Transactional(readOnly = true)
@@ -295,7 +381,7 @@ public class AlbaranService {
                 a.getCliente().getId(), a.getCliente().getNombre(), a.getDniCliente(),
                 a.getTrabajadores().stream().map(TrabajadorDto.Resumen::de).toList(),
                 a.getDescripcion(), a.getHoras(), materialesDe(a.getId()),
-                a.getFirma() != null, a.getTrabajoId(), idsDeFotos(a.getId()));
+                a.getFirma() != null, List.copyOf(a.getTrabajoIds()), idsDeFotos(a.getId()));
     }
 
     private List<MaterialDto> materialesDe(Long albaranId) {

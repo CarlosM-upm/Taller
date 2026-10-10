@@ -34,10 +34,15 @@ public class TrabajoController {
         return servicio.crear(datos);
     }
 
-    /** Listar. Con ?estado=borrador o ?estado=enviado filtra; sin parámetro, todos. */
+    /**
+     * Listar. Con ?estado=borrador o ?estado=enviado filtra por estado, y con
+     * ?clienteId= por cliente. Los dos se pueden combinar: es lo que usa la
+     * pantalla de unificar para sacar los trabajos enviados de un cliente.
+     */
     @GetMapping
-    public List<TrabajoResponse> listar(@RequestParam(required = false) String estado) {
-        return servicio.listar(estado);
+    public List<TrabajoResponse> listar(@RequestParam(required = false) String estado,
+                                        @RequestParam(required = false) Long clienteId) {
+        return servicio.listar(estado, clienteId);
     }
 
     @GetMapping("/{id}")
