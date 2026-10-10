@@ -30,10 +30,21 @@
   <div class="texto" th:text="${descripcion}">Descripción</div>
 </div>
 
+<div class="bloque total-caja" th:if="${costeTotal}">
+  <table class="total">
+    <tr>
+      <td class="etiqueta-total">TOTAL</td>
+      <td class="importe" th:text="${costeTotal}">0,00 €</td>
+    </tr>
+  </table>
+</div>
+
 <div class="bloque firma-caja">
   <div class="firma-titulo">Recibí conforme. Firma del cliente:</div>
   <img th:if="${firma}" th:src="${firma}" alt="Firma del cliente" />
-  <div th:unless="${firma}" class="sin-firma">(sin firmar)</div>
+  <!-- Sin firma no se escribe nada, pero hay que reservar el hueco: el albarán
+       se imprime para que el cliente firme encima. -->
+  <div th:unless="${firma}" class="hueco-firma"></div>
   <div class="firma-pie" th:text="${cliente} + ' · ' + ${dniCliente}">Cliente</div>
 </div>
 

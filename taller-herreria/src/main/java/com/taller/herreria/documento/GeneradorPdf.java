@@ -14,6 +14,9 @@ import org.thymeleaf.context.Context;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -136,6 +139,21 @@ public class GeneradorPdf {
     public static String numero(BigDecimal valor) {
         if (valor == null) return VACIO;
         return valor.stripTrailingZeros().toPlainString().replace('.', ',');
+    }
+
+    /**
+     * Importe en euros como se escribe aquí: punto de miles, coma decimal y el
+     * símbolo detrás. 1847.5 sale como "1.847,50 €".
+     *
+     * El formato se construye en cada llamada a propósito: DecimalFormat no es
+     * seguro entre hilos, y guardarlo en un campo estático daría importes
+     * corruptos el día que dos personas descarguen un PDF a la vez.
+     */
+    public static String euros(BigDecimal valor) {
+        if (valor == null) return VACIO;
+        DecimalFormat formato = new DecimalFormat("#,##0.00",
+                new DecimalFormatSymbols(Locale.of("es", "ES")));
+        return formato.format(valor) + " €";
     }
 
     /** Las líneas de material ya formateadas, listas para la tabla del documento. */

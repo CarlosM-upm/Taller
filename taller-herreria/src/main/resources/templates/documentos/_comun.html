@@ -145,10 +145,30 @@
     margin-top: 6pt;
     padding-top: 4pt;
   }
-  .sin-firma {
-    color: #777;
-    font-style: italic;
-    height: 28mm;
+  /* Espacio en blanco para firmar a mano cuando el albarán se imprime sin firma. */
+  .hueco-firma { height: 28mm; }
+
+  /*
+   * El total: solo sale si el jefe lo ha marcado, y nunca el desglose.
+   * Va pegado a la derecha y con una línea gruesa encima, que es donde se
+   * busca un importe en un documento.
+   */
+  .total-caja {
+    margin-top: 4pt;
+  }
+  table.total {
+    width: 62mm;
+    margin-left: auto;
+    border-collapse: collapse;
+    border-top: 1.5pt solid #333;
+  }
+  table.total td {
+    padding-top: 5pt;
+    font-size: 12pt;
+    font-weight: bold;
+  }
+  table.total td.importe {
+    text-align: right;
   }
 
   .foto {

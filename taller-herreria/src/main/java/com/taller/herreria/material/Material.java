@@ -3,6 +3,7 @@ package com.taller.herreria.material;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * Línea de material: un nombre y una cantidad.
@@ -74,9 +75,16 @@ public class Material {
     public void setCantidad(BigDecimal cantidad) { this.cantidad = cantidad; }
     public void setPrecio(BigDecimal precio) { this.precio = precio; }
 
-    /** Lo que suma esta línea: cantidad x precio. Cero mientras no tenga precio. */
+    /**
+     * Lo que suma esta línea: cantidad x precio, a dos decimales. Cero mientras
+     * no tenga precio.
+     *
+     * Se redondea AQUÍ, línea a línea, y no solo al final: es lo que hace que
+     * el total cuadre si alguien suma a mano lo que ve impreso. Con cantidades
+     * decimales (12,5 m x 3,33 €) el producto tiene más de dos decimales.
+     */
     public BigDecimal importe() {
         if (precio == null) return BigDecimal.ZERO;
-        return cantidad.multiply(precio);
+        return cantidad.multiply(precio).setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -1,12 +1,18 @@
 package com.taller.herreria.albaran.dto;
 
+import com.taller.herreria.material.dto.MaterialDto;
+import jakarta.validation.Valid;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
  * Edición parcial por el jefe. Todos los campos opcionales, incluido el número.
- * Los trabajadores llegan como lista de ids porque un albarán puede unificar
- * trabajos de varias personas.
+ * Lo que venga nulo no se toca.
+ *
+ * Aquí es donde el jefe pone los precios: el de cada material dentro de su
+ * línea, y el de la hora para todo el albarán.
  */
 public record AlbaranPatch(
         Long numero,
@@ -14,5 +20,10 @@ public record AlbaranPatch(
         Long clienteId,
         String dniCliente,
         List<Long> trabajadorIds,
-        String descripcion
+        String descripcion,
+        BigDecimal horas,
+        List<@Valid MaterialDto> materiales,
+        BigDecimal precioHora,
+        BigDecimal importeExtra,
+        Boolean incluirTotal
 ) { }

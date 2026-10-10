@@ -5,6 +5,7 @@ import com.taller.herreria.trabajador.Trabajador;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -58,19 +59,39 @@ public class Albaran {
     private String descripcion;  // copiada del trabajo
 
     /**
-     * Firma del cliente (imagen capturada), como bytea.
-     * Sin @Lob ni fetch = LAZY, por los mismos motivos que Foto.datos:
-     * @Lob la convertiría en un large object que no se borra con la fila,
-     * y el lazy no funciona sin instrumentación de bytecode (y si funcionara,
-     * rompería GET /api/albaranes/{id}/firma con open-in-view = false).
-     */
-    /**
      * Horas del trabajo (o la suma, si unifica varios). Copiadas al crearlo.
      * Son la base del cálculo del coste junto con el precio por hora.
      */
     @Column(precision = 7, scale = 2)
     private BigDecimal horas;
 
+    /** Precio por hora de mano de obra. Lo pone el jefe al facturar. */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal precioHora;
+
+    /**
+     * Cantidad suelta en euros que se suma al final: desplazamiento, un extra
+     * pactado… Admite negativo para aplicar un descuento.
+     */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal importeExtra;
+
+    /**
+     * Si el total sale impreso en el PDF que se entrega al cliente.
+     *
+     * Por defecto NO. Es preferible que el jefe lo marque a propósito a que se
+     * imprima un precio sin querer en un documento que se entrega en mano.
+     */
+    @Column(nullable = false)
+    private boolean incluirTotal = false;
+
+    /**
+     * Firma del cliente (imagen capturada), como bytea.
+     * Sin @Lob ni fetch = LAZY, por los mismos motivos que Foto.datos:
+     * @Lob la convertiría en un large object que no se borra con la fila,
+     * y el lazy no funciona sin instrumentación de bytecode (y si funcionara,
+     * rompería GET /api/albaranes/{id}/firma con open-in-view = false).
+     */
     private byte[] firma;
 
     private String firmaTipoContenido;
@@ -109,6 +130,9 @@ public class Albaran {
     public Set<Trabajador> getTrabajadores() { return trabajadores; }
     public String getDescripcion() { return descripcion; }
     public BigDecimal getHoras() { return horas; }
+    public BigDecimal getPrecioHora() { return precioHora; }
+    public BigDecimal getImporteExtra() { return importeExtra; }
+    public boolean isIncluirTotal() { return incluirTotal; }
     public byte[] getFirma() { return firma; }
     public String getFirmaTipoContenido() { return firmaTipoContenido; }
     public Set<Long> getTrabajoIds() { return trabajoIds; }
@@ -123,6 +147,15 @@ public class Albaran {
     }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     public void setHoras(BigDecimal horas) { this.horas = horas; }
+    public void setPrecioHora(BigDecimal precioHora) { this.precioHora = precioHora; }
+    public void setImporteExtra(BigDecimal importeExtra) { this.importeExtra = importeExtra; }
+    public void setIncluirTotal(boolean incluirTotal) { this.incluirTotal = incluirTotal; }
+
+    /** La mano de obra: horas x precio por hora, a dos decimales. */
+    public BigDecimal importeManoDeObra() {
+        if (horas == null || precioHora == null) return BigDecimal.ZERO;
+        return horas.multiply(precioHora).setScale(2, RoundingMode.HALF_UP);
+    }
 
     public void setFirma(byte[] firma, String tipoContenido) {
         this.firma = firma;

@@ -247,6 +247,17 @@ public class AlbaranService {
         datos.put("trabajador", GeneradorPdf.texto(nombresDe(albaran)));
         datos.put("descripcion", GeneradorPdf.texto(albaran.getDescripcion()));
         datos.put("firma", GeneradorPdf.imagen(albaran.getFirmaTipoContenido(), albaran.getFirma()));
+
+        // El desglose (precio por material, precio por hora) NO se imprime nunca:
+        // es información interna del taller. Solo puede salir el total, y solo
+        // si el jefe lo ha marcado en la ficha.
+        if (albaran.isIncluirTotal()) {
+            List<Material> lineas = materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
+                    Material.OrigenTipo.ALBARAN, albaran.getId());
+            BigDecimal extra = albaran.getImporteExtra() == null
+                    ? BigDecimal.ZERO : albaran.getImporteExtra();
+            datos.put("costeTotal", GeneradorPdf.euros(costeSumado(albaran, lineas).add(extra)));
+        }
         datos.put("fotos", GeneradorPdf.imagenes(fotos));
 
         // El albarán se identifica por su número, no por su id interno.
@@ -287,7 +298,48 @@ public class AlbaranService {
         if (cambios.descripcion() != null)
             albaran.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
 
+        if (cambios.horas() != null) {
+            if (cambios.horas().compareTo(BigDecimal.ZERO) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Las horas no pueden ser negativas");
+            }
+            albaran.setHoras(cambios.horas());
+        }
+        if (cambios.precioHora() != null) {
+            if (cambios.precioHora().compareTo(BigDecimal.ZERO) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "El precio por hora no puede ser negativo");
+            }
+            albaran.setPrecioHora(cambios.precioHora());
+        }
+        // El importe extra SÍ admite negativo: es como se aplica un descuento.
+        if (cambios.importeExtra() != null) albaran.setImporteExtra(cambios.importeExtra());
+        if (cambios.incluirTotal() != null) albaran.setIncluirTotal(cambios.incluirTotal());
+
+        if (cambios.materiales() != null) reemplazarMateriales(albaran.getId(), cambios.materiales());
+
         return aRespuesta(albaran);
+    }
+
+    /**
+     * Se borran las líneas y se vuelven a insertar, igual que en los trabajos:
+     * la pantalla manda siempre la lista entera, así que casarlas una a una
+     * sería trabajo de más para el mismo resultado.
+     *
+     * Aquí, además, cada línea trae su precio.
+     */
+    private void reemplazarMateriales(Long albaranId, List<MaterialDto> lineas) {
+        materialRepository.deleteByOrigenTipoAndOrigenId(Material.OrigenTipo.ALBARAN, albaranId);
+        for (MaterialDto linea : lineas) {
+            if (linea.precio() != null && linea.precio().compareTo(BigDecimal.ZERO) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "El precio de \"" + linea.nombre().trim() + "\" no puede ser negativo");
+            }
+            Material material = new Material(Material.OrigenTipo.ALBARAN, albaranId,
+                    linea.nombre().trim(), linea.cantidad());
+            material.setPrecio(linea.precio());
+            materialRepository.save(material);
+        }
     }
 
     public void borrar(Long id) {
@@ -377,11 +429,35 @@ public class AlbaranService {
     }
 
     private AlbaranResponse aRespuesta(Albaran a) {
+        List<Material> materiales = materialRepository
+                .findByOrigenTipoAndOrigenIdOrderByIdAsc(Material.OrigenTipo.ALBARAN, a.getId());
+        BigDecimal sumado = costeSumado(a, materiales);
+        BigDecimal extra = a.getImporteExtra() == null ? BigDecimal.ZERO : a.getImporteExtra();
+
         return new AlbaranResponse(a.getId(), a.getNumero(), a.getFecha(),
                 a.getCliente().getId(), a.getCliente().getNombre(), a.getDniCliente(),
                 a.getTrabajadores().stream().map(TrabajadorDto.Resumen::de).toList(),
-                a.getDescripcion(), a.getHoras(), materialesDe(a.getId()),
-                a.getFirma() != null, List.copyOf(a.getTrabajoIds()), idsDeFotos(a.getId()));
+                a.getDescripcion(), a.getHoras(),
+                materiales.stream().map(MaterialDto::de).toList(),
+                a.getPrecioHora(), sumado, a.getImporteExtra(), sumado.add(extra),
+                a.isIncluirTotal(), a.getFirma() != null,
+                List.copyOf(a.getTrabajoIds()), idsDeFotos(a.getId()));
+    }
+
+    /**
+     * Materiales más mano de obra. No se guarda en ninguna columna: se calcula
+     * cada vez a partir de las líneas y de las horas.
+     *
+     * Guardarlo obligaría a recalcularlo y reescribirlo cada vez que se toca un
+     * precio, y bastaría con que fallara una vez para que el albarán dijera un
+     * total que no cuadra con sus propias líneas.
+     */
+    private BigDecimal costeSumado(Albaran albaran, List<Material> materiales) {
+        BigDecimal suma = albaran.importeManoDeObra();
+        for (Material material : materiales) {
+            suma = suma.add(material.importe());
+        }
+        return suma;
     }
 
     private List<MaterialDto> materialesDe(Long albaranId) {

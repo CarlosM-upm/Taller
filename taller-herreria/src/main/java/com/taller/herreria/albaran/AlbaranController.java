@@ -55,7 +55,8 @@ public class AlbaranController {
 
     /** Edición parcial, incluido el número (con validación de choques). */
     @PatchMapping("/{id}")
-    public AlbaranResponse editar(@PathVariable Long id, @RequestBody AlbaranPatch cambios) {
+    public AlbaranResponse editar(@PathVariable Long id,
+                                  @Valid @RequestBody AlbaranPatch cambios) {
         return servicio.editar(id, cambios);
     }
 
