@@ -33,3 +33,10 @@ Thumbs.db
 .env
 *-local.yml
 application-local.yml
+
+# Notas con credenciales o datos de acceso al servidor del taller.
+# El repositorio es PÚBLICO: un "git add -A" descuidado las publicaría.
+ssh*.txt
+*credenciales*
+*contraseñas*
+*claves*.txt
