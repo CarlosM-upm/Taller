@@ -1,5 +1,7 @@
 package com.taller.herreria.trabajo.dto;
 
+import com.taller.herreria.material.dto.MaterialDto;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,7 +20,7 @@ public record TrabajoResponse(
         Long trabajadorId,
         String trabajador,
         String descripcion,
-        String materiales,
+        List<MaterialDto> materiales,
         BigDecimal horas,
         List<Long> fotoIds
 ) { }

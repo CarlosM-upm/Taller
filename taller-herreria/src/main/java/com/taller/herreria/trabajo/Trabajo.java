@@ -49,10 +49,6 @@ public class Trabajo {
     @Column(length = 4000)
     private String descripcion;
 
-    /** Texto libre: "2 m de perfil, 4 tornillos…" */
-    @Column(length = 4000)
-    private String materiales;
-
     /**
      * Horas empleadas. BigDecimal con 2 decimales: decimal EXACTO,
      * sin errores de redondeo al sumar. Acepta enteros ("3" se guarda como 3.00).
@@ -80,12 +76,10 @@ public class Trabajo {
     public Cliente getCliente() { return cliente; }
     public Trabajador getTrabajador() { return trabajador; }
     public String getDescripcion() { return descripcion; }
-    public String getMateriales() { return materiales; }
     public BigDecimal getHoras() { return horas; }
 
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public void setTrabajador(Trabajador trabajador) { this.trabajador = trabajador; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-    public void setMateriales(String materiales) { this.materiales = materiales; }
     public void setHoras(BigDecimal horas) { this.horas = horas; }
 }

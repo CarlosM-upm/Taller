@@ -1,6 +1,10 @@
 package com.taller.herreria.trabajo.dto;
 
+import com.taller.herreria.material.dto.MaterialDto;
+import jakarta.validation.Valid;
+
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Datos editables de un trabajo, usados tanto al crear como en el PATCH.
@@ -15,6 +19,9 @@ public record TrabajoDatos(
         Long clienteId,
         Long trabajadorId,
         String descripcion,
-        String materiales,
+        // El @Valid va DENTRO del genérico. Puesto fuera (@Valid List<...>)
+        // valida la lista, que no tiene restricciones, y las líneas pasaban
+        // sin mirar: colaba un material con nombre vacío y cantidad negativa.
+        List<@Valid MaterialDto> materiales,
         BigDecimal horas
 ) { }

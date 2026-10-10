@@ -3,6 +3,7 @@ package com.taller.herreria.trabajo;
 import com.taller.herreria.documento.RespuestaPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.trabajo.dto.TrabajoDatos;
+import jakarta.validation.Valid;
 import com.taller.herreria.trabajo.dto.TrabajoResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,7 +30,7 @@ public class TrabajoController {
     /** Crear un trabajo (tablet). Nace como BORRADOR, puede venir a medias. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TrabajoResponse crear(@RequestBody TrabajoDatos datos) {
+    public TrabajoResponse crear(@Valid @RequestBody TrabajoDatos datos) {
         return servicio.crear(datos);
     }
 
@@ -52,7 +53,8 @@ public class TrabajoController {
 
     /** Guardar avances del borrador ("sigo otro día") o edición del jefe. */
     @PatchMapping("/{id}")
-    public TrabajoResponse editar(@PathVariable Long id, @RequestBody TrabajoDatos cambios) {
+    public TrabajoResponse editar(@PathVariable Long id,
+                                  @Valid @RequestBody TrabajoDatos cambios) {
         return servicio.editar(id, cambios);
     }
 

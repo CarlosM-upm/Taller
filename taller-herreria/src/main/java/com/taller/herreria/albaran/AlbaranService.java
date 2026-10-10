@@ -10,6 +10,9 @@ import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
+import com.taller.herreria.material.Material;
+import com.taller.herreria.material.MaterialRepository;
+import com.taller.herreria.material.dto.MaterialDto;
 import com.taller.herreria.trabajador.Trabajador;
 import com.taller.herreria.trabajador.TrabajadorService;
 import com.taller.herreria.trabajador.dto.TrabajadorDto;
@@ -49,6 +52,7 @@ public class AlbaranService {
     private final ConfiguracionService configuracion;
     private final GeneradorPdf generadorPdf;
 
+    private final MaterialRepository materialRepository;
     private final ClienteService clienteService;
     private final TrabajadorService trabajadorService;
 
@@ -58,7 +62,8 @@ public class AlbaranService {
                           ConfiguracionService configuracion,
                           GeneradorPdf generadorPdf,
                           ClienteService clienteService,
-                          TrabajadorService trabajadorService) {
+                          TrabajadorService trabajadorService,
+                          MaterialRepository materialRepository) {
         this.albaranRepository = albaranRepository;
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
@@ -66,6 +71,7 @@ public class AlbaranService {
         this.generadorPdf = generadorPdf;
         this.clienteService = clienteService;
         this.trabajadorService = trabajadorService;
+        this.materialRepository = materialRepository;
     }
 
     /**
@@ -101,7 +107,17 @@ public class AlbaranService {
 
         Albaran albaran = new Albaran(numero, fecha, trabajo.getCliente(), dni,
                 Set.of(trabajo.getTrabajador()), trabajo.getDescripcion(), trabajoId);
+        albaran.setHoras(trabajo.getHoras());
         albaranRepository.save(albaran);
+
+        // Instantánea: los materiales del trabajo se copian como PROPIOS del
+        // albarán, igual que las fotos. A partir de aquí el jefe les pone precio
+        // y los edita sin tocar el trabajo original.
+        for (Material original : materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
+                Material.OrigenTipo.TRABAJO, trabajoId)) {
+            materialRepository.save(new Material(Material.OrigenTipo.ALBARAN, albaran.getId(),
+                    original.getNombre(), original.getCantidad()));
+        }
 
         // Instantánea: copiamos las fotos del trabajo como fotos PROPIAS del albarán
         List<Foto> fotosDelTrabajo = fotoRepository
@@ -191,6 +207,8 @@ public class AlbaranService {
     public void borrar(Long id) {
         Albaran albaran = buscarOFallar(id);
         fotoRepository.deleteByOrigenTipoAndOrigenId(Foto.OrigenTipo.ALBARAN, albaran.getId());
+        materialRepository.deleteByOrigenTipoAndOrigenId(
+                Material.OrigenTipo.ALBARAN, albaran.getId());
         albaranRepository.delete(albaran);
     }
 
@@ -276,8 +294,14 @@ public class AlbaranService {
         return new AlbaranResponse(a.getId(), a.getNumero(), a.getFecha(),
                 a.getCliente().getId(), a.getCliente().getNombre(), a.getDniCliente(),
                 a.getTrabajadores().stream().map(TrabajadorDto.Resumen::de).toList(),
-                a.getDescripcion(), a.getFirma() != null, a.getTrabajoId(),
-                idsDeFotos(a.getId()));
+                a.getDescripcion(), a.getHoras(), materialesDe(a.getId()),
+                a.getFirma() != null, a.getTrabajoId(), idsDeFotos(a.getId()));
+    }
+
+    private List<MaterialDto> materialesDe(Long albaranId) {
+        return materialRepository
+                .findByOrigenTipoAndOrigenIdOrderByIdAsc(Material.OrigenTipo.ALBARAN, albaranId)
+                .stream().map(MaterialDto::de).toList();
     }
 
     /** Los nombres de los trabajadores, para la línea del PDF. */

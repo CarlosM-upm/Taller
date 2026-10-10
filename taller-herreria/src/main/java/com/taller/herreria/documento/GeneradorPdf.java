@@ -2,6 +2,7 @@ package com.taller.herreria.documento;
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import com.taller.herreria.foto.Foto;
+import com.taller.herreria.material.Material;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -122,6 +124,28 @@ public class GeneradorPdf {
     public static List<String> imagenes(List<Foto> fotos) {
         return fotos.stream().map(f -> imagen(f.getTipoContenido(), f.getDatos())).toList();
     }
+
+    /**
+     * Número tal como se escribe aquí: coma decimal y sin ceros de relleno.
+     * 5.00 sale como "5" y 12.50 como "12,5"; en una lista de materiales,
+     * "5,00 tornillos" se lee raro.
+     *
+     * toPlainString después de stripTrailingZeros evita que un 5.00 acabe
+     * mostrándose como 5E+0.
+     */
+    public static String numero(BigDecimal valor) {
+        if (valor == null) return VACIO;
+        return valor.stripTrailingZeros().toPlainString().replace('.', ',');
+    }
+
+    /** Las líneas de material ya formateadas, listas para la tabla del documento. */
+    public static List<LineaMaterial> materiales(List<Material> lista) {
+        return lista.stream()
+                .map(m -> new LineaMaterial(texto(m.getNombre()), numero(m.getCantidad())))
+                .toList();
+    }
+
+    public record LineaMaterial(String nombre, String cantidad) { }
 
     /** Datos del taller que encabezan los documentos. Se rellenan en application.yml. */
     public record DatosTaller(String nombre, String datos) { }

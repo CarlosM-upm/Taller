@@ -34,9 +34,18 @@
   <div class="texto" th:text="${descripcion}">Descripción</div>
 </div>
 
-<div class="bloque">
+<div class="bloque" th:if="${!#lists.isEmpty(materiales)}">
   <h2>Materiales empleados</h2>
-  <div class="texto" th:text="${materiales}">Materiales</div>
+  <table class="lineas">
+    <tr>
+      <th>Material</th>
+      <th class="numero">Cantidad</th>
+    </tr>
+    <tr th:each="linea : ${materiales}">
+      <td th:text="${linea.nombre}">Material</td>
+      <td class="numero" th:text="${linea.cantidad}">0</td>
+    </tr>
+  </table>
 </div>
 
 <th:block th:replace="~{documentos/_comun :: fotos}" />

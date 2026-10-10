@@ -1,0 +1,82 @@
+package com.taller.herreria.material;
+
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+
+/**
+ * Línea de material: un nombre y una cantidad.
+ *
+ * Antes los materiales eran un único texto libre ("2 m de perfil, 4 tornillos…").
+ * Se separan en líneas para poder ponerles precio en el albarán y para que al
+ * unificar varios trabajos se puedan sumar las cantidades del mismo material.
+ *
+ * Usa el mismo esquema que Foto: en vez de una clave foránea por entidad, se
+ * guarda a qué tipo pertenece (origenTipo) y a cuál (origenId).
+ */
+@Entity
+@Table(name = "materiales",
+       // Toda consulta filtra por (origenTipo, origenId); sin índice cada
+       // ficha de trabajo recorrería la tabla entera.
+       indexes = @Index(name = "idx_material_origen", columnList = "origenTipo, origenId"))
+public class Material {
+
+    /** No existe PEDIDO: un pedido es lo que pide el cliente, no lo que se gasta. */
+    public enum OrigenTipo { TRABAJO, ALBARAN }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrigenTipo origenTipo;
+
+    @Column(nullable = false)
+    private Long origenId;
+
+    @Column(nullable = false)
+    private String nombre;
+
+    /**
+     * Decimal exacto con 2 decimales, por el mismo motivo que las horas: sirve
+     * igual para "5 tornillos" que para "12,5 m de tubo", y no arrastra errores
+     * de redondeo al multiplicarlo por el precio.
+     */
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal cantidad;
+
+    /**
+     * Precio unitario. Nulo salvo en los materiales de un ALBARÁN: es el jefe
+     * quien los pone al facturar, y el trabajador que apunta el material desde
+     * la tablet no tiene por qué saber lo que cuesta.
+     */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal precio;
+
+    protected Material() { } // requerido por JPA
+
+    public Material(OrigenTipo origenTipo, Long origenId, String nombre, BigDecimal cantidad) {
+        this.origenTipo = origenTipo;
+        this.origenId = origenId;
+        this.nombre = nombre;
+        this.cantidad = cantidad;
+    }
+
+    public Long getId() { return id; }
+    public OrigenTipo getOrigenTipo() { return origenTipo; }
+    public Long getOrigenId() { return origenId; }
+    public String getNombre() { return nombre; }
+    public BigDecimal getCantidad() { return cantidad; }
+    public BigDecimal getPrecio() { return precio; }
+
+    public void setNombre(String nombre) { this.nombre = nombre; }
+    public void setCantidad(BigDecimal cantidad) { this.cantidad = cantidad; }
+    public void setPrecio(BigDecimal precio) { this.precio = precio; }
+
+    /** Lo que suma esta línea: cantidad x precio. Cero mientras no tenga precio. */
+    public BigDecimal importe() {
+        if (precio == null) return BigDecimal.ZERO;
+        return cantidad.multiply(precio);
+    }
+}

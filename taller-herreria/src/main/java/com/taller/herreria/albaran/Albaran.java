@@ -4,6 +4,7 @@ import com.taller.herreria.cliente.Cliente;
 import com.taller.herreria.trabajador.Trabajador;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -66,6 +67,13 @@ public class Albaran {
      * y el lazy no funciona sin instrumentación de bytecode (y si funcionara,
      * rompería GET /api/albaranes/{id}/firma con open-in-view = false).
      */
+    /**
+     * Horas del trabajo (o la suma, si unifica varios). Copiadas al crearlo.
+     * Son la base del cálculo del coste junto con el precio por hora.
+     */
+    @Column(precision = 7, scale = 2)
+    private BigDecimal horas;
+
     private byte[] firma;
 
     private String firmaTipoContenido;
@@ -94,6 +102,7 @@ public class Albaran {
     public String getDniCliente() { return dniCliente; }
     public Set<Trabajador> getTrabajadores() { return trabajadores; }
     public String getDescripcion() { return descripcion; }
+    public BigDecimal getHoras() { return horas; }
     public byte[] getFirma() { return firma; }
     public String getFirmaTipoContenido() { return firmaTipoContenido; }
     public Long getTrabajoId() { return trabajoId; }
@@ -107,6 +116,7 @@ public class Albaran {
         this.trabajadores = new LinkedHashSet<>(trabajadores);
     }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    public void setHoras(BigDecimal horas) { this.horas = horas; }
 
     public void setFirma(byte[] firma, String tipoContenido) {
         this.firma = firma;

@@ -8,6 +8,9 @@ import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
+import com.taller.herreria.material.Material;
+import com.taller.herreria.material.MaterialRepository;
+import com.taller.herreria.material.dto.MaterialDto;
 import com.taller.herreria.seguridad.SeguridadUtils;
 import com.taller.herreria.trabajo.dto.TrabajoDatos;
 import com.taller.herreria.trabajo.dto.TrabajoResponse;
@@ -43,6 +46,7 @@ public class TrabajoService {
     private final AlbaranRepository albaranRepository;
     private final GeneradorPdf generadorPdf;
 
+    private final MaterialRepository materialRepository;
     private final ClienteService clienteService;
     private final TrabajadorService trabajadorService;
 
@@ -51,20 +55,24 @@ public class TrabajoService {
                           AlbaranRepository albaranRepository,
                           GeneradorPdf generadorPdf,
                           ClienteService clienteService,
-                          TrabajadorService trabajadorService) {
+                          TrabajadorService trabajadorService,
+                          MaterialRepository materialRepository) {
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.albaranRepository = albaranRepository;
         this.generadorPdf = generadorPdf;
         this.clienteService = clienteService;
         this.trabajadorService = trabajadorService;
+        this.materialRepository = materialRepository;
     }
 
     /** Crea un trabajo en estado BORRADOR, con los datos que haya (pueden estar a medias). */
     public TrabajoResponse crear(TrabajoDatos datos) {
         Trabajo trabajo = Trabajo.nuevoBorrador();
-        aplicarDatos(trabajo, datos);
+        // Se guarda ANTES de aplicar los datos para que tenga id: las líneas de
+        // material se cuelgan de él por origenId y sin id no hay de qué colgarlas.
         trabajoRepository.save(trabajo);
+        aplicarDatos(trabajo, datos);
         return aRespuesta(trabajo);
     }
 
@@ -102,7 +110,9 @@ public class TrabajoService {
                 "cliente", GeneradorPdf.texto(trabajo.getCliente() == null ? null : trabajo.getCliente().getNombre()),
                 "trabajador", GeneradorPdf.texto(trabajo.getTrabajador() == null ? null : trabajo.getTrabajador().getNombre()),
                 "descripcion", GeneradorPdf.texto(trabajo.getDescripcion()),
-                "materiales", GeneradorPdf.texto(trabajo.getMateriales()),
+                "materiales", GeneradorPdf.materiales(
+                        materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
+                                Material.OrigenTipo.TRABAJO, trabajo.getId())),
                 "horas", horasDeDocumento(trabajo.getHoras()),
                 "fotos", GeneradorPdf.imagenes(fotos)));
 
@@ -158,6 +168,8 @@ public class TrabajoService {
         exigirJefeSiEnviado(trabajo, "borrar");
         exigirQueNoTengaAlbaran(trabajo);
         fotoRepository.deleteByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, trabajo.getId());
+        materialRepository.deleteByOrigenTipoAndOrigenId(
+                Material.OrigenTipo.TRABAJO, trabajo.getId());
         trabajoRepository.delete(trabajo);
     }
 
@@ -228,7 +240,7 @@ public class TrabajoService {
         if (datos.descripcion() != null)
             trabajo.setDescripcion(normalizar(datos.descripcion(), borrador, "descripción"));
         if (datos.materiales() != null)
-            trabajo.setMateriales(normalizar(datos.materiales(), borrador, "materiales"));
+            reemplazarMateriales(trabajo.getId(), datos.materiales());
         if (datos.horas() != null) {
             if (datos.horas().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -259,7 +271,8 @@ public class TrabajoService {
         if (t.getCliente() == null) faltan.add("cliente");
         if (t.getTrabajador() == null) faltan.add("trabajador");
         if (esBlanco(t.getDescripcion())) faltan.add("descripción");
-        if (esBlanco(t.getMateriales())) faltan.add("materiales");
+        if (materialRepository.countByOrigenTipoAndOrigenId(
+                Material.OrigenTipo.TRABAJO, t.getId()) == 0) faltan.add("materiales");
         if (t.getHoras() == null) faltan.add("horas");
         return faltan;
     }
@@ -298,12 +311,35 @@ public class TrabajoService {
         return fotoRepository.idsPorOrigen(Foto.OrigenTipo.TRABAJO, trabajoId);
     }
 
+    private List<MaterialDto> materialesDe(Long trabajoId) {
+        return materialRepository
+                .findByOrigenTipoAndOrigenIdOrderByIdAsc(Material.OrigenTipo.TRABAJO, trabajoId)
+                .stream().map(MaterialDto::de).toList();
+    }
+
+    /**
+     * Se borran las líneas y se vuelven a insertar. La pantalla manda siempre
+     * la lista entera, así que casar fila a fila para decidir qué cambió sería
+     * trabajo de más para el mismo resultado, y además conserva el orden en
+     * que el trabajador las escribió.
+     *
+     * Una lista vacía deja el trabajo sin materiales: es legítimo en un
+     * borrador a medias, y camposQueFaltan() lo detecta al enviar.
+     */
+    private void reemplazarMateriales(Long trabajoId, List<MaterialDto> lineas) {
+        materialRepository.deleteByOrigenTipoAndOrigenId(Material.OrigenTipo.TRABAJO, trabajoId);
+        for (MaterialDto linea : lineas) {
+            materialRepository.save(new Material(Material.OrigenTipo.TRABAJO, trabajoId,
+                    linea.nombre().trim(), linea.cantidad()));
+        }
+    }
+
     private TrabajoResponse aRespuesta(Trabajo t) {
         return new TrabajoResponse(t.getId(), t.getEstado().name(), t.getFecha(),
                 t.getCliente() == null ? null : t.getCliente().getId(),
                 t.getCliente() == null ? null : t.getCliente().getNombre(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getId(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getNombre(),
-                t.getDescripcion(), t.getMateriales(), t.getHoras(), idsDeFotos(t.getId()));
+                t.getDescripcion(), materialesDe(t.getId()), t.getHoras(), idsDeFotos(t.getId()));
     }
 }

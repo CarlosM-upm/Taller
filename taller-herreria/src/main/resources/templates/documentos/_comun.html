@@ -84,6 +84,32 @@
   }
   .destacado { font-weight: bold; }
 
+  /* Tabla de líneas: materiales, con su cantidad a la derecha. */
+  table.lineas {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.lineas th {
+    text-align: left;
+    font-size: 8.5pt;
+    color: #555;
+    font-weight: normal;
+    text-transform: uppercase;
+    padding-bottom: 3pt;
+    border-bottom: 0.75pt solid #999;
+  }
+  table.lineas td {
+    padding: 4pt 0;
+    vertical-align: top;
+    border-bottom: 0.5pt solid #ddd;
+  }
+  /* Las cantidades se leen mucho mejor alineadas por la derecha. */
+  table.lineas th.numero,
+  table.lineas td.numero {
+    text-align: right;
+    width: 28mm;
+  }
+
   .bloque { margin-bottom: 14pt; }
   .bloque h2 {
     font-size: 9pt;

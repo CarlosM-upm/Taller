@@ -1,6 +1,9 @@
 package com.taller.herreria.albaran.dto;
 
+import com.taller.herreria.material.dto.MaterialDto;
 import com.taller.herreria.trabajador.dto.TrabajadorDto;
+
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,6 +17,8 @@ public record AlbaranResponse(
         String dniCliente,
         List<TrabajadorDto.Resumen> trabajadores,
         String descripcion,
+        BigDecimal horas,
+        List<MaterialDto> materiales,
         boolean tieneFirma,
         Long trabajoId,
         List<Long> fotoIds
