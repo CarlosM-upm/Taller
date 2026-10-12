@@ -769,6 +769,52 @@ test('un trabajo ya facturado no se puede volver a seleccionar', async ({ page }
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
 
+test('un borrador de pedido guardado con el formato viejo se descarta', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+
+  // Un borrador como los que guardaba la aplicación cuando el cliente y el
+  // trabajador se tecleaban: con nombres en vez de ids. Restaurarlo tal cual
+  // dejaría el formulario vacío con el cartel de "recuperado" puesto, que es
+  // peor que no recuperar nada.
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'taller.borrador.pedido-nuevo',
+      JSON.stringify({
+        momento: Date.now(),
+        datos: { cliente: 'Cliente de antes', trabajador: 'Ana', descripcion: 'Texto viejo' },
+      }),
+    );
+  });
+
+  await page.goto('/pedidos/nuevo');
+  await expect(page.getByLabel('Qué han pedido')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Se ha recuperado un pedido que quedó a medias')).toHaveCount(0);
+
+  // Y uno con el formato actual SÍ se recupera: la comprobación no puede ser
+  // tan estricta que se cargue la red de seguridad que esto existe para dar.
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'taller.borrador.pedido-nuevo',
+      JSON.stringify({
+        momento: Date.now(),
+        datos: { clienteId: null, trabajadorId: null, descripcion: 'Texto reciente' },
+      }),
+    );
+  });
+
+  await page.goto('/pedidos/nuevo');
+  await expect(page.getByText('Se ha recuperado un pedido que quedó a medias')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByLabel('Qué han pedido')).toHaveValue('Texto reciente');
+
+  await page.getByRole('button', { name: 'Empezar de cero' }).click();
+  await expect(page.getByText('Se ha recuperado un pedido que quedó a medias')).toHaveCount(0);
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
 test('las pantallas pendientes se abren sin romperse', async ({ page }) => {
   const errores = vigilarErrores(page);
 

@@ -551,13 +551,14 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 13
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 14
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
 guardado con nombre .pdf también "se descarga"), el albarán unificado con sus precios,
 el renombrado de un cliente propagándose a sus documentos, los varios trabajadores de
-un albarán y el bloqueo de un trabajo ya facturado.
+un albarán, el bloqueo de un trabajo ya facturado y el descarte de un borrador
+guardado con el formato antiguo.
 
 Las pruebas dan de alta sus propios clientes y trabajadores —ya no se teclean, se
 eligen— y **los borran al terminar**, en un `afterAll`. Sin esa limpieza se acumulaban
@@ -699,7 +700,7 @@ Verificado arrancando la aplicación contra PostgreSQL real:
 - **El logotipo del taller en la cabecera de los PDF**, empaquetado en
   `resources/documentos/logo-taller.jpg`. Sustituye al nombre escrito porque la
   propia imagen ya lo lleva dentro. A 30 mm de alto: a 20 no se leía.
-- Todo verificado contra PostgreSQL real y en Chrome: **13 de 13** en la
+- Todo verificado contra PostgreSQL real y en Chrome: **14 de 14** en la
   comprobación de humo, y los PDF rasterizados y mirados uno a uno.
 
 ### Pendiente
