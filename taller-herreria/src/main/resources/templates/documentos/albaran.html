@@ -20,7 +20,10 @@
     <td th:text="${dniCliente}">DNI</td>
   </tr>
   <tr>
-    <td class="etiqueta">Trabajador</td>
+    <!-- "Trabajador/es" y no "Trabajador": un albarán que unifica varios
+         trabajos puede llevar a más de una persona. Solo pasa aquí; en el
+         pedido y en el trabajo siempre es una. -->
+    <td class="etiqueta">Trabajador/es</td>
     <td th:text="${trabajador}">Trabajador</td>
   </tr>
 </table>
