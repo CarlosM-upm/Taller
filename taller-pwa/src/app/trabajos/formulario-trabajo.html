@@ -25,7 +25,6 @@
           etiqueta="Cliente"
           [opciones]="maestros.clientes()"
           [(valor)]="clienteId"
-          [admiteVacio]="true"
           [deshabilitado]="guardando()"
         />
 
@@ -33,7 +32,6 @@
           etiqueta="Trabajador"
           [opciones]="maestros.trabajadores()"
           [(valor)]="trabajadorId"
-          [admiteVacio]="true"
           [deshabilitado]="guardando()"
         />
 

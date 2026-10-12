@@ -79,7 +79,11 @@ export class FormularioPedido implements OnInit {
     // wifi al guardar), se recupera lo escrito en vez de hacer teclearlo otra
     // vez. Las fotos no se pueden recuperar: son binarios y no caben aquí.
     const previo = this.borrador.recuperar<PedidoAMedias>(CLAVE_BORRADOR);
-    if (previo) {
+    // El 'clienteId' in previo no sobra: un borrador guardado cuando cliente y
+    // trabajador eran texto tecleado tiene otra forma, y restaurarlo dejaría el
+    // formulario vacío con el cartel de "recuperado" puesto, que es peor que no
+    // recuperar nada.
+    if (previo && 'clienteId' in previo) {
       this.clienteId.set(previo.clienteId);
       this.trabajadorId.set(previo.trabajadorId);
       this.descripcion.set(previo.descripcion);

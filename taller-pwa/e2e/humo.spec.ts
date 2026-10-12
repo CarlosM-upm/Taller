@@ -634,6 +634,141 @@ test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ p
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
 
+test('renombrar un cliente en Ajustes cambia su nombre en los documentos', async ({ page }) => {
+  // El 409 es a propósito: la prueba intenta borrar un cliente que tiene un
+  // pedido, justo para comprobar que el servidor lo impide.
+  const errores = vigilarErrores(page, [409]);
+  await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'renombrar ' + Date.now());
+
+  // Un pedido suyo, para comprobar que el cambio llega hasta el documento.
+  await page.getByRole('link', { name: 'Nuevo pedido' }).click();
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
+  await page.getByLabel('Qué han pedido').fill('Pedido para renombrar');
+  await page.getByRole('button', { name: 'Guardar pedido' }).click();
+  await expect(page).toHaveURL(/\/pedidos\/\d+$/, { timeout: 15_000 });
+  const urlPedido = page.url();
+
+  // Con el pedido existiendo, el cliente NO se puede borrar.
+  await page.getByRole('link', { name: 'Ajustes' }).click();
+  await page.getByLabel(`Borrar ${cliente}`).click();
+  await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
+  await expect(page.getByText(/No se puede borrar el cliente/)).toBeVisible({ timeout: 15_000 });
+
+  // Renombrarlo sí, y eso alcanza a todos sus documentos.
+  const nuevoNombre = `${cliente} RENOMBRADO`;
+  await page.getByLabel(`Renombrar ${cliente}`).click();
+  await page.locator('input[name^="editar-"]').fill(nuevoNombre);
+  await page.getByLabel('Guardar el nombre').click();
+  await expect(page.getByText(nuevoNombre, { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  await page.goto(urlPedido);
+  await expect(page.getByText(nuevoNombre).first()).toBeVisible({ timeout: 15_000 });
+
+  // Limpieza: el pedido primero; hasta entonces el cliente no se puede borrar.
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('un albarán admite varios trabajadores', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'equipo ' + Date.now());
+
+  // Un segundo trabajador, para poder añadirlo al albarán después.
+  const segundo = `PRUEBA-HUMO Segundo ${Date.now()}`;
+  await page.getByRole('link', { name: 'Ajustes' }).click();
+  await page.getByLabel('Añadir trabajador').fill(segundo);
+  await page.getByRole('button', { name: 'Añadir', exact: true }).last().click();
+  await expect(page.getByText(segundo, { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
+  await page.getByLabel('Qué se ha hecho').fill('Trabajo de un solo trabajador');
+  await primerMaterial(page, 'Pletina', '2');
+  await page.getByLabel('Horas').fill('1');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+  await expect(page.getByText('Enviado').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: 'Generar albarán' }).click();
+  await page.getByRole('button', { name: 'Generar', exact: true }).click();
+  await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 20_000 });
+  const urlAlbaran = page.url();
+
+  // Añadir el segundo en el selector múltiple: el albarán pasa a tener dos.
+  await page.getByLabel('Editar').click();
+  await page.getByLabel('Trabajadores').click();
+  await page.getByRole('option', { name: segundo, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+
+  await expect(page.getByText(`${trabajador}, ${segundo}`)).toBeVisible({ timeout: 15_000 });
+
+  await page.goto(urlAlbaran);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByText(cliente).first().click();
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('un trabajo ya facturado no se puede volver a seleccionar', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'facturado ' + Date.now());
+
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
+  await page.getByLabel('Qué se ha hecho').fill('Trabajo que se factura');
+  await primerMaterial(page, 'Angular 30', '4');
+  await page.getByLabel('Horas').fill('2');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+  await expect(page.getByText('Enviado').first()).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('button', { name: 'Generar albarán' }).click();
+  await page.getByRole('button', { name: 'Generar', exact: true }).click();
+  await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 20_000 });
+  const urlAlbaran = page.url();
+
+  // En el listado filtrado ya aparece como facturado, y su casilla no deja
+  // marcarlo: es lo que impide meterlo en un segundo albarán.
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.locator('mat-button-toggle', { hasText: 'Enviados' }).click();
+  await elegir(page, 'Cliente', cliente);
+
+  await expect(page.getByText('Ya en un albarán')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('mat-checkbox input[type="checkbox"]').first()).toBeDisabled();
+
+  await page.goto(urlAlbaran);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByText(cliente).first().click();
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
 test('las pantallas pendientes se abren sin romperse', async ({ page }) => {
   const errores = vigilarErrores(page);
 

@@ -164,7 +164,8 @@ export class ListaMaestros {
           mensaje:
             `Solo se puede borrar si no tiene pedidos, trabajos ni albaranes. ` +
             `Si los tiene, el servidor lo impedirá y dirá cuántos son.`,
-          confirmar: 'Borrar',
+          aceptar: 'Borrar',
+          peligroso: true,
         },
       })
       .afterClosed()

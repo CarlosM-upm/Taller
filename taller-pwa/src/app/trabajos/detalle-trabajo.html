@@ -60,7 +60,6 @@
               etiqueta="Cliente"
               [opciones]="maestros.clientes()"
               [(valor)]="clienteId"
-              [admiteVacio]="true"
               [deshabilitado]="ocupado()"
             />
 
@@ -68,7 +67,6 @@
               etiqueta="Trabajador"
               [opciones]="maestros.trabajadores()"
               [(valor)]="trabajadorId"
-              [admiteVacio]="true"
               [deshabilitado]="ocupado()"
             />
 

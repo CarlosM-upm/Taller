@@ -14,8 +14,11 @@ export interface OpcionMaestra {
  * Sustituye a los campos de texto que se tecleaban a mano, que era de donde
  * salía el mismo cliente escrito de tres formas distintas.
  *
- * Deja elegir "(ninguno)" solo si se le pide: en un pedido el cliente es
- * obligatorio, pero en un borrador de trabajo puede faltar todavía.
+ * No ofrece una opción de "(sin asignar)". La tuvo, y era mentira: el PATCH
+ * interpreta un id nulo como "no toques este campo", así que elegirla no
+ * vaciaba nada y el usuario se quedaba creyendo que sí. Mientras no se ha
+ * elegido nada el desplegable ya sale vacío, que es el mismo estado; para
+ * cambiar de cliente, se elige otro.
  */
 @Component({
   selector: 'app-selector-maestro',
@@ -24,9 +27,6 @@ export interface OpcionMaestra {
     <mat-form-field appearance="outline">
       <mat-label>{{ etiqueta() }}</mat-label>
       <mat-select [(value)]="valor" [disabled]="deshabilitado()">
-        @if (admiteVacio()) {
-          <mat-option [value]="null">(sin asignar)</mat-option>
-        }
         @for (opcion of opciones(); track opcion.id) {
           <mat-option [value]="opcion.id">{{ opcion.nombre }}</mat-option>
         }
@@ -44,7 +44,6 @@ export class SelectorMaestro {
   readonly etiqueta = input.required<string>();
   readonly opciones = input.required<OpcionMaestra[]>();
   readonly deshabilitado = input(false);
-  readonly admiteVacio = input(false);
 
   /** Dos direcciones: el padre escribe el valor inicial y recibe los cambios. */
   readonly valor = model<number | null>(null);

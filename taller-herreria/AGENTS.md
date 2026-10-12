@@ -112,14 +112,18 @@ El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 
 ```
 taller-pwa/src/app/
-├── nucleo/          sesión, API, interceptores, guardias, fotos, descargas, borrador local
-├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro
+├── nucleo/          sesión, API, interceptores, guardias, fotos, descargas,
+│                   borrador local y maestros (clientes y trabajadores en caché)
+├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro,
+│                   selectorMaestro (desplegable) y filasMateriales (líneas con "+")
 ├── armazon/         barra superior, aviso de sin red y navegación según el rol
 ├── sesion/          pantalla de login
 ├── pedidos/         listado, alta y ficha
-├── trabajos/        listado con filtro, alta a medias y ficha con envío
-├── albaranes/       listado, ficha con firma y generación desde un trabajo
-└── configuracion/   contador de albaranes y cambio de contraseña
+├── trabajos/        listado con filtro por estado y cliente, selección múltiple
+│                   para unificar, alta a medias y ficha con envío
+├── albaranes/       listado, ficha con firma, precios y generación desde uno o
+│                   varios trabajos
+└── configuracion/   clientes, trabajadores, contador de albaranes y contraseña
 ```
 
 Y fuera de los dos proyectos, en la raíz del repositorio:
@@ -467,6 +471,22 @@ igual que abrir un favorito o reabrir la PWA instalada.
 
 ### Reglas que no se deben romper
 
+- **Un componente con sus propios campos no se registra en el `<form>` del padre.**
+  `filasMateriales` lleva `[ngModelOptions]="{ standalone: true }"` en cada input.
+  Sin eso Angular suelta un `NG01354` por pulsación: un `ngModel` dentro de un
+  componente hijo no puede engancharse al formulario del padre. Como las filas
+  llevan su estado y emiten por `(cambio)`, no tienen nada que registrar.
+- **Las filas de materiales NO se realimentan desde el padre.** Las líneas
+  iniciales se leen una sola vez en `ngOnInit`. Si el padre devolviera la lista ya
+  convertida a número en cada pulsación, un "2," a medio escribir volvería como
+  "2" y sería imposible teclear decimales.
+- **No ofrezcas una opción de "(sin asignar)" en los desplegables.** La tuvo y era
+  mentira: el PATCH interpreta un id nulo como "no toques este campo", así que
+  elegirla no vaciaba nada. Mientras no se elige, el desplegable ya sale vacío.
+- **Los maestros se recargan después de tocarlos en Ajustes**
+  (`Maestros.recargar()`), o el resto de pantallas seguiría enseñando los nombres
+  viejos en sus desplegables.
+
 - **Las imágenes protegidas se cargan con la directiva `appSrcSeguro`, nunca con un
   `<img src>` normal.** El navegador pide las imágenes por su cuenta, al margen de
   HttpClient, así que **no manda la cabecera del token** y el servidor responde 401:
@@ -531,11 +551,23 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 9
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 13
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
-del albarán, subida y descarga de fotos, el contador de albaranes y la descarga de los
+del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
-guardado con nombre .pdf también "se descarga").
+guardado con nombre .pdf también "se descarga"), el albarán unificado con sus precios,
+el renombrado de un cliente propagándose a sus documentos, los varios trabajadores de
+un albarán y el bloqueo de un trabajo ya facturado.
+
+Las pruebas dan de alta sus propios clientes y trabajadores —ya no se teclean, se
+eligen— y **los borran al terminar**, en un `afterAll`. Sin esa limpieza se acumulaban
+ficha tras ficha hasta llenar los desplegables de la base de desarrollo.
+
+Cuando una prueba provoca un error de servidor **a propósito** (intentar borrar un
+cliente que tiene documentos, por ejemplo) hay que pasarle el código esperado:
+`vigilarErrores(page, [409])`. El navegador escribe en consola toda petición fallida
+aunque la aplicación la gestione bien, y la regla de "cualquier error hace fallar la
+prueba" no distingue sola.
 
 Ojo: cada ejecución consume dos números de la serie de albaranes. El contador solo
 avanza, y los albaranes de prueba se borran pero su número no se devuelve. Es
@@ -655,6 +687,20 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   desarrollo), y `application-local.yml.ejemplo` es la plantilla de lo que se rellena
   en el servidor. Ambos destinos están en `.gitignore` (verificado con
   `git check-ignore`).
+- **Clientes y trabajadores como entidades**, con su CRUD en Ajustes, referenciados
+  por los tres documentos. Renombrar propaga; borrar con documentos da 409.
+  Migración V2, que siembra las tablas con los nombres que ya había escritos.
+- **Materiales en líneas** (nombre + cantidad), migración V3. El texto libre que
+  hubiera se convierte en una sola línea: trocearlo por comas no es fiable.
+- **Albarán unificado** desde varios trabajos del mismo cliente, migración V4.
+  La relación pasó de uno a uno a varios a uno.
+- **Precios en el albarán**, migración V5: precio por material y por hora, coste
+  calculado (no guardado), importe extra y casilla para incluir el total en el PDF.
+- **El logotipo del taller en la cabecera de los PDF**, empaquetado en
+  `resources/documentos/logo-taller.jpg`. Sustituye al nombre escrito porque la
+  propia imagen ya lo lleva dentro. A 30 mm de alto: a 20 no se leía.
+- Todo verificado contra PostgreSQL real y en Chrome: **13 de 13** en la
+  comprobación de humo, y los PDF rasterizados y mirados uno a uno.
 
 ### Pendiente
 
