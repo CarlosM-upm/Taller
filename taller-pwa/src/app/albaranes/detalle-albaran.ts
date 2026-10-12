@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, OnInit, signal, viewChild } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,14 +9,19 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSelectModule } from '@angular/material/select';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Descargas } from '../nucleo/descargas';
-import { Albaran } from '../nucleo/modelos';
+import { Maestros } from '../nucleo/maestros';
+import { Albaran, MaterialLinea } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { FilasMateriales } from '../comun/filas-materiales';
 import { GaleriaFotos } from '../comun/galeria-fotos';
 import { LienzoFirma } from '../comun/lienzo-firma';
 import { SelectorFotos } from '../comun/selector-fotos';
+import { SelectorMaestro } from '../comun/selector-maestro';
 import { SrcSeguro } from '../comun/src-seguro';
 
 const MAX_FOTOS = 5;
@@ -36,6 +41,7 @@ const MAX_FOTOS = 5;
   selector: 'app-detalle-albaran',
   imports: [
     DatePipe,
+    DecimalPipe,
     FormsModule,
     RouterLink,
     MatButtonModule,
@@ -45,7 +51,11 @@ const MAX_FOTOS = 5;
     MatInputModule,
     MatProgressBarModule,
     GaleriaFotos,
+    FilasMateriales,
+    MatCheckboxModule,
+    MatSelectModule,
     SelectorFotos,
+    SelectorMaestro,
     SrcSeguro,
   ],
   templateUrl: './detalle-albaran.html',
@@ -62,6 +72,8 @@ export class DetalleAlbaran implements OnInit {
 
   readonly id = input.required<string>();
 
+  readonly maestros = inject(Maestros);
+
   readonly albaran = signal<Albaran | null>(null);
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
@@ -70,11 +82,42 @@ export class DetalleAlbaran implements OnInit {
   readonly editando = signal(false);
   readonly numero = signal('');
   readonly fecha = signal('');
-  readonly cliente = signal('');
+  readonly clienteId = signal<number | null>(null);
   readonly dniCliente = signal('');
-  readonly trabajador = signal('');
+  readonly trabajadorIds = signal<number[]>([]);
   readonly descripcion = signal('');
+
+  // Precios: el jefe los pone aquí y el coste se recalcula al vuelo.
+  readonly horas = signal('');
+  readonly materiales = signal<MaterialLinea[]>([]);
+  readonly precioHora = signal('');
+  readonly importeExtra = signal('');
+  readonly incluirTotal = signal(false);
   readonly errores = signal<Record<string, string>>({});
+
+  /**
+   * El coste mientras se teclea, sin esperar a guardar.
+   *
+   * Repite la misma aritmética que el servidor (redondeo por línea incluido)
+   * para que el jefe vea el total al momento. Manda el del servidor: al
+   * guardar, el albarán se recarga con el suyo.
+   */
+  readonly costeSumadoEnVivo = computed(() => {
+    const lineas = this.materiales().reduce((suma, linea) => {
+      if (linea.cantidad === null || linea.precio === null || linea.precio === undefined) {
+        return suma;
+      }
+      return suma + redondear(linea.cantidad * linea.precio);
+    }, 0);
+    const horas = aNumero(this.horas());
+    const precio = aNumero(this.precioHora());
+    const mano = horas !== null && precio !== null ? redondear(horas * precio) : 0;
+    return redondear(lineas + mano);
+  });
+
+  readonly costeTotalEnVivo = computed(() =>
+    redondear(this.costeSumadoEnVivo() + (aNumero(this.importeExtra()) ?? 0)),
+  );
 
   readonly fotosNuevas = signal<Blob[]>([]);
   readonly huecos = computed(() => MAX_FOTOS - (this.albaran()?.fotoIds.length ?? 0));
@@ -93,6 +136,7 @@ export class DetalleAlbaran implements OnInit {
 
   /** Ver el comentario de DetallePedido: los inputs no existen en el constructor. */
   ngOnInit(): void {
+    this.maestros.asegurarCargados();
     this.cargar();
   }
 
@@ -112,15 +156,25 @@ export class DetalleAlbaran implements OnInit {
     });
   }
 
+  /** Los nombres de los trabajadores del albarán, separados por comas. */
+  nombresTrabajadores(albaran: Albaran): string {
+    return albaran.trabajadores.map((t) => t.nombre).join(', ') || '—';
+  }
+
   empezarEdicion(): void {
     const a = this.albaran();
     if (!a) return;
     this.numero.set(String(a.numero));
     this.fecha.set(a.fecha);
-    this.cliente.set(a.cliente);
+    this.clienteId.set(a.clienteId);
     this.dniCliente.set(a.dniCliente ?? '');
-    this.trabajador.set(a.trabajador);
+    this.trabajadorIds.set(a.trabajadores.map((t) => t.id));
     this.descripcion.set(a.descripcion);
+    this.horas.set(a.horas !== null ? String(a.horas).replace('.', ',') : '');
+    this.materiales.set(a.materiales);
+    this.precioHora.set(a.precioHora !== null ? String(a.precioHora).replace('.', ',') : '');
+    this.importeExtra.set(a.importeExtra !== null ? String(a.importeExtra).replace('.', ',') : '');
+    this.incluirTotal.set(a.incluirTotal);
     this.errores.set({});
     this.editando.set(true);
   }
@@ -147,10 +201,15 @@ export class DetalleAlbaran implements OnInit {
       .editarAlbaran(a.id, {
         numero,
         fecha: this.fecha(),
-        cliente: this.cliente().trim(),
+        clienteId: this.clienteId() ?? undefined,
         dniCliente: this.dniCliente().trim(),
-        trabajador: this.trabajador().trim(),
+        trabajadorIds: this.trabajadorIds(),
         descripcion: this.descripcion().trim(),
+        horas: aNumero(this.horas()),
+        materiales: this.materiales(),
+        precioHora: aNumero(this.precioHora()),
+        importeExtra: aNumero(this.importeExtra()),
+        incluirTotal: this.incluirTotal(),
       })
       .subscribe({
         next: (actualizado) => {
@@ -298,4 +357,17 @@ export class DetalleAlbaran implements OnInit {
         .subscribe((respuesta) => resolver(respuesta === true));
     });
   }
+}
+
+/** Del texto tecleado (con coma o con punto) al número que espera el servidor. */
+function aNumero(texto: string): number | null {
+  const limpio = texto.trim().replace(',', '.');
+  if (limpio.length === 0) return null;
+  const valor = Number(limpio);
+  return Number.isFinite(valor) ? valor : null;
+}
+
+/** Dos decimales, como el servidor. */
+function redondear(valor: number): number {
+  return Math.round(valor * 100) / 100;
 }

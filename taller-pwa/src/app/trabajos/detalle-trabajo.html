@@ -56,25 +56,33 @@
       <mat-card-content>
         @if (puedeEditar()) {
           <form (ngSubmit)="guardar()">
-            <mat-form-field appearance="outline">
-              <mat-label>Cliente</mat-label>
-              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
-            </mat-form-field>
+            <app-selector-maestro
+              etiqueta="Cliente"
+              [opciones]="maestros.clientes()"
+              [(valor)]="clienteId"
+              [admiteVacio]="true"
+              [deshabilitado]="ocupado()"
+            />
 
-            <mat-form-field appearance="outline">
-              <mat-label>Trabajador</mat-label>
-              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
-            </mat-form-field>
+            <app-selector-maestro
+              etiqueta="Trabajador"
+              [opciones]="maestros.trabajadores()"
+              [(valor)]="trabajadorId"
+              [admiteVacio]="true"
+              [deshabilitado]="ocupado()"
+            />
 
             <mat-form-field appearance="outline">
               <mat-label>Qué se ha hecho</mat-label>
               <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="ocupado()"></textarea>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Materiales</mat-label>
-              <textarea matInput name="materiales" rows="3" [ngModel]="materiales()" (ngModelChange)="materiales.set($event)" [disabled]="ocupado()"></textarea>
-            </mat-form-field>
+            <h3 class="titulo-seccion">Materiales</h3>
+            <app-filas-materiales
+              [lineasIniciales]="t.materiales"
+              [deshabilitado]="ocupado()"
+              (cambio)="materiales.set($event)"
+            />
 
             <mat-form-field appearance="outline">
               <mat-label>Horas</mat-label>
@@ -112,7 +120,15 @@
           </div>
           <div class="dato">
             <span class="etiqueta">Materiales</span>
-            <span class="valor">{{ t.materiales }}</span>
+            <span class="valor">
+              @if (t.materiales.length === 0) {
+                —
+              } @else {
+                @for (linea of t.materiales; track linea.id) {
+                  <span class="linea-material">{{ linea.nombre }} &times; {{ linea.cantidad }}</span>
+                }
+              }
+            </span>
           </div>
           <div class="dato">
             <span class="etiqueta">Horas</span>

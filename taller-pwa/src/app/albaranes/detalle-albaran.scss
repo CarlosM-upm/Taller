@@ -105,3 +105,43 @@ form {
 .tarjeta-fallo {
   border-left: 4px solid var(--mat-sys-error);
 }
+
+/* Horas y precio por hora van en la misma fila: son dos números cortos que se
+   leen juntos y así no ocupan dos pantallas en la tablet. */
+.fila-precios {
+  display: flex;
+  gap: 12px;
+
+  mat-form-field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.resumen-coste {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+
+  .extra {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
+
+.linea-coste {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 0;
+
+  /* El total destacado y separado: es el número que se busca. */
+  &.total {
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 2px solid rgba(0, 0, 0, 0.3);
+    font-size: 18px;
+  }
+}

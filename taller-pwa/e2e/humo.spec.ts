@@ -1,4 +1,4 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page, request as peticionApi, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -109,6 +109,52 @@ async function descargarPdf(page: Page, etiqueta: string, nombreEsperado: RegExp
   expect(contenido.length, `${etiqueta}: el PDF está vacío`).toBeGreaterThan(1000);
 }
 
+/**
+ * Elige una opción de un desplegable de Material.
+ *
+ * Cliente y trabajador dejaron de ser campos de texto: ahora se seleccionan de
+ * una lista que mantiene el jefe en Ajustes. Un fill() aquí no hace nada, y el
+ * campo se quedaría vacío sin que la prueba se entere.
+ */
+async function elegir(page: Page, etiqueta: string, opcion: string) {
+  await page.getByLabel(etiqueta, { exact: true }).click();
+  await page.getByRole('option', { name: opcion, exact: true }).click();
+}
+
+/** Rellena la primera fila de materiales (nombre y cantidad). */
+async function primerMaterial(page: Page, nombre: string, cantidad: string) {
+  await page.locator('input[name="material-nombre-0"]').fill(nombre);
+  await page.locator('input[name="material-cantidad-0"]').fill(cantidad);
+}
+
+/**
+ * Da de alta un cliente y un trabajador desde Ajustes, y devuelve sus nombres.
+ *
+ * Hace falta porque ya no se teclean: sin darlos de alta antes, los
+ * desplegables de pedidos y trabajos estarían vacíos y no se podría crear
+ * nada. De paso, esto prueba la pantalla de Ajustes.
+ */
+async function crearMaestrosDePrueba(page: Page, sufijo: string) {
+  const cliente = `PRUEBA-HUMO Cliente ${sufijo}`;
+  const trabajador = `PRUEBA-HUMO Ana ${sufijo}`;
+
+  await page.goto('/configuracion');
+  await page.getByLabel('Añadir cliente').fill(cliente);
+  await page.getByRole('button', { name: 'Añadir', exact: true }).first().click();
+  await expect(page.getByText(cliente, { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByLabel('Añadir trabajador').fill(trabajador);
+  await page.getByRole('button', { name: 'Añadir', exact: true }).last().click();
+  await expect(page.getByText(trabajador, { exact: true })).toBeVisible({ timeout: 10_000 });
+
+  // Se vuelve a pedidos, que es donde las pruebas esperan estar: desde aquí
+  // está tanto el enlace de "Nuevo pedido" como la navegación de abajo.
+  await page.getByRole('link', { name: 'Pedidos', exact: true }).click();
+  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 10_000 });
+
+  return { cliente, trabajador };
+}
+
 async function entrar(page: Page, cuenta: { usuario: string; contrasena: string }) {
   await page.goto('/login');
   await page.getByLabel('Usuario').fill(cuenta.usuario);
@@ -117,6 +163,41 @@ async function entrar(page: Page, cuenta: { usuario: string; contrasena: string 
   // Tras entrar se va a pedidos: si no llega, el login no funcionó.
   await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
 }
+
+/**
+ * Borra los clientes y trabajadores de prueba al terminar.
+ *
+ * Las pruebas los dan de alta porque cliente y trabajador ya no se teclean, se
+ * eligen de una lista. Sin esta limpieza se van acumulando ficha tras ficha en
+ * la base de datos de desarrollo hasta llenar los desplegables de basura.
+ *
+ * El borrado falla con 409 si todavía tienen documentos colgando, y eso es
+ * justo lo que interesa: significa que una prueba se dejó algo a medias, y se
+ * reconoce porque el nombre empieza por PRUEBA-HUMO.
+ */
+test.afterAll(async () => {
+  const api = await peticionApi.newContext({ baseURL: 'http://127.0.0.1:8080' });
+  try {
+    const entrada = await api.post('/api/login', {
+      data: { usuario: 'jefe', contrasena: 'jefe123' },
+    });
+    if (!entrada.ok()) return;
+    const { token } = await entrada.json();
+    const cabeceras = { Authorization: `Bearer ${token}` };
+
+    for (const recurso of ['clientes', 'trabajadores']) {
+      const respuesta = await api.get(`/api/${recurso}`, { headers: cabeceras });
+      if (!respuesta.ok()) continue;
+      for (const ficha of await respuesta.json()) {
+        if (String(ficha.nombre).startsWith('PRUEBA-HUMO')) {
+          await api.delete(`/api/${recurso}/${ficha.id}`, { headers: cabeceras });
+        }
+      }
+    }
+  } finally {
+    await api.dispose();
+  }
+});
 
 test.beforeEach(async ({ page }) => {
   // Sesión limpia en cada prueba: el token vive en localStorage y sobrevive
@@ -158,15 +239,15 @@ test('el jefe ve los cuatro apartados y el trabajador solo dos', async ({ page }
 
 test('un pedido se crea, se abre y se borra', async ({ page }) => {
   const errores = vigilarErrores(page);
-  const cliente = `${MARCA} pedido`;
-
   await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'pedido ' + Date.now());
 
   // Alta
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
   await expect(page).toHaveURL(/\/pedidos\/nuevo$/);
-  await page.getByLabel('Cliente').fill(cliente);
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué han pedido').fill('Reja de prueba automática');
   await page.getByRole('button', { name: 'Guardar pedido' }).click();
 
@@ -191,15 +272,15 @@ test('un pedido se crea, se abre y se borra', async ({ page }) => {
 
 test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ page }) => {
   const errores = vigilarErrores(page);
-  const cliente = `${MARCA} trabajo`;
-
   await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'trabajo ' + Date.now());
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await expect(page).toHaveURL(/\/trabajos$/);
 
   // Empezar uno a medias: solo el cliente.
   await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
-  await page.getByLabel('Cliente').fill(cliente);
+  await elegir(page, 'Cliente', cliente);
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
 
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -209,9 +290,9 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
   await expect(page.getByText('Para poder enviarlo falta:')).toBeVisible();
 
   // Completarlo
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Trabajo de prueba automática');
-  await page.getByLabel('Materiales').fill('Chapa de prueba');
+  await primerMaterial(page, 'Chapa de prueba', '3');
   await page.getByLabel('Horas').fill('2.5');
   await expect(page.getByText('Para poder enviarlo falta:')).toHaveCount(0);
 
@@ -234,17 +315,17 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   // El 409 lo provoca la propia prueba al intentar borrar un trabajo que ya
   // tiene albarán: es el comportamiento que se está comprobando.
   const errores = vigilarErrores(page, [409]);
-  const cliente = `${MARCA} circuito`;
-
   await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'circuito ' + Date.now());
 
   // 1. Trabajo completo desde el principio
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
-  await page.getByLabel('Cliente').fill(cliente);
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Barandilla de prueba');
-  await page.getByLabel('Materiales').fill('Tubo de 40');
+  await primerMaterial(page, 'Tubo de 40', '12,5');
   await page.getByLabel('Horas').fill('3,5'); // con coma: así se teclea aquí
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -302,7 +383,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   await expect(page).toHaveURL(/\/trabajos\/\d+$/);
   await expect(page.getByText(/ya generó el albarán/)).toBeVisible();
   await borrarYConfirmar(page);
-  await expect(page.getByText(/ya tiene el albarán/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/está en el albarán/)).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/\/trabajos\/\d+$/); // sigue ahí, no se borró
 
   // 7. Limpieza: primero el albarán, después el trabajo
@@ -320,15 +401,15 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
 
 test('las fotos se suben, se ven y se borran', async ({ page }) => {
   const errores = vigilarErrores(page);
-  const cliente = `${MARCA} fotos`;
-
   await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'fotos ' + Date.now());
 
   // Alta de pedido CON foto desde el propio formulario: es el camino que hará
   // el trabajador con la tablet, foto incluida.
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
-  await page.getByLabel('Cliente').fill(cliente);
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué han pedido').fill('Pedido con foto');
 
   await page.locator('input[type=file]').setInputFiles(FOTO);
@@ -374,6 +455,85 @@ test('las fotos se suben, se ven y se borran', async ({ page }) => {
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
 
+test('dos trabajos de un cliente se unifican en un albarán con su precio', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'unificar ' + Date.now());
+
+  // Dos trabajos del MISMO cliente, enviados: son los que se pueden juntar.
+  for (const visita of [
+    { texto: 'Primera visita de prueba', material: 'Tornillo 3mm', cantidad: '5', horas: '4' },
+    { texto: 'Segunda visita de prueba', material: 'Tornillo 3mm', cantidad: '7', horas: '2,5' },
+  ]) {
+    await page.getByRole('link', { name: 'Trabajos' }).click();
+    await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+    await elegir(page, 'Cliente', cliente);
+    await elegir(page, 'Trabajador', trabajador);
+    await page.getByLabel('Qué se ha hecho').fill(visita.texto);
+    await primerMaterial(page, visita.material, visita.cantidad);
+    await page.getByLabel('Horas').fill(visita.horas);
+    await page.getByRole('button', { name: 'Guardar borrador' }).click();
+    await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+    await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+    await expect(page.getByText('Enviado').first()).toBeVisible({ timeout: 15_000 });
+  }
+
+  // Filtrar enviados por ese cliente: es lo que habilita la selección.
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.locator('mat-button-toggle', { hasText: 'Enviados' }).click();
+  await elegir(page, 'Cliente', cliente);
+
+  // Marcar los dos y generar el albarán unificado.
+  const casillas = page.locator('mat-checkbox input[type="checkbox"]');
+  await expect(casillas).toHaveCount(2, { timeout: 15_000 });
+  await casillas.nth(0).check();
+  await casillas.nth(1).check();
+  await expect(page.getByText('2 trabajos seleccionados')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Generar albarán' }).click();
+  await page.getByLabel('DNI del cliente').fill('12345678Z');
+  await page.getByRole('button', { name: 'Generar', exact: true }).click();
+  await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 20_000 });
+  const urlAlbaran = page.url();
+
+  // Las dos descripciones, y las horas SUMADAS (4 + 2,5).
+  await expect(page.getByText('Primera visita de prueba')).toBeVisible();
+  await expect(page.getByText('Segunda visita de prueba')).toBeVisible();
+  await expect(page.getByText('6.5')).toBeVisible();
+
+  // Poner precios y comprobar el total en vivo: 12 tornillos a 2 € son 24 €,
+  // más 6,5 h a 10 € son 65 €, más 11 € de extra = 100 €.
+  await page.getByLabel('Editar').click();
+  await page.locator('input[name="material-precio-0"]').fill('2');
+  await page.getByLabel('Precio por hora').fill('10');
+  await page.getByLabel('Añadir al coste').fill('11');
+  await expect(page.getByText('100.00 €')).toBeVisible();
+
+  // Que el total salga impreso es una decisión del jefe, casilla aparte.
+  await page.getByRole('checkbox', { name: /Incluir el total/ }).check();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.getByText(/sale en el PDF/)).toBeVisible({ timeout: 15_000 });
+
+  await descargarPdf(page, 'Descargar PDF del albarán', /albaran-\d+\.pdf/);
+
+  // Limpieza: el albarán primero; los trabajos no se pueden borrar antes.
+  await page.goto(urlAlbaran);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
+
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('link', { name: 'Trabajos' }).click();
+    await page.getByText(cliente).first().click();
+    await borrarYConfirmar(page);
+    await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+  }
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
 test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
   const errores = vigilarErrores(page);
 
@@ -405,14 +565,14 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
 
 test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ page }) => {
   const errores = vigilarErrores(page);
-  const cliente = `${MARCA} pdf`;
-
   await entrar(page, CUENTAS.jefe);
+
+  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'pdf ' + Date.now());
 
   // 1. Pedido
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
-  await page.getByLabel('Cliente').fill(cliente);
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué han pedido').fill('Reja de prueba para el PDF');
   await page.getByRole('button', { name: 'Guardar pedido' }).click();
   await expect(page).toHaveURL(/\/pedidos\/\d+$/, { timeout: 20_000 });
@@ -423,10 +583,10 @@ test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ p
   // 2. Trabajo enviado
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
-  await page.getByLabel('Cliente').fill(cliente);
-  await page.getByLabel('Trabajador').fill('Ana');
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Barandilla para el PDF');
-  await page.getByLabel('Materiales').fill('Tubo de 40');
+  await primerMaterial(page, 'Tubo de 40', '12,5');
   await page.getByLabel('Horas').fill('3,5');
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });

@@ -51,26 +51,82 @@
               <input matInput name="fecha" type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" [disabled]="ocupado()" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Cliente</mat-label>
-              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
-              @if (errores()['cliente']) { <mat-error>{{ errores()['cliente'] }}</mat-error> }
-            </mat-form-field>
+            <app-selector-maestro
+              etiqueta="Cliente"
+              [opciones]="maestros.clientes()"
+              [(valor)]="clienteId"
+              [deshabilitado]="ocupado()"
+            />
 
             <mat-form-field appearance="outline">
               <mat-label>DNI del cliente</mat-label>
               <input matInput name="dniCliente" [ngModel]="dniCliente()" (ngModelChange)="dniCliente.set($event)" [disabled]="ocupado()" />
             </mat-form-field>
 
+            <!-- Varios, porque el albarán puede unificar trabajos de distintas personas. -->
             <mat-form-field appearance="outline">
-              <mat-label>Trabajador</mat-label>
-              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
+              <mat-label>Trabajadores</mat-label>
+              <mat-select multiple [value]="trabajadorIds()" (valueChange)="trabajadorIds.set($event)" [disabled]="ocupado()">
+                @for (t of maestros.trabajadores(); track t.id) {
+                  <mat-option [value]="t.id">{{ t.nombre }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Descripción</mat-label>
               <textarea matInput name="descripcion" rows="4" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)" [disabled]="ocupado()"></textarea>
             </mat-form-field>
+
+            <h3 class="titulo-seccion">Materiales y precios</h3>
+            <app-filas-materiales
+              [lineasIniciales]="a.materiales"
+              [conPrecio]="true"
+              [deshabilitado]="ocupado()"
+              (cambio)="materiales.set($event)"
+            />
+
+            <div class="fila-precios">
+              <mat-form-field appearance="outline">
+                <mat-label>Horas</mat-label>
+                <input matInput name="horas" type="text" inputmode="decimal" placeholder="12,5"
+                       [ngModel]="horas()" (ngModelChange)="horas.set($event)" [disabled]="ocupado()" />
+                <span matTextSuffix>h</span>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Precio por hora</mat-label>
+                <input matInput name="precioHora" type="text" inputmode="decimal" placeholder="28"
+                       [ngModel]="precioHora()" (ngModelChange)="precioHora.set($event)" [disabled]="ocupado()" />
+                <span matTextSuffix>€</span>
+              </mat-form-field>
+            </div>
+
+            <!-- El coste sumado NO se puede editar: es la suma de lo de arriba
+                 y se recalcula al teclear. -->
+            <div class="resumen-coste">
+              <div class="linea-coste">
+                <span>Materiales y mano de obra</span>
+                <strong>{{ costeSumadoEnVivo() | number: '1.2-2' }} €</strong>
+              </div>
+
+              <mat-form-field appearance="outline" class="extra">
+                <mat-label>Añadir al coste</mat-label>
+                <input matInput name="importeExtra" type="text" inputmode="decimal" placeholder="45,50"
+                       [ngModel]="importeExtra()" (ngModelChange)="importeExtra.set($event)" [disabled]="ocupado()" />
+                <span matTextSuffix>€</span>
+                <mat-hint>Desplazamiento, un extra pactado… En negativo, un descuento.</mat-hint>
+              </mat-form-field>
+
+              <div class="linea-coste total">
+                <span>TOTAL</span>
+                <strong>{{ costeTotalEnVivo() | number: '1.2-2' }} €</strong>
+              </div>
+
+              <mat-checkbox [checked]="incluirTotal()" (change)="incluirTotal.set($event.checked)" [disabled]="ocupado()">
+                Incluir el total en el PDF que se entrega al cliente
+              </mat-checkbox>
+            </div>
 
             <div class="fila-fin acciones">
               <button matButton type="button" [disabled]="ocupado()" (click)="cancelarEdicion()">Cancelar</button>
@@ -95,12 +151,44 @@
             <span class="valor">{{ a.dniCliente || '—' }}</span>
           </div>
           <div class="dato">
-            <span class="etiqueta">Trabajador</span>
-            <span class="valor">{{ a.trabajador }}</span>
+            <span class="etiqueta">{{ a.trabajadores.length === 1 ? 'Trabajador' : 'Trabajadores' }}</span>
+            <span class="valor">{{ nombresTrabajadores(a) }}</span>
           </div>
           <div class="dato">
             <span class="etiqueta">Descripción</span>
             <span class="valor">{{ a.descripcion }}</span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Materiales</span>
+            <span class="valor">
+              @if (a.materiales.length === 0) { — } @else {
+                @for (linea of a.materiales; track linea.id) {
+                  <span class="linea-material">
+                    {{ linea.nombre }} &times; {{ linea.cantidad }}
+                    @if (linea.precio !== null && linea.precio !== undefined) {
+                      · {{ linea.precio | number: '1.2-2' }} €/ud
+                    }
+                  </span>
+                }
+              }
+            </span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Horas</span>
+            <span class="valor">
+              {{ a.horas ?? '—' }}
+              @if (a.precioHora !== null) { h · {{ a.precioHora | number: '1.2-2' }} €/h }
+            </span>
+          </div>
+          <div class="dato">
+            <span class="etiqueta">Coste</span>
+            <span class="valor destacado">
+              {{ a.costeTotal | number: '1.2-2' }} €
+              <small>
+                ({{ a.costeSumado | number: '1.2-2' }} € + {{ (a.importeExtra ?? 0) | number: '1.2-2' }} €)
+                @if (a.incluirTotal) { · sale en el PDF } @else { · no sale en el PDF }
+              </small>
+            </span>
           </div>
         }
       </mat-card-content>
@@ -170,8 +258,12 @@
     <p class="origen">
       <mat-icon>info</mat-icon>
       <span>
-        Salió del trabajo nº {{ a.trabajoId }}. Es una copia: lo que cambies aquí
-        no modifica aquel trabajo.
+        @if (a.trabajoIds.length === 1) {
+          Salió del trabajo nº {{ a.trabajoIds[0] }}.
+        } @else {
+          Unifica {{ a.trabajoIds.length }} trabajos (nº {{ a.trabajoIds.join(', ') }}).
+        }
+        Es una copia: lo que cambies aquí no modifica aquellos trabajos.
       </span>
     </p>
   }

@@ -39,6 +39,13 @@
     padding-bottom: 6pt;
     margin-bottom: 14pt;
   }
+  .cabecera .taller-logo {
+    /* Alto fijo y ancho automático: así el logotipo manda sobre la cabecera
+       sin deformarse, sea cual sea su proporción.
+       30 mm y no 20: la imagen trae bastante blanco alrededor, y a 20 mm el
+       nombre del taller que lleva dentro no se leía. */
+    height: 30mm;
+  }
   .cabecera .taller {
     font-size: 15pt;
     font-weight: bold;
@@ -193,7 +200,10 @@
 </style>
 
 <div th:fragment="cabecera" class="cabecera">
-  <div class="taller" th:text="${taller.nombre}">Taller</div>
+  <!-- El logotipo ya lleva el nombre del taller dentro, así que sustituye al
+       texto en vez de acompañarlo. Si faltara el fichero, se cae al nombre. -->
+  <img th:if="${taller.logo}" class="taller-logo" th:src="${taller.logo}" alt="" />
+  <div th:unless="${taller.logo}" class="taller" th:text="${taller.nombre}">Taller</div>
   <div class="taller-datos" th:unless="${#strings.isEmpty(taller.datos)}"
        th:text="${taller.datos}">Dirección · Tel. · CIF</div>
 </div>

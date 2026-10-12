@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +9,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
-import { TrabajoDatos } from '../nucleo/modelos';
+import { Maestros } from '../nucleo/maestros';
+import { MaterialLinea, TrabajoDatos } from '../nucleo/modelos';
+import { FilasMateriales } from '../comun/filas-materiales';
+import { SelectorMaestro } from '../comun/selector-maestro';
 
 /**
  * Empezar un trabajo.
@@ -33,20 +36,27 @@ import { TrabajoDatos } from '../nucleo/modelos';
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    FilasMateriales,
+    SelectorMaestro,
   ],
   templateUrl: './formulario-trabajo.html',
   styleUrl: './formulario-trabajo.scss',
 })
-export class FormularioTrabajo {
+export class FormularioTrabajo implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
   private readonly avisos = inject(Avisos);
+  readonly maestros = inject(Maestros);
 
-  readonly cliente = signal('');
-  readonly trabajador = signal('');
+  readonly clienteId = signal<number | null>(null);
+  readonly trabajadorId = signal<number | null>(null);
   readonly descripcion = signal('');
-  readonly materiales = signal('');
+  readonly materiales = signal<MaterialLinea[]>([]);
   readonly horas = signal<string>('');
+
+  ngOnInit(): void {
+    this.maestros.asegurarCargados();
+  }
 
   readonly guardando = signal(false);
   readonly errorHoras = signal<string | null>(null);
@@ -61,10 +71,10 @@ export class FormularioTrabajo {
     }
 
     const datos: TrabajoDatos = {
-      cliente: this.vacioONulo(this.cliente()),
-      trabajador: this.vacioONulo(this.trabajador()),
+      clienteId: this.clienteId(),
+      trabajadorId: this.trabajadorId(),
       descripcion: this.vacioONulo(this.descripcion()),
-      materiales: this.vacioONulo(this.materiales()),
+      materiales: this.materiales(),
       horas,
     };
 

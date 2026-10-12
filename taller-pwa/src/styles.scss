@@ -82,3 +82,26 @@ button.mat-mdc-button {
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* ---------------------------------------------------------------------------
+   Piezas nuevas compartidas: títulos de sección dentro de un formulario,
+   líneas de material y errores de campo que no van dentro de un mat-form-field.
+   --------------------------------------------------------------------------- */
+
+.titulo-seccion {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Cada material en su línea: en la tablet, puestos en fila no se leen. */
+.linea-material {
+  display: block;
+}
+
+.error-campo {
+  margin: -12px 0 12px;
+  color: var(--mat-sys-error, #b3261e);
+  font-size: 12px;
+}

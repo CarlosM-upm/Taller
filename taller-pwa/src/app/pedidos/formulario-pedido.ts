@@ -1,4 +1,4 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,14 +10,16 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { BorradorLocal } from '../nucleo/borrador-local';
+import { Maestros } from '../nucleo/maestros';
 import { SelectorFotos } from '../comun/selector-fotos';
+import { SelectorMaestro } from '../comun/selector-maestro';
 
 const MAX_FOTOS = 5;
 
 /** Lo que se guarda en el navegador si el envío falla. */
 interface PedidoAMedias {
-  cliente: string;
-  trabajador: string;
+  clienteId: number | null;
+  trabajadorId: number | null;
   descripcion: string;
 }
 
@@ -46,11 +48,12 @@ const CLAVE_BORRADOR = 'pedido-nuevo';
     MatInputModule,
     MatProgressBarModule,
     SelectorFotos,
+    SelectorMaestro,
   ],
   templateUrl: './formulario-pedido.html',
   styleUrl: './formulario-pedido.scss',
 })
-export class FormularioPedido {
+export class FormularioPedido implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
   private readonly avisos = inject(Avisos);
@@ -60,8 +63,8 @@ export class FormularioPedido {
 
   readonly maxFotos = MAX_FOTOS;
 
-  readonly cliente = signal('');
-  readonly trabajador = signal('');
+  readonly clienteId = signal<number | null>(null);
+  readonly trabajadorId = signal<number | null>(null);
   readonly descripcion = signal('');
   readonly fotos = signal<Blob[]>([]);
 
@@ -69,23 +72,29 @@ export class FormularioPedido {
   readonly errores = signal<Record<string, string>>({});
   readonly recuperado = signal(false);
 
+  readonly maestros = inject(Maestros);
+
   constructor() {
     // Si un intento anterior se quedó a medias (típicamente porque falló el
     // wifi al guardar), se recupera lo escrito en vez de hacer teclearlo otra
     // vez. Las fotos no se pueden recuperar: son binarios y no caben aquí.
     const previo = this.borrador.recuperar<PedidoAMedias>(CLAVE_BORRADOR);
     if (previo) {
-      this.cliente.set(previo.cliente);
-      this.trabajador.set(previo.trabajador);
+      this.clienteId.set(previo.clienteId);
+      this.trabajadorId.set(previo.trabajadorId);
       this.descripcion.set(previo.descripcion);
       this.recuperado.set(true);
     }
   }
 
+  ngOnInit(): void {
+    this.maestros.asegurarCargados();
+  }
+
   descartarRecuperado(): void {
     this.borrador.olvidar(CLAVE_BORRADOR);
-    this.cliente.set('');
-    this.trabajador.set('');
+    this.clienteId.set(null);
+    this.trabajadorId.set(null);
     this.descripcion.set('');
     this.recuperado.set(false);
   }
@@ -94,16 +103,16 @@ export class FormularioPedido {
     if (this.guardando()) return;
 
     const datos = {
-      cliente: this.cliente().trim(),
-      trabajador: this.trabajador().trim(),
+      clienteId: this.clienteId(),
+      trabajadorId: this.trabajadorId(),
       descripcion: this.descripcion().trim(),
     };
 
     // Comprobación local para no gastar un viaje al servidor; la de verdad,
     // la que manda, sigue estando en el backend.
     const faltan: Record<string, string> = {};
-    if (!datos.cliente) faltan['cliente'] = 'Indica el cliente';
-    if (!datos.trabajador) faltan['trabajador'] = 'Indica el trabajador';
+    if (!datos.clienteId) faltan['cliente'] = 'Elige el cliente';
+    if (!datos.trabajadorId) faltan['trabajador'] = 'Elige el trabajador';
     if (!datos.descripcion) faltan['descripcion'] = 'Indica qué han pedido';
     if (Object.keys(faltan).length > 0) {
       this.errores.set(faltan);

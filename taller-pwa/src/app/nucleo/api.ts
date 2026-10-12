@@ -5,12 +5,15 @@ import {
   Albaran,
   AlbaranCambios,
   AlbaranNuevo,
+  AlbaranUnificado,
+  Cliente,
   EstadoTrabajo,
   Pedido,
   PedidoCambios,
   PedidoNuevo,
   ProximoNumero,
   RespuestaLogin,
+  Trabajador,
   Trabajo,
   TrabajoDatos,
 } from './modelos';
@@ -40,6 +43,46 @@ export class ApiTaller {
 
   cambiarContrasena(actual: string, nueva: string): Observable<void> {
     return this.http.put<void>('/api/password', { actual, nueva });
+  }
+
+  // --- Clientes y trabajadores ---------------------------------------------
+  //
+  // Consultarlos lo pueden hacer los dos roles: la tablet los necesita para
+  // poblar los desplegables. Crearlos, renombrarlos y borrarlos es solo del
+  // jefe, y el backend lo rechaza con 403 si lo intenta la tablet.
+
+  clientes(): Observable<Cliente[]> {
+    return this.http.get<Cliente[]>('/api/clientes');
+  }
+
+  crearCliente(nombre: string): Observable<Cliente> {
+    return this.http.post<Cliente>('/api/clientes', { nombre });
+  }
+
+  /** Renombrar afecta a todos sus pedidos, trabajos y albaranes. */
+  renombrarCliente(id: number, nombre: string): Observable<Cliente> {
+    return this.http.put<Cliente>(`/api/clientes/${id}`, { nombre });
+  }
+
+  /** Falla con 409 si el cliente tiene documentos. */
+  borrarCliente(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/clientes/${id}`);
+  }
+
+  trabajadores(): Observable<Trabajador[]> {
+    return this.http.get<Trabajador[]>('/api/trabajadores');
+  }
+
+  crearTrabajador(nombre: string): Observable<Trabajador> {
+    return this.http.post<Trabajador>('/api/trabajadores', { nombre });
+  }
+
+  renombrarTrabajador(id: number, nombre: string): Observable<Trabajador> {
+    return this.http.put<Trabajador>(`/api/trabajadores/${id}`, { nombre });
+  }
+
+  borrarTrabajador(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/trabajadores/${id}`);
   }
 
   // --- Pedidos -------------------------------------------------------------
@@ -86,8 +129,11 @@ export class ApiTaller {
 
   // --- Trabajos ------------------------------------------------------------
 
-  trabajos(estado?: EstadoTrabajo): Observable<Trabajo[]> {
-    const filtro = estado ? `?estado=${estado.toLowerCase()}` : '';
+  trabajos(estado?: EstadoTrabajo, clienteId?: number | null): Observable<Trabajo[]> {
+    const partes: string[] = [];
+    if (estado) partes.push(`estado=${estado.toLowerCase()}`);
+    if (clienteId) partes.push(`clienteId=${clienteId}`);
+    const filtro = partes.length ? `?${partes.join('&')}` : '';
     return this.http.get<Trabajo[]>(`/api/trabajos${filtro}`);
   }
 
@@ -143,6 +189,16 @@ export class ApiTaller {
   /** Nace siempre de un trabajo ENVIADO, nunca desde cero. */
   crearAlbaranDesdeTrabajo(trabajoId: number, datos: AlbaranNuevo): Observable<Albaran> {
     return this.http.post<Albaran>(`/api/trabajos/${trabajoId}/albaran`, datos);
+  }
+
+  /**
+   * Varios trabajos del mismo cliente en un solo albarán.
+   *
+   * Cuelga de /api/albaranes y no de un trabajo porque no nace de ninguno en
+   * concreto: nace de una selección.
+   */
+  crearAlbaranUnificado(datos: AlbaranUnificado): Observable<Albaran> {
+    return this.http.post<Albaran>('/api/albaranes/unificado', datos);
   }
 
   editarAlbaran(id: number, cambios: AlbaranCambios): Observable<Albaran> {

@@ -13,6 +13,8 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -56,7 +58,29 @@ public class GeneradorPdf {
                         @Value("${taller.documento.telefono:}") String telefono,
                         @Value("${taller.documento.cif:}") String cif) {
         this.motor = motor;
-        this.taller = new DatosTaller(nombre, lineaDeDatos(direccion, telefono, cif));
+        this.taller = new DatosTaller(nombre, lineaDeDatos(direccion, telefono, cif), cargarLogo());
+    }
+
+    /**
+     * El logotipo del taller, empotrado como data URI una sola vez al arrancar.
+     *
+     * Va en la cabecera en lugar del nombre escrito, porque la propia imagen ya
+     * lleva el nombre dentro. Si el fichero no estuviera, se devuelve null y la
+     * plantilla cae al texto: un logotipo que falta no debe impedir que el
+     * taller emita un albarán.
+     */
+    private static String cargarLogo() {
+        try (InputStream entrada = GeneradorPdf.class
+                .getResourceAsStream("/documentos/logo-taller.jpg")) {
+            if (entrada == null) {
+                log.warn("No se encuentra /documentos/logo-taller.jpg: la cabecera usará el nombre");
+                return null;
+            }
+            return imagen("image/jpeg", entrada.readAllBytes());
+        } catch (IOException fallo) {
+            log.warn("No se ha podido leer el logotipo del taller", fallo);
+            return null;
+        }
     }
 
     /**
@@ -165,6 +189,10 @@ public class GeneradorPdf {
 
     public record LineaMaterial(String nombre, String cantidad) { }
 
-    /** Datos del taller que encabezan los documentos. Se rellenan en application.yml. */
-    public record DatosTaller(String nombre, String datos) { }
+    /**
+     * Datos del taller que encabezan los documentos. El nombre, la dirección,
+     * el teléfono y el CIF se rellenan en application.yml; el logotipo se
+     * empaqueta en resources/documentos/.
+     */
+    public record DatosTaller(String nombre, String datos, String logo) { }
 }

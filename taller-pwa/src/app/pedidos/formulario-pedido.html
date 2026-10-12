@@ -23,33 +23,25 @@
   <mat-card>
     <mat-card-content>
       <form (ngSubmit)="guardar()">
-        <mat-form-field appearance="outline">
-          <mat-label>Cliente</mat-label>
-          <input
-            matInput
-            name="cliente"
-            [ngModel]="cliente()"
-            (ngModelChange)="cliente.set($event)"
-            [disabled]="guardando()"
-          />
-          @if (errores()['cliente']) {
-            <mat-error>{{ errores()['cliente'] }}</mat-error>
-          }
-        </mat-form-field>
+        <app-selector-maestro
+          etiqueta="Cliente"
+          [opciones]="maestros.clientes()"
+          [(valor)]="clienteId"
+          [deshabilitado]="guardando()"
+        />
+        @if (errores()['cliente']) {
+          <p class="error-campo">{{ errores()['cliente'] }}</p>
+        }
 
-        <mat-form-field appearance="outline">
-          <mat-label>Trabajador</mat-label>
-          <input
-            matInput
-            name="trabajador"
-            [ngModel]="trabajador()"
-            (ngModelChange)="trabajador.set($event)"
-            [disabled]="guardando()"
-          />
-          @if (errores()['trabajador']) {
-            <mat-error>{{ errores()['trabajador'] }}</mat-error>
-          }
-        </mat-form-field>
+        <app-selector-maestro
+          etiqueta="Trabajador"
+          [opciones]="maestros.trabajadores()"
+          [(valor)]="trabajadorId"
+          [deshabilitado]="guardando()"
+        />
+        @if (errores()['trabajador']) {
+          <p class="error-campo">{{ errores()['trabajador'] }}</p>
+        }
 
         <mat-form-field appearance="outline">
           <mat-label>Qué han pedido</mat-label>

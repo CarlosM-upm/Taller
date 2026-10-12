@@ -29,6 +29,11 @@ import { Albaran } from '../nucleo/modelos';
   styleUrl: './lista-albaranes.scss',
 })
 export class ListaAlbaranes {
+  /** Pueden ser varios si el albarán unifica trabajos de distintas personas. */
+  nombresTrabajadores(albaran: Albaran): string {
+    return albaran.trabajadores.map((t) => t.nombre).join(', ');
+  }
+
   private readonly api = inject(ApiTaller);
   private readonly avisos = inject(Avisos);
 

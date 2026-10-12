@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,10 +9,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
+import { Maestros } from '../nucleo/maestros';
 import { Sesion } from '../nucleo/sesion';
+import { ListaMaestros } from './lista-maestros';
 
 /**
- * Ajustes del jefe: la numeración de albaranes y su contraseña.
+ * Ajustes del jefe: los clientes y trabajadores del taller, la numeración de
+ * albaranes y su contraseña.
  *
  * Ojo con el cambio de contraseña: el servidor cierra TODAS las sesiones del
  * usuario, incluida esta. Es deliberado (si se cambia la de "tablet" porque se
@@ -30,15 +33,17 @@ import { Sesion } from '../nucleo/sesion';
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    ListaMaestros,
   ],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
-export class Configuracion {
+export class Configuracion implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
   private readonly sesion = inject(Sesion);
   private readonly avisos = inject(Avisos);
+  readonly maestros = inject(Maestros);
 
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
@@ -56,6 +61,10 @@ export class Configuracion {
 
   constructor() {
     this.cargarContador();
+  }
+
+  ngOnInit(): void {
+    this.maestros.asegurarCargados();
   }
 
   cargarContador(): void {

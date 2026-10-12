@@ -27,12 +27,44 @@ export interface RespuestaError {
   campos?: Record<string, string>;
 }
 
+// --- Maestros: clientes y trabajadores --------------------------------------
+
+/**
+ * Los mantiene el jefe desde Ajustes. Pedidos, trabajos y albaranes los
+ * referencian por id, así que renombrar uno aquí se refleja en todos.
+ */
+export interface Cliente {
+  id: number;
+  nombre: string;
+}
+
+export interface Trabajador {
+  id: number;
+  nombre: string;
+}
+
+// --- Materiales -------------------------------------------------------------
+
+/**
+ * Una línea de material. El precio solo se usa en los albaranes: lo pone el
+ * jefe al facturar, y en los trabajos viaja nulo.
+ */
+export interface MaterialLinea {
+  id?: number | null;
+  nombre: string;
+  /** Decimal con 2 decimales: vale para "5 tornillos" y para "12,5 m". */
+  cantidad: number | null;
+  precio?: number | null;
+}
+
 // --- Pedidos ---------------------------------------------------------------
 
 export interface Pedido {
   id: number;
   fecha: string;
+  trabajadorId: number;
   trabajador: string;
+  clienteId: number;
   cliente: string;
   descripcion: string;
   fotoIds: number[];
@@ -40,8 +72,8 @@ export interface Pedido {
 
 /** La fecha no se envía: la pone el servidor al crear. */
 export interface PedidoNuevo {
-  trabajador: string;
-  cliente: string;
+  trabajadorId: number | null;
+  clienteId: number | null;
   descripcion: string;
 }
 
@@ -54,21 +86,25 @@ export interface Trabajo {
   estado: EstadoTrabajo;
   /** Vacía mientras es borrador: se estampa al enviar. */
   fecha: string | null;
+  clienteId: number | null;
   cliente: string | null;
+  trabajadorId: number | null;
   trabajador: string | null;
   descripcion: string | null;
-  materiales: string | null;
+  materiales: MaterialLinea[];
   /** BigDecimal con 2 decimales en el servidor; aquí llega como número. */
   horas: number | null;
   fotoIds: number[];
+  /** Si ya está en un albarán: entonces no se puede volver a facturar. */
+  enAlbaran: boolean;
 }
 
 /** Todos opcionales: un borrador puede guardarse a medias. */
 export interface TrabajoDatos {
-  cliente?: string | null;
-  trabajador?: string | null;
+  clienteId?: number | null;
+  trabajadorId?: number | null;
   descripcion?: string | null;
-  materiales?: string | null;
+  materiales?: MaterialLinea[];
   horas?: number | null;
 }
 
@@ -78,12 +114,24 @@ export interface Albaran {
   id: number;
   numero: number;
   fecha: string;
+  clienteId: number;
   cliente: string;
   dniCliente: string | null;
-  trabajador: string;
+  /** Varios, porque puede unificar trabajos de distintas personas. */
+  trabajadores: Trabajador[];
   descripcion: string;
+  horas: number | null;
+  materiales: MaterialLinea[];
+  precioHora: number | null;
+  /** Materiales + mano de obra. Lo calcula el servidor; no es editable. */
+  costeSumado: number;
+  importeExtra: number | null;
+  /** costeSumado + importeExtra. Lo único que puede salir impreso. */
+  costeTotal: number;
+  incluirTotal: boolean;
   tieneFirma: boolean;
-  trabajoId: number;
+  /** Uno, o varios si se unificó. */
+  trabajoIds: number[];
   fotoIds: number[];
 }
 
@@ -92,13 +140,23 @@ export interface AlbaranNuevo {
   dniCliente?: string | null;
 }
 
+/** Varios trabajos del mismo cliente en un solo albarán. */
+export interface AlbaranUnificado extends AlbaranNuevo {
+  trabajoIds: number[];
+}
+
 export interface AlbaranCambios {
   numero?: number;
   fecha?: string;
-  cliente?: string;
+  clienteId?: number;
   dniCliente?: string;
-  trabajador?: string;
+  trabajadorIds?: number[];
   descripcion?: string;
+  horas?: number | null;
+  materiales?: MaterialLinea[];
+  precioHora?: number | null;
+  importeExtra?: number | null;
+  incluirTotal?: boolean;
 }
 
 // --- Configuración ---------------------------------------------------------

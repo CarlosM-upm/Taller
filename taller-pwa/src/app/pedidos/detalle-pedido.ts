@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
+import { Maestros } from '../nucleo/maestros';
 import { Avisos } from '../nucleo/avisos';
 import { Descargas } from '../nucleo/descargas';
 import { Sesion } from '../nucleo/sesion';
@@ -17,6 +18,7 @@ import { Pedido } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 import { GaleriaFotos } from '../comun/galeria-fotos';
 import { SelectorFotos } from '../comun/selector-fotos';
+import { SelectorMaestro } from '../comun/selector-maestro';
 
 const MAX_FOTOS = 5;
 
@@ -44,6 +46,7 @@ const MAX_FOTOS = 5;
     MatProgressBarModule,
     GaleriaFotos,
     SelectorFotos,
+    SelectorMaestro,
   ],
   templateUrl: './detalle-pedido.html',
   styleUrl: './detalle-pedido.scss',
@@ -61,14 +64,16 @@ export class DetallePedido implements OnInit {
   /** Llega de la ruta /pedidos/:id gracias a withComponentInputBinding. */
   readonly id = input.required<string>();
 
+  readonly maestros = inject(Maestros);
+
   readonly pedido = signal<Pedido | null>(null);
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
   readonly fallo = signal<string | null>(null);
 
   readonly editando = signal(false);
-  readonly cliente = signal('');
-  readonly trabajador = signal('');
+  readonly clienteId = signal<number | null>(null);
+  readonly trabajadorId = signal<number | null>(null);
   readonly descripcion = signal('');
   readonly errores = signal<Record<string, string>>({});
 
@@ -92,6 +97,7 @@ export class DetallePedido implements OnInit {
    * sin ningún aviso. Ocurrió, y por eso existe e2e/humo.spec.ts.
    */
   ngOnInit(): void {
+    this.maestros.asegurarCargados();
     this.cargar();
   }
 
@@ -129,8 +135,8 @@ export class DetallePedido implements OnInit {
   empezarEdicion(): void {
     const pedido = this.pedido();
     if (!pedido) return;
-    this.cliente.set(pedido.cliente);
-    this.trabajador.set(pedido.trabajador);
+    this.clienteId.set(pedido.clienteId);
+    this.trabajadorId.set(pedido.trabajadorId);
     this.descripcion.set(pedido.descripcion);
     this.errores.set({});
     this.editando.set(true);
@@ -150,8 +156,8 @@ export class DetallePedido implements OnInit {
 
     this.api
       .editarPedido(pedido.id, {
-        cliente: this.cliente().trim(),
-        trabajador: this.trabajador().trim(),
+        clienteId: this.clienteId(),
+        trabajadorId: this.trabajadorId(),
         descripcion: this.descripcion().trim(),
       })
       .subscribe({

@@ -6,6 +6,31 @@
   <h2>Ajustes</h2>
 
   <!-- Numeración de albaranes -->
+  <!-- Clientes y trabajadores: lo que alimenta los desplegables del resto de
+       pantallas. Van los primeros porque sin ellos no se puede dar de alta
+       ni un pedido. -->
+  <mat-card class="tarjeta-maestros">
+    <mat-card-content>
+      <app-lista-maestros
+        tipo="cliente"
+        titulo="Clientes"
+        singular="cliente"
+        [elementos]="maestros.clientes()"
+      />
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="tarjeta-maestros">
+    <mat-card-content>
+      <app-lista-maestros
+        tipo="trabajador"
+        titulo="Trabajadores"
+        singular="trabajador"
+        [elementos]="maestros.trabajadores()"
+      />
+    </mat-card-content>
+  </mat-card>
+
   <mat-card>
     <mat-card-content>
       <h3>Numeración de albaranes</h3>

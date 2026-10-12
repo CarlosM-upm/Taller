@@ -39,17 +39,19 @@
       <mat-card-content>
         @if (editando()) {
           <form (ngSubmit)="guardar()">
-            <mat-form-field appearance="outline">
-              <mat-label>Cliente</mat-label>
-              <input matInput name="cliente" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)" [disabled]="ocupado()" />
-              @if (errores()['cliente']) { <mat-error>{{ errores()['cliente'] }}</mat-error> }
-            </mat-form-field>
+            <app-selector-maestro
+              etiqueta="Cliente"
+              [opciones]="maestros.clientes()"
+              [(valor)]="clienteId"
+              [deshabilitado]="ocupado()"
+            />
 
-            <mat-form-field appearance="outline">
-              <mat-label>Trabajador</mat-label>
-              <input matInput name="trabajador" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)" [disabled]="ocupado()" />
-              @if (errores()['trabajador']) { <mat-error>{{ errores()['trabajador'] }}</mat-error> }
-            </mat-form-field>
+            <app-selector-maestro
+              etiqueta="Trabajador"
+              [opciones]="maestros.trabajadores()"
+              [(valor)]="trabajadorId"
+              [deshabilitado]="ocupado()"
+            />
 
             <mat-form-field appearance="outline">
               <mat-label>Qué han pedido</mat-label>

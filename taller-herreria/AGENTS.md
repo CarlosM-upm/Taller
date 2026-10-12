@@ -92,6 +92,9 @@ lo suyo dentro:
 ```
 src/main/java/com/taller/herreria/
 ├── HerreriaApplication.java
+├── cliente/     Cliente y su CRUD. Lo mantiene el jefe desde Ajustes
+├── trabajador/  Trabajador y su CRUD. Igual que cliente
+├── material/    Material y MaterialRepository (los comparten trabajo y albarán)
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
 ├── trabajo/     Trabajo, Repository, Service, Controller, dto/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
@@ -195,18 +198,31 @@ Campos: `estado`, `fecha`, `cliente`, `trabajador`, `descripcion`, `materiales`,
   estén cliente, trabajador, descripción, materiales y horas, y si falta algo devuelve la
   lista exacta de lo que falta.
 - No se puede enviar dos veces (segundo intento → 409).
-- `materiales` es **texto libre**, no una lista estructurada.
+- `materiales` es una **lista de líneas** (nombre + cantidad), no un texto libre.
+  Cambió al añadir los precios: con "2 m de perfil, 4 tornillos" en una sola cadena
+  no hay nada que multiplicar ni que sumar al unificar varios trabajos. La cantidad
+  es `BigDecimal` con 2 decimales, igual que las horas. Viven en la tabla `materiales`
+  con el mismo esquema que las fotos (`origenTipo` + `origenId`).
 - `horas` es **`BigDecimal` con 2 decimales**: decimal exacto, sin errores de redondeo al
   sumar. Acepta enteros (3 → 3.00). **No lo cambies a `double` ni a `float`.**
 
 ### Albaran
 
-Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajador`, `descripcion`, `firma`,
+Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
+`descripcion`, `materiales` con precio, `horas`, `precioHora`, `importeExtra`,
+`incluirTotal`, `firma`,
 `trabajoId`, fotos.
 
 - **Nace siempre de un Trabajo ENVIADO**, nunca desde cero y nunca desde la tablet.
   Endpoint: `POST /api/trabajos/{id}/albaran`.
-- Relación **uno a uno**: un trabajo genera como mucho un albarán (restricción única en BD).
+- Relación **varios a uno**: un albarán puede unificar VARIOS trabajos del mismo
+  cliente (tabla `albaran_trabajos`). Un trabajo, eso sí, sigue pudiendo estar en un
+  solo albarán —restricción única sobre `trabajo_id`—, que es lo que impide facturar
+  dos veces lo mismo.
+- Al unificar: descripciones concatenadas por fecha, trabajadores sin repetir, horas
+  sumadas y materiales del mismo nombre agrupados sumando cantidades. El cliente es
+  el único campo que no se puede mezclar: mezclarlo daría un albarán que no es de
+  nadie, y se rechaza con 400.
 - Es una **copia instantánea (snapshot)**, no una referencia viva. Al crearlo se copian
   cliente, trabajador, descripción y **también las fotos** (como fotos propias del albarán).
   Editar el albarán después **no debe afectar al trabajo original**. Esto es deliberado:
@@ -215,6 +231,36 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajador`, `descripcion`,
 - La **fecha es elegida** por el jefe (no automática). Si no se indica, se usa la de hoy,
   y sigue siendo editable después.
 - `firma` es una imagen (la firma del cliente), guardada en la propia entidad.
+
+### Clientes y trabajadores
+
+- Son **entidades**, no texto tecleado. Los mantiene el jefe desde Ajustes.
+- Pedidos, trabajos y albaranes los **referencian**, así que renombrar uno se
+  refleja en todos sus documentos, **incluidos albaranes ya firmados**. Es la
+  excepción a que el albarán sea una instantánea, y es deliberada: sirve para
+  corregir erratas. El resto de campos siguen siendo copia.
+- **No se borran si tienen documentos**: 409 diciendo cuántos pedidos, trabajos y
+  albaranes tiene, para saber dónde mirar.
+- Nombres únicos sin distinguir mayúsculas. El problema que resolvían era tener al
+  mismo cliente escrito como "Seica", "seica" y "SEICA " sin forma de agrupar sus
+  trabajos, que es justo lo que hace falta para el albarán unificado.
+- El GET lo pueden hacer los dos roles (la tablet puebla sus desplegables); crear,
+  renombrar y borrar es solo del jefe.
+
+### Precios del albarán
+
+- El jefe pone un precio a cada material y un precio a la hora. El coste **no se
+  guarda en ninguna columna**: se calcula a partir de las líneas, las horas y el
+  importe extra. Guardarlo obligaría a reescribirlo con cada cambio de precio, y
+  bastaría un fallo para que el albarán dijera un total que no cuadra con sus
+  propias líneas.
+- Se redondea **línea a línea**, no solo al final: con cantidades decimales
+  (12,5 m x 3,33 €) el producto tiene más de dos decimales, y redondeando solo el
+  total no cuadraría si el cliente suma a mano lo que ve impreso.
+- `importeExtra` admite negativo (es como se hace un descuento). El precio por hora
+  y los de material, no.
+- `incluirTotal` decide si el total sale en el PDF, y viene **desmarcado**. El
+  desglose no se imprime nunca: solo puede salir el total.
 
 ### Numeración de albaranes — contador editable
 
@@ -229,7 +275,9 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajador`, `descripcion`,
 
 ### Fotos
 
-- Las tres entidades admiten fotos, **máximo 5 por entidad** (constante `MAX_FOTOS`).
+- Las tres entidades admiten fotos: **5 en pedidos y trabajos, 15 en albaranes**
+  (constante `MAX_FOTOS` de cada servicio). El albarán admite más porque al unificar
+  junta las de varios trabajos, y tres visitas con cinco fotos no caben en cinco.
 - Se guardan **dentro de PostgreSQL**, no en el sistema de ficheros. Decisión
   deliberada: así una sola copia de seguridad de la BD se lleva absolutamente todo.
 - Tabla única `fotos` con `origenTipo` (PEDIDO/TRABAJO/ALBARAN) + `origenId`, con índice
@@ -340,6 +388,15 @@ POST   /api/login                     abierto
 POST   /api/logout
 PUT    /api/password
 
+GET    /api/clientes                  ambos roles (pueblan los desplegables)
+POST   /api/clientes                  JEFE
+PUT    /api/clientes/{id}              JEFE — renombrar propaga a sus documentos
+DELETE /api/clientes/{id}              JEFE — 409 si tiene documentos
+GET    /api/trabajadores               ambos roles
+POST   /api/trabajadores               JEFE
+PUT    /api/trabajadores/{id}          JEFE
+DELETE /api/trabajadores/{id}          JEFE — 409 si tiene documentos
+
 POST   /api/pedidos                   crear (fecha automática)
 GET    /api/pedidos
 GET    /api/pedidos/{id}
@@ -351,7 +408,7 @@ GET    /api/pedidos/{id}/fotos/{fid}
 DELETE /api/pedidos/{id}/fotos/{fid}  JEFE
 
 POST   /api/trabajos                  crear borrador (campos opcionales)
-GET    /api/trabajos?estado=borrador|enviado
+GET    /api/trabajos?estado=borrador|enviado&clienteId=N
 GET    /api/trabajos/{id}
 GET    /api/trabajos/{id}/pdf         JEFE
 PATCH  /api/trabajos/{id}             enviado → solo JEFE
@@ -361,7 +418,8 @@ POST   /api/trabajos/{id}/fotos
 GET    /api/trabajos/{id}/fotos/{fid}
 DELETE /api/trabajos/{id}/fotos/{fid}
 
-POST   /api/trabajos/{id}/albaran     JEFE — crea el albarán desde el trabajo
+POST   /api/trabajos/{id}/albaran     JEFE — albarán desde UN trabajo
+POST   /api/albaranes/unificado       JEFE — albarán desde VARIOS del mismo cliente
 GET    /api/albaranes                 JEFE
 GET    /api/albaranes/{id}            JEFE
 GET    /api/albaranes/{id}/pdf        JEFE — el documento que se imprime

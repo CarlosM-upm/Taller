@@ -10,14 +10,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
+import { Maestros } from '../nucleo/maestros';
 import { Avisos } from '../nucleo/avisos';
 import { Descargas } from '../nucleo/descargas';
 import { Sesion } from '../nucleo/sesion';
-import { Trabajo, TrabajoDatos, Albaran } from '../nucleo/modelos';
+import { Trabajo, TrabajoDatos, Albaran, MaterialLinea } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 import { DialogoGenerarAlbaran } from '../albaranes/dialogo-generar-albaran';
 import { GaleriaFotos } from '../comun/galeria-fotos';
+import { FilasMateriales } from '../comun/filas-materiales';
 import { SelectorFotos } from '../comun/selector-fotos';
+import { SelectorMaestro } from '../comun/selector-maestro';
 
 const MAX_FOTOS = 5;
 
@@ -55,7 +58,9 @@ const OBLIGATORIOS_PARA_ENVIAR = [
     MatInputModule,
     MatProgressBarModule,
     GaleriaFotos,
+    FilasMateriales,
     SelectorFotos,
+    SelectorMaestro,
   ],
   templateUrl: './detalle-trabajo.html',
   styleUrl: './detalle-trabajo.scss',
@@ -72,15 +77,17 @@ export class DetalleTrabajo implements OnInit {
 
   readonly id = input.required<string>();
 
+  readonly maestros = inject(Maestros);
+
   readonly trabajo = signal<Trabajo | null>(null);
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
   readonly fallo = signal<string | null>(null);
 
-  readonly cliente = signal('');
-  readonly trabajador = signal('');
+  readonly clienteId = signal<number | null>(null);
+  readonly trabajadorId = signal<number | null>(null);
   readonly descripcion = signal('');
-  readonly materiales = signal('');
+  readonly materiales = signal<MaterialLinea[]>([]);
   readonly horas = signal('');
   readonly errorHoras = signal<string | null>(null);
 
@@ -112,26 +119,26 @@ export class DetalleTrabajo implements OnInit {
 
   /** Qué falta para poder enviarlo, con los nombres que ve el usuario. */
   readonly faltan = computed(() => {
-    const valores: Record<string, string> = {
-      cliente: this.cliente().trim(),
-      trabajador: this.trabajador().trim(),
-      descripcion: this.descripcion().trim(),
-      materiales: this.materiales().trim(),
-      horas: this.horas().trim(),
+    // Relleno, no relleno: cliente y trabajador ya no son texto sino una
+    // elección, y los materiales son una lista.
+    const relleno: Record<string, boolean> = {
+      cliente: this.clienteId() !== null,
+      trabajador: this.trabajadorId() !== null,
+      descripcion: this.descripcion().trim().length > 0,
+      materiales: this.materiales().length > 0,
+      horas: this.horas().trim().length > 0,
     };
-    return OBLIGATORIOS_PARA_ENVIAR.filter((c) => valores[c.campo].length === 0).map(
-      (c) => c.etiqueta
-    );
+    return OBLIGATORIOS_PARA_ENVIAR.filter((c) => !relleno[c.campo]).map((c) => c.etiqueta);
   });
 
   readonly hayCambios = computed(() => {
     const t = this.trabajo();
     if (!t) return false;
     return (
-      this.cliente().trim() !== (t.cliente ?? '') ||
-      this.trabajador().trim() !== (t.trabajador ?? '') ||
+      this.clienteId() !== t.clienteId ||
+      this.trabajadorId() !== t.trabajadorId ||
       this.descripcion().trim() !== (t.descripcion ?? '') ||
-      this.materiales().trim() !== (t.materiales ?? '') ||
+      JSON.stringify(this.materiales()) !== JSON.stringify(t.materiales) ||
       this.horas().trim() !== (t.horas !== null ? String(t.horas) : '')
     );
   });
@@ -147,6 +154,7 @@ export class DetalleTrabajo implements OnInit {
    * sin ningún aviso. Ocurrió, y por eso existe e2e/humo.spec.ts.
    */
   ngOnInit(): void {
+    this.maestros.asegurarCargados();
     this.cargar();
   }
 
@@ -339,10 +347,10 @@ export class DetalleTrabajo implements OnInit {
 
   private aplicar(trabajo: Trabajo): void {
     this.trabajo.set(trabajo);
-    this.cliente.set(trabajo.cliente ?? '');
-    this.trabajador.set(trabajo.trabajador ?? '');
+    this.clienteId.set(trabajo.clienteId);
+    this.trabajadorId.set(trabajo.trabajadorId);
     this.descripcion.set(trabajo.descripcion ?? '');
-    this.materiales.set(trabajo.materiales ?? '');
+    this.materiales.set(trabajo.materiales);
     this.horas.set(trabajo.horas !== null ? String(trabajo.horas) : '');
     this.errorHoras.set(null);
 
@@ -357,7 +365,7 @@ export class DetalleTrabajo implements OnInit {
 
   private buscarAlbaran(trabajoId: number): void {
     this.api.albaranes().subscribe({
-      next: (lista) => this.albaran.set(lista.find((a) => a.trabajoId === trabajoId) ?? null),
+      next: (lista) => this.albaran.set(lista.find((a) => a.trabajoIds.includes(trabajoId)) ?? null),
       // Si falla, simplemente no se enseña el enlace. No es información
       // crítica y no merece molestar al usuario con un aviso.
       error: () => this.albaran.set(null),
@@ -405,10 +413,10 @@ export class DetalleTrabajo implements OnInit {
 
     const vacioONulo = (v: string) => (v.trim().length > 0 ? v.trim() : null);
     return {
-      cliente: vacioONulo(this.cliente()),
-      trabajador: vacioONulo(this.trabajador()),
+      clienteId: this.clienteId(),
+      trabajadorId: this.trabajadorId(),
       descripcion: vacioONulo(this.descripcion()),
-      materiales: vacioONulo(this.materiales()),
+      materiales: this.materiales(),
       horas,
     };
   }
