@@ -88,6 +88,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/clientes/**").hasRole("JEFE")
                 .requestMatchers("/api/trabajadores/**").hasRole("JEFE")
 
+                // Catálogo de materiales: la tablet lee la lista SIN precios para
+                // elegir el material en cada fila. La lista con precios
+                // (/api/catalogo/precios) y cualquier cambio son del jefe.
+                // "/api/catalogo" va exacto a propósito: si fuera "/api/catalogo/**"
+                // el GET de /precios quedaría abierto también al trabajador.
+                .requestMatchers(HttpMethod.GET, "/api/catalogo").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/familias-material").authenticated()
+                .requestMatchers("/api/catalogo", "/api/catalogo/**").hasRole("JEFE")
+                .requestMatchers("/api/familias-material", "/api/familias-material/**").hasRole("JEFE")
+
                 // Resto de la API: cualquier usuario autenticado (trabajador o jefe)
                 .requestMatchers("/api/**").authenticated()
 

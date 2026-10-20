@@ -76,6 +76,28 @@ public class TrabajoController {
         servicio.borrar(id);
     }
 
+    // ---------- Firma del cliente ----------
+
+    /** Recoger la firma (imagen). Las reglas de quién puede, en el servicio. */
+    @PutMapping(path = "/{id}/firma", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public TrabajoResponse guardarFirma(@PathVariable Long id,
+                                        @RequestParam("firma") MultipartFile firma) {
+        return servicio.guardarFirma(id, firma);
+    }
+
+    @GetMapping("/{id}/firma")
+    public ResponseEntity<byte[]> verFirma(@PathVariable Long id) {
+        Trabajo trabajo = servicio.obtenerConFirma(id);
+        return ResponseEntity.ok()
+                .header("Content-Type", trabajo.getFirmaTipoContenido())
+                .body(trabajo.getFirma());
+    }
+
+    @DeleteMapping("/{id}/firma")
+    public TrabajoResponse borrarFirma(@PathVariable Long id) {
+        return servicio.borrarFirma(id);
+    }
+
     // ---------- Fotos ----------
 
     @PostMapping(path = "/{id}/fotos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

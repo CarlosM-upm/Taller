@@ -63,7 +63,7 @@ taller:
     # Encabezan los PDF de pedidos, trabajos y albaranes.
     # RELLENAR CON LOS DATOS REALES DEL TALLER antes de ponerlo en marcha:
     # un albarán que se entrega a un cliente los lleva siempre.
-    nombre: Taller de herrería
+    nombre: Nicolás Moreno, Taller
     direccion: ""
     telefono: ""
     cif: ""

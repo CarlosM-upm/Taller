@@ -36,8 +36,20 @@ public class Material {
     @Column(nullable = false)
     private Long origenId;
 
+    /**
+     * De qué material del catálogo salió. Es solo un enlace de referencia: lo
+     * que se usa es la COPIA de nombre, unidad y precio de esta misma fila, para
+     * que cambiar el catálogo no altere un documento ya entregado. Queda a nulo
+     * si el material se borra del catálogo, y la línea sigue intacta.
+     */
+    private Long catalogoId;
+
     @Column(nullable = false)
     private String nombre;
+
+    /** Copiada del catálogo: "m", "ud", "kg"… Nula en líneas anteriores al catálogo. */
+    @Column(length = 20)
+    private String unidad;
 
     /**
      * Decimal exacto con 2 decimales, por el mismo motivo que las horas: sirve
@@ -67,11 +79,15 @@ public class Material {
     public Long getId() { return id; }
     public OrigenTipo getOrigenTipo() { return origenTipo; }
     public Long getOrigenId() { return origenId; }
+    public Long getCatalogoId() { return catalogoId; }
     public String getNombre() { return nombre; }
+    public String getUnidad() { return unidad; }
     public BigDecimal getCantidad() { return cantidad; }
     public BigDecimal getPrecio() { return precio; }
 
+    public void setCatalogoId(Long catalogoId) { this.catalogoId = catalogoId; }
     public void setNombre(String nombre) { this.nombre = nombre; }
+    public void setUnidad(String unidad) { this.unidad = unidad; }
     public void setCantidad(BigDecimal cantidad) { this.cantidad = cantidad; }
     public void setPrecio(BigDecimal precio) { this.precio = precio; }
 

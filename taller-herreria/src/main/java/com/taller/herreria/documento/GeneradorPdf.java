@@ -180,10 +180,17 @@ public class GeneradorPdf {
         return formato.format(valor) + " €";
     }
 
-    /** Las líneas de material ya formateadas, listas para la tabla del documento. */
+    /**
+     * Las líneas de material ya formateadas, listas para la tabla del documento.
+     * La unidad va pegada a la cantidad ("12,5 m"): sin ella no se sabe si son
+     * metros o barras. Las líneas anteriores al catálogo no la tienen.
+     */
     public static List<LineaMaterial> materiales(List<Material> lista) {
         return lista.stream()
-                .map(m -> new LineaMaterial(texto(m.getNombre()), numero(m.getCantidad())))
+                .map(m -> new LineaMaterial(texto(m.getNombre()),
+                        m.getUnidad() == null || m.getUnidad().isBlank()
+                                ? numero(m.getCantidad())
+                                : numero(m.getCantidad()) + " " + m.getUnidad()))
                 .toList();
     }
 

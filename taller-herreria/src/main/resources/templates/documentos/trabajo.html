@@ -48,6 +48,14 @@
   </table>
 </div>
 
+<!-- La firma que el cliente pone en la obra, si ya la ha puesto. Si no, no se
+     reserva hueco: el documento que se firma a mano es el albarán. -->
+<div class="bloque firma-caja" th:if="${firma}">
+  <div class="firma-titulo">Firma del cliente:</div>
+  <img th:src="${firma}" alt="Firma del cliente" />
+  <div class="firma-pie" th:text="${cliente}">Cliente</div>
+</div>
+
 <th:block th:replace="~{documentos/_comun :: fotos}" />
 <th:block th:replace="~{documentos/_comun :: generado}" />
 

@@ -56,6 +56,16 @@ public class Trabajo {
     @Column(precision = 7, scale = 2)
     private BigDecimal horas;
 
+    /**
+     * Firma del cliente recogida en la obra. Como la del albarán: bytea, sin
+     * @Lob (un large object no se libera al borrar la fila) y sin LAZY (no
+     * funciona sin instrumentación y rompería la descarga con open-in-view a
+     * false). Nula hasta que se recoge.
+     */
+    private byte[] firma;
+
+    private String firmaTipoContenido;
+
     protected Trabajo() { } // requerido por JPA
 
     public static Trabajo nuevoBorrador() {
@@ -77,9 +87,17 @@ public class Trabajo {
     public Trabajador getTrabajador() { return trabajador; }
     public String getDescripcion() { return descripcion; }
     public BigDecimal getHoras() { return horas; }
+    public byte[] getFirma() { return firma; }
+    public String getFirmaTipoContenido() { return firmaTipoContenido; }
+    public boolean tieneFirma() { return firma != null; }
 
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public void setTrabajador(Trabajador trabajador) { this.trabajador = trabajador; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     public void setHoras(BigDecimal horas) { this.horas = horas; }
+
+    public void setFirma(byte[] firma, String tipoContenido) {
+        this.firma = firma;
+        this.firmaTipoContenido = tipoContenido;
+    }
 }

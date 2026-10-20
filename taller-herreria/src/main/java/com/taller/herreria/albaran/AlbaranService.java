@@ -11,6 +11,7 @@ import com.taller.herreria.documento.GeneradorPdf;
 import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
+import com.taller.herreria.material.LineasMaterial;
 import com.taller.herreria.material.Material;
 import com.taller.herreria.material.MaterialRepository;
 import com.taller.herreria.material.dto.MaterialDto;
@@ -64,6 +65,7 @@ public class AlbaranService {
     private final GeneradorPdf generadorPdf;
 
     private final MaterialRepository materialRepository;
+    private final LineasMaterial lineasMaterial;
     private final ClienteService clienteService;
     private final TrabajadorService trabajadorService;
 
@@ -74,7 +76,8 @@ public class AlbaranService {
                           GeneradorPdf generadorPdf,
                           ClienteService clienteService,
                           TrabajadorService trabajadorService,
-                          MaterialRepository materialRepository) {
+                          MaterialRepository materialRepository,
+                          LineasMaterial lineasMaterial) {
         this.albaranRepository = albaranRepository;
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
@@ -83,6 +86,7 @@ public class AlbaranService {
         this.clienteService = clienteService;
         this.trabajadorService = trabajadorService;
         this.materialRepository = materialRepository;
+        this.lineasMaterial = lineasMaterial;
     }
 
     /** Un solo trabajo: el caso de siempre, que no es más que unificar una lista de uno. */
@@ -171,37 +175,23 @@ public class AlbaranService {
         albaran.setHoras(horas);
         albaranRepository.save(albaran);
 
-        copiarMateriales(trabajos, albaran.getId());
+        lineasMaterial.copiarAAlbaran(
+                trabajos.stream().map(Trabajo::getId).toList(), albaran.getId());
         int fotos = copiarFotos(trabajos, albaran.getId());
+
+        // La firma solo se hereda si el albarán sale de UN trabajo: es el mismo
+        // documento que el cliente firmó en la obra. Uno unificado no la hereda
+        // aunque sus trabajos estén firmados, porque el cliente firmó cada
+        // visita, no el documento del mes con su total. Ese se firma de nuevo.
+        if (trabajos.size() == 1 && trabajos.get(0).tieneFirma()) {
+            Trabajo unico = trabajos.get(0);
+            albaran.setFirma(unico.getFirma(), unico.getFirmaTipoContenido());
+        }
 
         log.info("Albarán {} creado desde {} trabajo(s) {} ({} fotos copiadas)",
                 numero, trabajos.size(), idsUnificados, fotos);
 
         return aRespuesta(albaran);
-    }
-
-    /**
-     * Los materiales de todos los trabajos, agrupando por nombre: si en dos
-     * visitas se gastaron tornillos, sale una línea con la suma y no dos líneas
-     * iguales. Se comparan sin distinguir mayúsculas ni espacios sobrantes, que
-     * es como los escribe una persona.
-     */
-    private void copiarMateriales(List<Trabajo> trabajos, Long albaranId) {
-        Map<String, Material> porNombre = new LinkedHashMap<>();
-        for (Trabajo trabajo : trabajos) {
-            for (Material original : materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
-                    Material.OrigenTipo.TRABAJO, trabajo.getId())) {
-                String clave = original.getNombre().trim().toLowerCase();
-                Material acumulado = porNombre.get(clave);
-                if (acumulado == null) {
-                    porNombre.put(clave, new Material(Material.OrigenTipo.ALBARAN, albaranId,
-                            original.getNombre().trim(), original.getCantidad()));
-                } else {
-                    acumulado.setCantidad(acumulado.getCantidad().add(original.getCantidad()));
-                }
-            }
-        }
-        porNombre.values().forEach(materialRepository::save);
     }
 
     /** Las fotos de todos los trabajos, hasta el máximo que admite un albarán. */
@@ -316,31 +306,12 @@ public class AlbaranService {
         if (cambios.importeExtra() != null) albaran.setImporteExtra(cambios.importeExtra());
         if (cambios.incluirTotal() != null) albaran.setIncluirTotal(cambios.incluirTotal());
 
-        if (cambios.materiales() != null) reemplazarMateriales(albaran.getId(), cambios.materiales());
+        if (cambios.materiales() != null)
+            lineasMaterial.reemplazar(Material.OrigenTipo.ALBARAN, albaran.getId(), cambios.materiales());
 
         return aRespuesta(albaran);
     }
 
-    /**
-     * Se borran las líneas y se vuelven a insertar, igual que en los trabajos:
-     * la pantalla manda siempre la lista entera, así que casarlas una a una
-     * sería trabajo de más para el mismo resultado.
-     *
-     * Aquí, además, cada línea trae su precio.
-     */
-    private void reemplazarMateriales(Long albaranId, List<MaterialDto> lineas) {
-        materialRepository.deleteByOrigenTipoAndOrigenId(Material.OrigenTipo.ALBARAN, albaranId);
-        for (MaterialDto linea : lineas) {
-            if (linea.precio() != null && linea.precio().compareTo(BigDecimal.ZERO) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "El precio de \"" + linea.nombre().trim() + "\" no puede ser negativo");
-            }
-            Material material = new Material(Material.OrigenTipo.ALBARAN, albaranId,
-                    linea.nombre().trim(), linea.cantidad());
-            material.setPrecio(linea.precio());
-            materialRepository.save(material);
-        }
-    }
 
     public void borrar(Long id) {
         Albaran albaran = buscarOFallar(id);

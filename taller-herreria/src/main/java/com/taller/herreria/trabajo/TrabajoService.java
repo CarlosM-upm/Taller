@@ -9,6 +9,7 @@ import com.taller.herreria.foto.Foto;
 import com.taller.herreria.foto.FotoRepository;
 import com.taller.herreria.foto.ValidadorImagen;
 import com.taller.herreria.material.Material;
+import com.taller.herreria.material.LineasMaterial;
 import com.taller.herreria.material.MaterialRepository;
 import com.taller.herreria.material.dto.MaterialDto;
 import com.taller.herreria.seguridad.SeguridadUtils;
@@ -25,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +51,7 @@ public class TrabajoService {
     private final GeneradorPdf generadorPdf;
 
     private final MaterialRepository materialRepository;
+    private final LineasMaterial lineasMaterial;
     private final ClienteService clienteService;
     private final TrabajadorService trabajadorService;
 
@@ -58,7 +61,8 @@ public class TrabajoService {
                           GeneradorPdf generadorPdf,
                           ClienteService clienteService,
                           TrabajadorService trabajadorService,
-                          MaterialRepository materialRepository) {
+                          MaterialRepository materialRepository,
+                          LineasMaterial lineasMaterial) {
         this.trabajoRepository = trabajoRepository;
         this.fotoRepository = fotoRepository;
         this.albaranRepository = albaranRepository;
@@ -66,6 +70,7 @@ public class TrabajoService {
         this.clienteService = clienteService;
         this.trabajadorService = trabajadorService;
         this.materialRepository = materialRepository;
+        this.lineasMaterial = lineasMaterial;
     }
 
     /** Crea un trabajo en estado BORRADOR, con los datos que haya (pueden estar a medias). */
@@ -113,18 +118,22 @@ public class TrabajoService {
         Trabajo trabajo = buscarOFallar(id);
         List<Foto> fotos = fotoRepository.findByOrigenTipoAndOrigenId(Foto.OrigenTipo.TRABAJO, id);
 
-        byte[] contenido = generadorPdf.generar("trabajo", Map.of(
-                "id", trabajo.getId(),
-                "estado", trabajo.esBorrador() ? "Borrador" : "Enviado",
-                "fecha", GeneradorPdf.fecha(trabajo.getFecha()),
-                "cliente", GeneradorPdf.texto(trabajo.getCliente() == null ? null : trabajo.getCliente().getNombre()),
-                "trabajador", GeneradorPdf.texto(trabajo.getTrabajador() == null ? null : trabajo.getTrabajador().getNombre()),
-                "descripcion", GeneradorPdf.texto(trabajo.getDescripcion()),
-                "materiales", GeneradorPdf.materiales(
-                        materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
-                                Material.OrigenTipo.TRABAJO, trabajo.getId())),
-                "horas", horasDeDocumento(trabajo.getHoras()),
-                "fotos", GeneradorPdf.imagenes(fotos)));
+        // HashMap y no Map.of: la firma puede no existir y Map.of no admite nulos.
+        Map<String, Object> datos = new HashMap<>();
+        datos.put("id", trabajo.getId());
+        datos.put("estado", trabajo.esBorrador() ? "Borrador" : "Enviado");
+        datos.put("fecha", GeneradorPdf.fecha(trabajo.getFecha()));
+        datos.put("cliente", GeneradorPdf.texto(trabajo.getCliente() == null ? null : trabajo.getCliente().getNombre()));
+        datos.put("trabajador", GeneradorPdf.texto(trabajo.getTrabajador() == null ? null : trabajo.getTrabajador().getNombre()));
+        datos.put("descripcion", GeneradorPdf.texto(trabajo.getDescripcion()));
+        datos.put("materiales", GeneradorPdf.materiales(
+                materialRepository.findByOrigenTipoAndOrigenIdOrderByIdAsc(
+                        Material.OrigenTipo.TRABAJO, trabajo.getId())));
+        datos.put("horas", horasDeDocumento(trabajo.getHoras()));
+        datos.put("firma", GeneradorPdf.imagen(trabajo.getFirmaTipoContenido(), trabajo.getFirma()));
+        datos.put("fotos", GeneradorPdf.imagenes(fotos));
+
+        byte[] contenido = generadorPdf.generar("trabajo", datos);
 
         return new Documento("trabajo-" + trabajo.getId() + ".pdf", contenido);
     }
@@ -203,6 +212,46 @@ public class TrabajoService {
         });
     }
 
+    // ---------- Firma del cliente ----------
+
+    /**
+     * Recoger la firma del cliente en la obra, desde la tablet.
+     *
+     * Rompe a propósito la regla de "trabajo enviado = solo el jefe": el
+     * trabajador puede firmar un trabajo YA enviado, porque es normal enviarlo
+     * desde el taller y que el cliente firme después. Lo que no puede es
+     * SUSTITUIR una firma ya recogida en un trabajo enviado: eso sí es del jefe.
+     * Si no, cualquiera podría cambiar una firma que el cliente ya puso.
+     */
+    public TrabajoResponse guardarFirma(Long id, MultipartFile fichero) {
+        Trabajo trabajo = buscarOFallar(id);
+        if (!trabajo.esBorrador() && trabajo.tieneFirma() && !SeguridadUtils.esJefe()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Este trabajo enviado ya tiene la firma del cliente: solo el jefe puede cambiarla");
+        }
+        ValidadorImagen.Imagen firma = ValidadorImagen.validar(fichero, "firma");
+        trabajo.setFirma(firma.datos(), firma.tipoContenido());
+        return aRespuesta(trabajo);
+    }
+
+    @Transactional(readOnly = true)
+    public Trabajo obtenerConFirma(Long id) {
+        Trabajo trabajo = buscarOFallar(id);
+        if (!trabajo.tieneFirma()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "El trabajo " + id + " no tiene firma");
+        }
+        return trabajo;
+    }
+
+    /** Quitar la firma: en un borrador cualquiera, en un enviado solo el jefe. */
+    public TrabajoResponse borrarFirma(Long id) {
+        Trabajo trabajo = buscarOFallar(id);
+        exigirJefeSiEnviado(trabajo, "quitar la firma de");
+        trabajo.setFirma(null, null);
+        return aRespuesta(trabajo);
+    }
+
     // ---------- Fotos ----------
 
     public List<Long> subirFotos(Long id, List<MultipartFile> ficheros) {
@@ -250,7 +299,7 @@ public class TrabajoService {
         if (datos.descripcion() != null)
             trabajo.setDescripcion(normalizar(datos.descripcion(), borrador, "descripción"));
         if (datos.materiales() != null)
-            reemplazarMateriales(trabajo.getId(), datos.materiales());
+            lineasMaterial.reemplazar(Material.OrigenTipo.TRABAJO, trabajo.getId(), datos.materiales());
         if (datos.horas() != null) {
             if (datos.horas().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -327,23 +376,6 @@ public class TrabajoService {
                 .stream().map(MaterialDto::de).toList();
     }
 
-    /**
-     * Se borran las líneas y se vuelven a insertar. La pantalla manda siempre
-     * la lista entera, así que casar fila a fila para decidir qué cambió sería
-     * trabajo de más para el mismo resultado, y además conserva el orden en
-     * que el trabajador las escribió.
-     *
-     * Una lista vacía deja el trabajo sin materiales: es legítimo en un
-     * borrador a medias, y camposQueFaltan() lo detecta al enviar.
-     */
-    private void reemplazarMateriales(Long trabajoId, List<MaterialDto> lineas) {
-        materialRepository.deleteByOrigenTipoAndOrigenId(Material.OrigenTipo.TRABAJO, trabajoId);
-        for (MaterialDto linea : lineas) {
-            materialRepository.save(new Material(Material.OrigenTipo.TRABAJO, trabajoId,
-                    linea.nombre().trim(), linea.cantidad()));
-        }
-    }
-
     private TrabajoResponse aRespuesta(Trabajo t) {
         return aRespuesta(t, albaranRepository.findPorTrabajo(t.getId()).isPresent());
     }
@@ -354,6 +386,7 @@ public class TrabajoService {
                 t.getCliente() == null ? null : t.getCliente().getNombre(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getId(),
                 t.getTrabajador() == null ? null : t.getTrabajador().getNombre(),
-                t.getDescripcion(), materialesDe(t.getId()), t.getHoras(), idsDeFotos(t.getId()), enAlbaran);
+                t.getDescripcion(), materialesDe(t.getId()), t.getHoras(), idsDeFotos(t.getId()),
+                enAlbaran, t.tieneFirma());
     }
 }

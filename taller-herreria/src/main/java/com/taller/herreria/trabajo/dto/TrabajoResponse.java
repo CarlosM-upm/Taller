@@ -24,5 +24,7 @@ public record TrabajoResponse(
         BigDecimal horas,
         List<Long> fotoIds,
         /** Si ya está incluido en algún albarán: entonces no se puede volver a facturar. */
-        boolean enAlbaran
+        boolean enAlbaran,
+        /** Si el cliente ya firmó en la obra. */
+        boolean tieneFirma
 ) { }
