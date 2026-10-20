@@ -32,12 +32,12 @@ export const guardiaJefe: CanActivateFn = (_ruta, estado) => {
     });
   }
 
-  return sesion.esJefe() ? true : router.createUrlTree(['/pedidos']);
+  return sesion.esJefe() ? true : router.createUrlTree(['/trabajos']);
 };
 
 /** Si ya ha entrado, la pantalla de login no tiene sentido. */
 export const guardiaNoEntrado: CanActivateFn = () => {
   const sesion = inject(Sesion);
   const router = inject(Router);
-  return sesion.haEntrado() ? router.createUrlTree(['/pedidos']) : true;
+  return sesion.haEntrado() ? router.createUrlTree(['/trabajos']) : true;
 };

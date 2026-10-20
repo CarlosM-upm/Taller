@@ -17,7 +17,9 @@ export const routes: Routes = [
     canActivate: [guardiaEntrado],
     loadComponent: () => import('./armazon/armazon').then((m) => m.Armazon),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'pedidos' },
+      // Se entra en Trabajos, que es lo que más se usa, aunque en la barra de abajo
+      // vaya segundo: el orden de la barra no se toca.
+      { path: '', pathMatch: 'full', redirectTo: 'trabajos' },
       {
         path: 'pedidos',
         loadComponent: () => import('./pedidos/lista-pedidos').then((m) => m.ListaPedidos),

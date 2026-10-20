@@ -54,7 +54,7 @@ export class Login {
         this.sesion.entrar(respuesta.token, respuesta.rol);
         // Vuelve a donde iba antes de que le echara el guardia.
         const volverA = new URLSearchParams(location.search).get('volverA');
-        this.router.navigateByUrl(volverA && volverA !== '/login' ? volverA : '/pedidos');
+        this.router.navigateByUrl(volverA && volverA !== '/login' ? volverA : '/trabajos');
       },
       error: (fallo) => {
         this.enviando.set(false);

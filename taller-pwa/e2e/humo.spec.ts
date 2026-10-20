@@ -200,8 +200,12 @@ async function entrar(page: Page, cuenta: { usuario: string; contrasena: string 
   await page.getByLabel('Usuario').fill(cuenta.usuario);
   await page.getByLabel('Contraseña').fill(cuenta.contrasena);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  // Tras entrar se va a pedidos: si no llega, el login no funcionó.
-  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });
+  // Tras entrar se va a trabajos: si no llega, el login no funcionó.
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+  // Las pruebas se escribieron empezando en pedidos (desde ahí está el enlace
+  // de "Nuevo pedido"), así que se sigue empezando ahí.
+  await page.getByRole('link', { name: 'Pedidos', exact: true }).click();
+  await expect(page).toHaveURL(/\/pedidos$/, { timeout: 10_000 });
 }
 
 /**
@@ -267,6 +271,11 @@ test('el jefe ve los cuatro apartados y el trabajador solo dos', async ({ page }
   const errores = vigilarErrores(page);
 
   await entrar(page, CUENTAS.jefe);
+  // La dirección sola abre Trabajos, aunque en la barra vaya segundo.
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: 'Trabajos' })).toBeVisible();
+  await expect(page.locator('nav.navegacion a').first()).toContainText('Pedidos');
   await expect(page.getByRole('link', { name: 'Pedidos' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Trabajos' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Albaranes' })).toBeVisible();
