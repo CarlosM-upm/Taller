@@ -1,6 +1,6 @@
 {
-  "name": "Taller de Herrería",
-  "short_name": "Taller",
+  "name": "Nicolás Moreno, Taller",
+  "short_name": "N. Moreno",
   "display": "standalone",
   "scope": "/",
   "start_url": "/",
@@ -57,7 +57,7 @@
   "description": "Pedidos, trabajos y albaranes del taller",
   "lang": "es",
   "dir": "ltr",
-  "theme_color": "#005cbb",
+  "theme_color": "#00460a",
   "background_color": "#ffffff",
   "orientation": "portrait"
 }

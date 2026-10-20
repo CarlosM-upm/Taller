@@ -9,17 +9,19 @@ import { Observable } from 'rxjs';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
-import { Cliente, Trabajador } from '../nucleo/modelos';
+import { Cliente, FamiliaMaterial, Trabajador } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 
-type Tipo = 'cliente' | 'trabajador';
+type Tipo = 'cliente' | 'trabajador' | 'familia';
+type Elemento = Cliente | Trabajador | FamiliaMaterial;
 
 /**
- * Alta, renombrado y borrado de clientes o de trabajadores.
+ * Alta, renombrado y borrado de clientes, trabajadores o familias de materiales.
  *
- * Es el mismo componente para los dos porque las dos listas se comportan
- * igual: un nombre, único, que no se puede borrar si tiene documentos. Lo que
- * cambia son los textos y a qué endpoints llama.
+ * Es el mismo componente para las tres listas porque se comportan igual: un
+ * nombre, único, que no se puede borrar mientras tenga algo colgando
+ * (documentos, o materiales en el caso de una familia). Lo que cambia son los
+ * textos y a qué endpoints llama.
  *
  * Renombrar afecta a todos los documentos de esa persona, incluidos albaranes
  * ya firmados. Es intencionado: sirve para corregir erratas, y por eso el
@@ -114,7 +116,7 @@ export class ListaMaestros {
   readonly tipo = input.required<Tipo>();
   readonly titulo = input.required<string>();
   readonly singular = input.required<string>();
-  readonly elementos = input.required<(Cliente | Trabajador)[]>();
+  readonly elementos = input.required<Elemento[]>();
 
   readonly nuevo = signal('');
   readonly editandoId = signal<number | null>(null);
@@ -125,16 +127,21 @@ export class ListaMaestros {
     const nombre = this.nuevo().trim();
     if (!nombre || this.ocupado()) return;
 
+    const peticiones = {
+      cliente: () => this.api.crearCliente(nombre),
+      trabajador: () => this.api.crearTrabajador(nombre),
+      familia: () => this.api.crearFamiliaMaterial(nombre),
+    };
     this.ejecutar(
-      this.tipo() === 'cliente'
-        ? this.api.crearCliente(nombre)
-        : this.api.crearTrabajador(nombre),
-      `${this.mayuscula()} añadido`,
+      peticiones[this.tipo()](),
+      { cliente: 'Cliente añadido', trabajador: 'Trabajador añadido', familia: 'Familia añadida' }[
+        this.tipo()
+      ],
       () => this.nuevo.set(''),
     );
   }
 
-  empezarEdicion(elemento: Cliente | Trabajador): void {
+  empezarEdicion(elemento: Elemento): void {
     this.editandoId.set(elemento.id);
     this.nombreEditado.set(elemento.nombre);
   }
@@ -147,23 +154,29 @@ export class ListaMaestros {
     const nombre = this.nombreEditado().trim();
     if (!nombre || this.ocupado()) return;
 
+    const peticiones = {
+      cliente: () => this.api.renombrarCliente(id, nombre),
+      trabajador: () => this.api.renombrarTrabajador(id, nombre),
+      familia: () => this.api.renombrarFamiliaMaterial(id, nombre),
+    };
     this.ejecutar(
-      this.tipo() === 'cliente'
-        ? this.api.renombrarCliente(id, nombre)
-        : this.api.renombrarTrabajador(id, nombre),
-      'Nombre cambiado en todos sus documentos',
+      peticiones[this.tipo()](),
+      this.tipo() === 'familia' ? 'Familia renombrada' : 'Nombre cambiado en todos sus documentos',
       () => this.editandoId.set(null),
     );
   }
 
-  borrar(elemento: Cliente | Trabajador): void {
+  borrar(elemento: Elemento): void {
     this.dialogo
       .open(DialogoConfirmar, {
         data: {
           titulo: `¿Borrar a ${elemento.nombre}?`,
           mensaje:
-            `Solo se puede borrar si no tiene pedidos, trabajos ni albaranes. ` +
-            `Si los tiene, el servidor lo impedirá y dirá cuántos son.`,
+            this.tipo() === 'familia'
+              ? `Solo se puede borrar si no tiene materiales dentro. ` +
+                `Si los tiene, el servidor lo impedirá y dirá cuántos son.`
+              : `Solo se puede borrar si no tiene pedidos, trabajos ni albaranes. ` +
+                `Si los tiene, el servidor lo impedirá y dirá cuántos son.`,
           aceptar: 'Borrar',
           peligroso: true,
         },
@@ -171,11 +184,16 @@ export class ListaMaestros {
       .afterClosed()
       .subscribe((confirmado) => {
         if (!confirmado) return;
+        const peticiones = {
+          cliente: () => this.api.borrarCliente(elemento.id),
+          trabajador: () => this.api.borrarTrabajador(elemento.id),
+          familia: () => this.api.borrarFamiliaMaterial(elemento.id),
+        };
         this.ejecutar(
-          this.tipo() === 'cliente'
-            ? this.api.borrarCliente(elemento.id)
-            : this.api.borrarTrabajador(elemento.id),
-          `${this.mayuscula()} borrado`,
+          peticiones[this.tipo()](),
+          { cliente: 'Cliente borrado', trabajador: 'Trabajador borrado', familia: 'Familia borrada' }[
+            this.tipo()
+          ],
         );
       });
   }
@@ -200,8 +218,4 @@ export class ListaMaestros {
     });
   }
 
-  private mayuscula(): string {
-    const s = this.singular();
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
 }

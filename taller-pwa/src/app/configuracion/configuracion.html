@@ -31,6 +31,25 @@
     </mat-card-content>
   </mat-card>
 
+  <!-- Catálogo de materiales: primero las familias, que lo ordenan, y debajo los
+       materiales de la familia que se elija. -->
+  <mat-card class="tarjeta-maestros">
+    <mat-card-content>
+      <app-lista-maestros
+        tipo="familia"
+        titulo="Familias de materiales"
+        singular="familia"
+        [elementos]="maestros.familias()"
+      />
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="tarjeta-maestros">
+    <mat-card-content>
+      <app-catalogo-materiales />
+    </mat-card-content>
+  </mat-card>
+
   <mat-card>
     <mat-card-content>
       <h3>Numeración de albaranes</h3>

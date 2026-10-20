@@ -30,7 +30,8 @@
        único: hasta no elegir uno no se puede seleccionar nada. -->
   @if (filtro() === 'ENVIADO' && sesion.esJefe()) {
     <app-selector-maestro
-      etiqueta="Cliente"
+      etiqueta="Filtrar por cliente"
+      opcionTodos="Todos los clientes"
       [opciones]="maestros.clientes()"
       [valor]="clienteId()"
       (valorChange)="cambiarCliente($event)"

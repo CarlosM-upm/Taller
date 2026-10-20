@@ -3,14 +3,24 @@
 // servidor del taller no tiene internet, y con enlaces al CDN los iconos
 // aparecerían como palabras ("delete", "photo_camera").
 @use '@angular/material' as mat;
+// Paletas generadas a partir de los dos verdes del logotipo del taller con
+// "ng generate @angular/material:theme-color": #00460A (el oscuro, que domina)
+// como principal y #6EA028 (el lima) como terciario. Material deriva de ahí
+// todos los tonos y garantiza el contraste; no se tocan a mano.
+@use './theme-colors' as colores;
+
+// El verde oscuro EXACTO del logo. Material usa para "primary" un tono algo
+// más claro del mismo verde (por contraste); la barra superior lleva este,
+// que es donde se reconoce la marca.
+$verde-logo: #00460a;
 
 html {
   height: 100%;
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: colores.$primary-palette,
+        tertiary: colores.$tertiary-palette,
       ),
       typography: Roboto,
       // Densidad 0 (la más holgada de Material). Esto es una aplicación de
@@ -104,4 +114,10 @@ button.mat-mdc-button {
   margin: -12px 0 12px;
   color: var(--mat-sys-error, #b3261e);
   font-size: 12px;
+}
+
+// La barra superior con el verde del logo. Se expone como variable para que
+// la use armazon.scss sin repetir el color.
+:root {
+  --taller-verde-logo: #{$verde-logo};
 }

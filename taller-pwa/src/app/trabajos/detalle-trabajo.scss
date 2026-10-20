@@ -109,3 +109,21 @@ form {
 .tarjeta-fallo {
   border-left: 4px solid var(--mat-sys-error);
 }
+
+// La firma del cliente, igual que en la ficha del albarán.
+.tarjeta-firma,
+.tarjeta-fotos {
+  margin-top: 12px;
+}
+
+// Fondo blanco explícito: la firma es un PNG con fondo blanco, y sobre un
+// tema oscuro sin recuadro quedaría flotando de forma extraña.
+.firma {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 12px;
+}

@@ -90,8 +90,10 @@ export class ListaTrabajos implements OnInit {
   }
 
   /** Al cambiar de cliente o de pestaña, lo marcado deja de tener sentido. */
-  cambiarCliente(id: number | null): void {
-    this.clienteId.set(id);
+  cambiarCliente(id: number | null | undefined): void {
+    // Al elegir "Todos los clientes" llega nulo: se quita el filtro y se ven
+    // todos los enviados. Sin cliente concreto tampoco se puede unificar.
+    this.clienteId.set(id ?? null);
     this.seleccionados.set(new Set());
   }
 

@@ -43,15 +43,54 @@ export interface Trabajador {
   nombre: string;
 }
 
-// --- Materiales -------------------------------------------------------------
+// --- Catálogo de materiales ------------------------------------------------
+
+export interface FamiliaMaterial {
+  id: number;
+  nombre: string;
+}
+
+/** Lo que recibe la tablet: sin precios. */
+export interface MaterialCatalogo {
+  id: number;
+  familiaId: number;
+  familia: string;
+  nombre: string;
+  unidad: string;
+}
+
+/** Lo que recibe el jefe en Ajustes: con los tres campos y el total ya calculado. */
+export interface MaterialCatalogoConPrecio extends MaterialCatalogo {
+  precio: number | null;
+  porcentajeExtra: number;
+  transporte: number;
+  /** precio + precio·extra% + transporte, por unidad. Lo calcula el servidor. */
+  precioTotal: number | null;
+}
+
+export interface DatosMaterialCatalogo {
+  familiaId: number;
+  nombre: string;
+  unidad: string;
+  precio: number | null;
+  porcentajeExtra: number | null;
+  transporte: number | null;
+}
+
+// --- Líneas de material de trabajos y albaranes -----------------------------
 
 /**
- * Una línea de material. El precio solo se usa en los albaranes: lo pone el
- * jefe al facturar, y en los trabajos viaja nulo.
+ * Una línea de material. Se elige del catálogo (catalogoId); nombre y unidad
+ * los copia el servidor. Las líneas antiguas, anteriores al catálogo o cuyo
+ * material se borró, vienen sin catalogoId y se conservan tal cual.
+ *
+ * El precio solo se usa en los albaranes; en los trabajos viaja nulo.
  */
 export interface MaterialLinea {
   id?: number | null;
-  nombre: string;
+  catalogoId?: number | null;
+  nombre?: string | null;
+  unidad?: string | null;
   /** Decimal con 2 decimales: vale para "5 tornillos" y para "12,5 m". */
   cantidad: number | null;
   precio?: number | null;
@@ -97,6 +136,8 @@ export interface Trabajo {
   fotoIds: number[];
   /** Si ya está en un albarán: entonces no se puede volver a facturar. */
   enAlbaran: boolean;
+  /** Si el cliente ya firmó en la obra. */
+  tieneFirma: boolean;
 }
 
 /** Todos opcionales: un borrador puede guardarse a medias. */

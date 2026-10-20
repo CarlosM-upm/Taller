@@ -11,11 +11,12 @@ import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { Sesion } from '../nucleo/sesion';
+import { CatalogoMateriales } from './catalogo-materiales';
 import { ListaMaestros } from './lista-maestros';
 
 /**
- * Ajustes del jefe: los clientes y trabajadores del taller, la numeración de
- * albaranes y su contraseña.
+ * Ajustes del jefe: los clientes y trabajadores del taller, el catálogo de
+ * materiales con sus familias, la numeración de albaranes y su contraseña.
  *
  * Ojo con el cambio de contraseña: el servidor cierra TODAS las sesiones del
  * usuario, incluida esta. Es deliberado (si se cambia la de "tablet" porque se
@@ -34,6 +35,7 @@ import { ListaMaestros } from './lista-maestros';
     MatInputModule,
     MatProgressBarModule,
     ListaMaestros,
+    CatalogoMateriales,
   ],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',

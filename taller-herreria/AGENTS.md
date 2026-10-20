@@ -94,7 +94,9 @@ src/main/java/com/taller/herreria/
 ├── HerreriaApplication.java
 ├── cliente/     Cliente y su CRUD. Lo mantiene el jefe desde Ajustes
 ├── trabajador/  Trabajador y su CRUD. Igual que cliente
-├── material/    Material y MaterialRepository (los comparten trabajo y albarán)
+├── catalogo/     Catálogo de materiales y sus familias. Lo mantiene el jefe
+├── material/    Líneas de material de trabajos y albaranes, y LineasMaterial:
+│                las reglas para construirlas desde el catálogo, en un solo sitio
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
 ├── trabajo/     Trabajo, Repository, Service, Controller, dto/
 ├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
@@ -251,6 +253,43 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
 - El GET lo pueden hacer los dos roles (la tablet puebla sus desplegables); crear,
   renombrar y borrar es solo del jefe.
 
+### Catálogo de materiales
+
+- Los materiales **ya no se teclean**: se eligen de un catálogo que mantiene el jefe
+  en Ajustes, agrupado por **familias**. Cada material lleva **unidad** (m, ud, kg…).
+- **Solo del catálogo**: una línea nueva sin `catalogoId` se rechaza con 400. La única
+  excepción son las líneas que YA existían sin catálogo en ese mismo documento
+  (anteriores a él, o cuyo material se borró): se conservan, para no bloquear la
+  edición de trabajos antiguos, sin abrir la puerta a teclear materiales nuevos. Lo
+  hace `material/LineasMaterial`, que comparten trabajos y albaranes.
+- Precio total **por unidad** = precio + precio · extra% + transporte, a dos
+  decimales. El transporte es por unidad (decidido): en el albarán se multiplica por
+  la cantidad.
+- **Se COPIA, no se enlaza.** Nombre, unidad y (en el albarán) precio se copian a la
+  línea. Si el catálogo cambia, un albarán ya entregado no cambia su total: se cobró
+  a otro precio. Es lo contrario que con el cliente, y con razón: un nombre mal
+  escrito es un error que conviene corregir en todas partes; un precio de hace un
+  mes era correcto. El precio se toma del catálogo al crear el albarán, y el jefe
+  puede ajustarlo luego en esa línea.
+- Borrar un material del catálogo **sí se permite** aunque se haya usado: la base
+  deja `materiales.catalogo_id` a nulo y cada documento conserva su copia. Si se
+  bloqueara como con los clientes, el catálogo acumularía para siempre todo lo usado.
+  Una **familia** con materiales, en cambio, no se borra (409 diciendo cuántos).
+- **La tablet no recibe precios**: `GET /api/catalogo` va sin ellos y
+  `GET /api/catalogo/precios` es del jefe. Son dos URLs a propósito, no un `if` por
+  rol en el controlador: así el reparto lo sigue decidiendo `SecurityConfig`.
+
+### Firma del cliente en el trabajo
+
+- El trabajador la recoge en la obra, desde la tablet, **en borrador o ya enviado**.
+- Rompe a propósito la regla de "trabajo enviado = solo el jefe", acotada: en un
+  trabajo enviado el trabajador puede firmar **si aún no hay firma**, pero
+  **sustituirla o quitarla es del jefe**. Si no, cualquiera podría cambiar una firma
+  que el cliente ya puso.
+- Un albarán de **un solo** trabajo **hereda** su firma. Uno **unificado no**: el
+  cliente firmó cada visita, no el documento del mes con su total. Ese se firma de
+  nuevo.
+
 ### Precios del albarán
 
 - El jefe pone un precio a cada material y un precio a la hora. El coste **no se
@@ -397,6 +436,15 @@ POST   /api/clientes                  JEFE
 PUT    /api/clientes/{id}              JEFE — renombrar propaga a sus documentos
 DELETE /api/clientes/{id}              JEFE — 409 si tiene documentos
 GET    /api/trabajadores               ambos roles
+GET    /api/familias-material          ambos roles
+POST   /api/familias-material          JEFE
+PUT    /api/familias-material/{id}     JEFE
+DELETE /api/familias-material/{id}     JEFE — 409 si tiene materiales
+GET    /api/catalogo                   ambos roles — SIN precios
+GET    /api/catalogo/precios           JEFE — con precio, extra, transporte y total
+POST   /api/catalogo                   JEFE
+PUT    /api/catalogo/{id}              JEFE
+DELETE /api/catalogo/{id}              JEFE — se permite aunque se haya usado
 POST   /api/trabajadores               JEFE
 PUT    /api/trabajadores/{id}          JEFE
 DELETE /api/trabajadores/{id}          JEFE — 409 si tiene documentos
@@ -418,6 +466,9 @@ GET    /api/trabajos/{id}/pdf         JEFE
 PATCH  /api/trabajos/{id}             enviado → solo JEFE
 POST   /api/trabajos/{id}/enviar      valida completitud + estampa fecha
 DELETE /api/trabajos/{id}             enviado → solo JEFE
+PUT    /api/trabajos/{id}/firma       firmar: tablet si borrador o sin firma; si no, JEFE
+GET    /api/trabajos/{id}/firma
+DELETE /api/trabajos/{id}/firma       borrador: ambos; enviado: JEFE
 POST   /api/trabajos/{id}/fotos
 GET    /api/trabajos/{id}/fotos/{fid}
 DELETE /api/trabajos/{id}/fotos/{fid}
@@ -480,9 +531,23 @@ igual que abrir un favorito o reabrir la PWA instalada.
   iniciales se leen una sola vez en `ngOnInit`. Si el padre devolviera la lista ya
   convertida a número en cada pulsación, un "2," a medio escribir volvería como
   "2" y sería imposible teclear decimales.
-- **No ofrezcas una opción de "(sin asignar)" en los desplegables.** La tuvo y era
-  mentira: el PATCH interpreta un id nulo como "no toques este campo", así que
-  elegirla no vaciaba nada. Mientras no se elige, el desplegable ya sale vacío.
+- **En un FORMULARIO no ofrezcas opción de vaciar un desplegable.** La tuvo
+  ("(sin asignar)") y era mentira: el PATCH interpreta un id nulo como "no toques
+  este campo", así que elegirla no vaciaba nada.
+  **En un FILTRO sí hace falta**, y significa otra cosa: "todos". Para eso está
+  `opcionTodos` en `selectorMaestro`, que solo debe usarse en filtros. Al quitar la
+  opción de los formularios se perdió también en el filtro de Enviados y no había
+  forma de volver a ver los trabajos de todos los clientes.
+- **Los colores salen del logotipo.** `src/_theme-colors.scss` se generó con
+  `ng generate @angular/material:theme-color` a partir de #00460A (verde oscuro,
+  principal) y #6EA028 (lima, terciario). **No se edita a mano**: si cambia el
+  logo, se vuelve a generar. La barra superior usa el verde exacto del logo
+  (`--taller-verde-logo`); el resto, los tonos que deriva Material, que garantizan
+  el contraste.
+- **El icono de la app es solo el símbolo**, no el logo entero: a 48 px el texto
+  "NICOLÁS MORENO" es una mancha. Los iconos de `public/icons` se recortan del logo
+  automáticamente. El logo completo va en el login, con `mix-blend-mode: multiply`
+  para que su fondo blanco no se vea como un recuadro sobre la tarjeta.
 - **Los maestros se recargan después de tocarlos en Ajustes**
   (`Maestros.recargar()`), o el resto de pantallas seguiría enseñando los nombres
   viejos en sus desplegables.
@@ -551,17 +616,28 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 14
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 17
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
 guardado con nombre .pdf también "se descarga"), el albarán unificado con sus precios,
 el renombrado de un cliente propagándose a sus documentos, los varios trabajadores de
-un albarán, el bloqueo de un trabajo ya facturado y el descarte de un borrador
-guardado con el formato antiguo.
+un albarán, el bloqueo de un trabajo ya facturado, el descarte de un borrador
+guardado con el formato antiguo, el precio total del catálogo, la firma recogida
+en la obra y heredada por el albarán, y volver a ver los enviados de todos los
+clientes.
 
-Las pruebas dan de alta sus propios clientes y trabajadores —ya no se teclean, se
-eligen— y **los borran al terminar**, en un `afterAll`. Sin esa limpieza se acumulaban
+Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
+—ya no se teclean, se eligen— y **los borran al terminar**, en un `afterAll`
+(los materiales antes que sus familias: una familia con materiales no se borra).
+
+Dos detalles de los ayudantes que costaron una ejecución fallida cada uno:
+`elegir()` busca el desplegable por rol `combobox`, no por etiqueta, y **espera a
+que el panel se cierre**: si no, al elegir dos veces seguidas en el mismo
+desplegable la etiqueta también nombra el panel que se está cerrando, o el
+segundo clic cae durante la animación y se pierde. Y `anadirEnAjustes()` pulsa el
+"Añadir" de su propio formulario, no el primero o el último de la página: con una
+lista más en Ajustes, "el último" dejó de ser el que se creía. Sin esa limpieza se acumulaban
 ficha tras ficha hasta llenar los desplegables de la base de desarrollo.
 
 Cuando una prueba provoca un error de servidor **a propósito** (intentar borrar un
@@ -700,8 +776,13 @@ Verificado arrancando la aplicación contra PostgreSQL real:
 - **El logotipo del taller en la cabecera de los PDF**, empaquetado en
   `resources/documentos/logo-taller.jpg`. Sustituye al nombre escrito porque la
   propia imagen ya lo lleva dentro. A 30 mm de alto: a 20 no se leía.
-- Todo verificado contra PostgreSQL real y en Chrome: **14 de 14** en la
-  comprobación de humo, y los PDF rasterizados y mirados uno a uno.
+- **Catálogo de materiales por familias**, con unidad y precio por unidad
+  (precio + extra% + transporte), y **firma del cliente en el trabajo**.
+  Migración V6.
+- **"Nicolás Moreno, Taller"**, los verdes del logo en toda la aplicación y el
+  símbolo como icono.
+- Todo verificado contra PostgreSQL real y en Chrome: **17 de 17** en la
+  comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente
 

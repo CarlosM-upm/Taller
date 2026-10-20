@@ -117,42 +117,81 @@ async function descargarPdf(page: Page, etiqueta: string, nombreEsperado: RegExp
  * campo se quedaría vacío sin que la prueba se entere.
  */
 async function elegir(page: Page, etiqueta: string, opcion: string) {
-  await page.getByLabel(etiqueta, { exact: true }).click();
+  // Por rol "combobox" y no por etiqueta: mientras el panel de una elección
+  // anterior se está cerrando, la etiqueta también nombra ese panel y la
+  // búsqueda encuentra dos elementos. Pasaba al elegir dos veces seguidas en
+  // el mismo desplegable.
+  await page.getByRole('combobox', { name: etiqueta, exact: true }).click();
   await page.getByRole('option', { name: opcion, exact: true }).click();
+  // Esperar a que el panel termine de cerrarse. Si no, el siguiente clic en el
+  // mismo desplegable cae durante la animación de cierre y se pierde.
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 }
 
-/** Rellena la primera fila de materiales (nombre y cantidad). */
-async function primerMaterial(page: Page, nombre: string, cantidad: string) {
-  await page.locator('input[name="material-nombre-0"]').fill(nombre);
+/** Elige el material de la primera fila (del catálogo) y escribe su cantidad. */
+async function primerMaterial(page: Page, material: string, cantidad: string) {
+  await page.locator('mat-select[data-fila="0"]').click();
+  await page.getByRole('option', { name: material, exact: true }).click();
   await page.locator('input[name="material-cantidad-0"]').fill(cantidad);
 }
 
 /**
- * Da de alta un cliente y un trabajador desde Ajustes, y devuelve sus nombres.
+ * Escribe un nombre en una de las listas de Ajustes y pulsa su "Añadir".
  *
- * Hace falta porque ya no se teclean: sin darlos de alta antes, los
- * desplegables de pedidos y trabajos estarían vacíos y no se podría crear
- * nada. De paso, esto prueba la pantalla de Ajustes.
+ * Hay tres listas con el mismo botón (clientes, trabajadores y familias), así
+ * que se pulsa el del propio formulario y no el primero o el último de la
+ * página: con una lista más, "el último" dejaba de ser el que se creía.
+ */
+async function anadirEnAjustes(page: Page, etiqueta: string, nombre: string) {
+  const campo = page.getByLabel(etiqueta, { exact: true });
+  await campo.fill(nombre);
+  await campo.locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true }).click();
+  await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Da de alta en Ajustes lo que las pruebas necesitan para crear documentos:
+ * un cliente, un trabajador y un material del catálogo (con su familia).
+ *
+ * Hace falta porque nada de eso se teclea ya: se elige de listas que mantiene
+ * el jefe. De paso, esto recorre la pantalla de Ajustes.
  */
 async function crearMaestrosDePrueba(page: Page, sufijo: string) {
   const cliente = `PRUEBA-HUMO Cliente ${sufijo}`;
   const trabajador = `PRUEBA-HUMO Ana ${sufijo}`;
+  const familia = `PRUEBA-HUMO Familia ${sufijo}`;
+  const material = `PRUEBA-HUMO Material ${sufijo}`;
 
   await page.goto('/configuracion');
-  await page.getByLabel('Añadir cliente').fill(cliente);
-  await page.getByRole('button', { name: 'Añadir', exact: true }).first().click();
-  await expect(page.getByText(cliente, { exact: true })).toBeVisible({ timeout: 10_000 });
-
-  await page.getByLabel('Añadir trabajador').fill(trabajador);
-  await page.getByRole('button', { name: 'Añadir', exact: true }).last().click();
-  await expect(page.getByText(trabajador, { exact: true })).toBeVisible({ timeout: 10_000 });
+  await anadirEnAjustes(page, 'Añadir cliente', cliente);
+  await anadirEnAjustes(page, 'Añadir trabajador', trabajador);
+  await anadirEnAjustes(page, 'Añadir familia', familia);
+  await crearMaterialEnAjustes(page, familia, material, { precio: '10', extra: '0', transporte: '0' });
 
   // Se vuelve a pedidos, que es donde las pruebas esperan estar: desde aquí
   // está tanto el enlace de "Nuevo pedido" como la navegación de abajo.
   await page.getByRole('link', { name: 'Pedidos', exact: true }).click();
   await expect(page).toHaveURL(/\/pedidos$/, { timeout: 10_000 });
 
-  return { cliente, trabajador };
+  return { cliente, trabajador, familia, material };
+}
+
+/** Elige la familia en Ajustes y da de alta un material dentro, en metros. */
+async function crearMaterialEnAjustes(
+  page: Page,
+  familia: string,
+  material: string,
+  precio: { precio: string; extra: string; transporte: string },
+) {
+  await elegir(page, 'Familia', familia);
+  await page.getByRole('button', { name: 'Nuevo material' }).click();
+  await page.getByLabel('Nombre', { exact: true }).fill(material);
+  await page.getByLabel('Unidad', { exact: true }).fill('m');
+  await page.getByLabel('Precio del material').fill(precio.precio);
+  await page.getByLabel('Extra sobre el material').fill(precio.extra);
+  await page.getByLabel('Transporte').fill(precio.transporte);
+  await page.getByRole('button', { name: 'Guardar material' }).click();
+  await expect(page.getByText(material)).toBeVisible({ timeout: 10_000 });
 }
 
 async function entrar(page: Page, cuenta: { usuario: string; contrasena: string }) {
@@ -185,7 +224,16 @@ test.afterAll(async () => {
     const { token } = await entrada.json();
     const cabeceras = { Authorization: `Bearer ${token}` };
 
-    for (const recurso of ['clientes', 'trabajadores']) {
+    const catalogo = await api.get('/api/catalogo', { headers: cabeceras });
+    if (catalogo.ok()) {
+      for (const m of await catalogo.json()) {
+        if (String(m.nombre).startsWith('PRUEBA-HUMO')) {
+          await api.delete(`/api/catalogo/${m.id}`, { headers: cabeceras });
+        }
+      }
+    }
+
+    for (const recurso of ['clientes', 'trabajadores', 'familias-material']) {
       const respuesta = await api.get(`/api/${recurso}`, { headers: cabeceras });
       if (!respuesta.ok()) continue;
       for (const ficha of await respuesta.json()) {
@@ -241,7 +289,7 @@ test('un pedido se crea, se abre y se borra', async ({ page }) => {
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'pedido ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'pedido ' + Date.now());
 
   // Alta
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
@@ -274,7 +322,7 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'trabajo ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'trabajo ' + Date.now());
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await expect(page).toHaveURL(/\/trabajos$/);
 
@@ -292,7 +340,7 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
   // Completarlo
   await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Trabajo de prueba automática');
-  await primerMaterial(page, 'Chapa de prueba', '3');
+  await primerMaterial(page, material, '3');
   await page.getByLabel('Horas').fill('2.5');
   await expect(page.getByText('Para poder enviarlo falta:')).toHaveCount(0);
 
@@ -317,7 +365,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   const errores = vigilarErrores(page, [409]);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'circuito ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'circuito ' + Date.now());
 
   // 1. Trabajo completo desde el principio
   await page.getByRole('link', { name: 'Trabajos' }).click();
@@ -325,7 +373,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   await elegir(page, 'Cliente', cliente);
   await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Barandilla de prueba');
-  await primerMaterial(page, 'Tubo de 40', '12,5');
+  await primerMaterial(page, material, '12,5');
   await page.getByLabel('Horas').fill('3,5'); // con coma: así se teclea aquí
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -403,7 +451,7 @@ test('las fotos se suben, se ven y se borran', async ({ page }) => {
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'fotos ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'fotos ' + Date.now());
 
   // Alta de pedido CON foto desde el propio formulario: es el camino que hará
   // el trabajador con la tablet, foto incluida.
@@ -459,7 +507,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'unificar ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'unificar ' + Date.now());
 
   // Dos trabajos del MISMO cliente, enviados: son los que se pueden juntar.
   for (const visita of [
@@ -471,7 +519,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
     await elegir(page, 'Cliente', cliente);
     await elegir(page, 'Trabajador', trabajador);
     await page.getByLabel('Qué se ha hecho').fill(visita.texto);
-    await primerMaterial(page, visita.material, visita.cantidad);
+    await primerMaterial(page, material, visita.cantidad);
     await page.getByLabel('Horas').fill(visita.horas);
     await page.getByRole('button', { name: 'Guardar borrador' }).click();
     await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -484,7 +532,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   // Filtrar enviados por ese cliente: es lo que habilita la selección.
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.locator('mat-button-toggle', { hasText: 'Enviados' }).click();
-  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Filtrar por cliente', cliente);
 
   // Marcar los dos y generar el albarán unificado.
   const casillas = page.locator('mat-checkbox input[type="checkbox"]');
@@ -567,7 +615,7 @@ test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ p
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'pdf ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'pdf ' + Date.now());
 
   // 1. Pedido
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
@@ -586,7 +634,7 @@ test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ p
   await elegir(page, 'Cliente', cliente);
   await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Barandilla para el PDF');
-  await primerMaterial(page, 'Tubo de 40', '12,5');
+  await primerMaterial(page, material, '12,5');
   await page.getByLabel('Horas').fill('3,5');
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -640,7 +688,7 @@ test('renombrar un cliente en Ajustes cambia su nombre en los documentos', async
   const errores = vigilarErrores(page, [409]);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'renombrar ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'renombrar ' + Date.now());
 
   // Un pedido suyo, para comprobar que el cambio llega hasta el documento.
   await page.getByRole('link', { name: 'Nuevo pedido' }).click();
@@ -678,21 +726,19 @@ test('un albarán admite varios trabajadores', async ({ page }) => {
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'equipo ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'equipo ' + Date.now());
 
   // Un segundo trabajador, para poder añadirlo al albarán después.
   const segundo = `PRUEBA-HUMO Segundo ${Date.now()}`;
   await page.getByRole('link', { name: 'Ajustes' }).click();
-  await page.getByLabel('Añadir trabajador').fill(segundo);
-  await page.getByRole('button', { name: 'Añadir', exact: true }).last().click();
-  await expect(page.getByText(segundo, { exact: true })).toBeVisible({ timeout: 10_000 });
+  await anadirEnAjustes(page, 'Añadir trabajador', segundo);
 
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
   await elegir(page, 'Cliente', cliente);
   await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Trabajo de un solo trabajador');
-  await primerMaterial(page, 'Pletina', '2');
+  await primerMaterial(page, material, '2');
   await page.getByLabel('Horas').fill('1');
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -729,14 +775,14 @@ test('un trabajo ya facturado no se puede volver a seleccionar', async ({ page }
   const errores = vigilarErrores(page);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador } = await crearMaestrosDePrueba(page, 'facturado ' + Date.now());
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'facturado ' + Date.now());
 
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
   await elegir(page, 'Cliente', cliente);
   await elegir(page, 'Trabajador', trabajador);
   await page.getByLabel('Qué se ha hecho').fill('Trabajo que se factura');
-  await primerMaterial(page, 'Angular 30', '4');
+  await primerMaterial(page, material, '4');
   await page.getByLabel('Horas').fill('2');
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
@@ -753,7 +799,7 @@ test('un trabajo ya facturado no se puede volver a seleccionar', async ({ page }
   // marcarlo: es lo que impide meterlo en un segundo albarán.
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.locator('mat-button-toggle', { hasText: 'Enviados' }).click();
-  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Filtrar por cliente', cliente);
 
   await expect(page.getByText('Ya en un albarán')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('mat-checkbox input[type="checkbox"]').first()).toBeDisabled();
@@ -811,6 +857,158 @@ test('un borrador de pedido guardado con el formato viejo se descarta', async ({
 
   await page.getByRole('button', { name: 'Empezar de cero' }).click();
   await expect(page.getByText('Se ha recuperado un pedido que quedó a medias')).toHaveCount(0);
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+/** Dibuja una firma en el lienzo, arrastrando como haría un dedo, y la guarda. */
+async function firmarEnLienzo(page: Page) {
+  const lienzo = page.locator('canvas.lienzo');
+  await expect(lienzo).toBeVisible();
+  const caja = await lienzo.boundingBox();
+  if (!caja) throw new Error('El lienzo de firma no tiene tamaño');
+  await page.mouse.move(caja.x + 40, caja.y + caja.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(caja.x + 120, caja.y + 40, { steps: 10 });
+  await page.mouse.move(caja.x + 200, caja.y + caja.height - 40, { steps: 10 });
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'Guardar firma' }).click();
+}
+
+/** Cambia de usuario sin pasar por el menú: la sesión vive en localStorage. */
+async function cambiarA(page: Page, cuenta: { usuario: string; contrasena: string }) {
+  await page.evaluate(() => localStorage.clear());
+  await entrar(page, cuenta);
+}
+
+test('el catálogo calcula el precio total con extra y transporte', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+
+  const sufijo = 'catalogo ' + Date.now();
+  const familia = `PRUEBA-HUMO Familia ${sufijo}`;
+  const material = `PRUEBA-HUMO Tubo ${sufijo}`;
+
+  await page.goto('/configuracion');
+  await anadirEnAjustes(page, 'Añadir familia', familia);
+
+  await elegir(page, 'Familia', familia);
+  await page.getByRole('button', { name: 'Nuevo material' }).click();
+  await page.getByLabel('Nombre', { exact: true }).fill(material);
+  await page.getByLabel('Unidad', { exact: true }).fill('m');
+  await page.getByLabel('Precio del material').fill('10');
+  await page.getByLabel('Extra sobre el material').fill('10');
+  await page.getByLabel('Transporte').fill('2');
+
+  // 10 + 10 % de 10 + 2 = 13, y se ve al teclear, antes de guardar.
+  await expect(page.locator('.total strong')).toHaveText(/13\.00 €/);
+
+  await page.getByRole('button', { name: 'Guardar material' }).click();
+  await expect(page.getByText('13.00 €/m')).toBeVisible({ timeout: 10_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('el trabajador recoge la firma en la obra y el albarán la hereda', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'firma ' + Date.now());
+
+  // La tablet empieza el trabajo y el cliente firma en la obra.
+  await cambiarA(page, CUENTAS.tablet);
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+  await elegir(page, 'Cliente', cliente);
+  await elegir(page, 'Trabajador', trabajador);
+  await page.getByLabel('Qué se ha hecho').fill('Trabajo firmado en la obra');
+  await primerMaterial(page, material, '3');
+  await page.getByLabel('Horas').fill('2');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+  const urlTrabajo = page.url();
+
+  await page.getByRole('button', { name: 'Recoger firma' }).click();
+  await firmarEnLienzo(page);
+  await expect(page.getByText('Firma del cliente guardada')).toBeVisible({ timeout: 15_000 });
+  expect(await imagenCargada(page, 'img.firma'), 'la firma del trabajo no se ve').toBe(true);
+
+  await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+  await expect(page.getByText('Enviado').first()).toBeVisible({ timeout: 15_000 });
+
+  // Enviado y firmado: la tablet ya NO puede sustituir la firma.
+  await expect(page.getByRole('button', { name: 'Volver a firmar' })).toHaveCount(0);
+
+  // El jefe genera el albarán de ESE trabajo, y sale ya firmado.
+  await cambiarA(page, CUENTAS.jefe);
+  await page.goto(urlTrabajo);
+  await page.getByRole('button', { name: 'Generar albarán' }).click();
+  await page.getByRole('button', { name: 'Generar', exact: true }).click();
+  await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 20_000 });
+  const urlAlbaran = page.url();
+  await expect(page.locator('img.firma')).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => imagenCargada(page, 'img.firma'), { timeout: 15_000 }).toBe(true);
+
+  await page.goto(urlAlbaran);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/albaranes$/, { timeout: 15_000 });
+  await page.goto(urlTrabajo);
+  await borrarYConfirmar(page);
+  await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('en Enviados se puede volver a ver los trabajos de todos los clientes', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'todos ' + Date.now());
+
+  const otro = `${cliente} OTRO`;
+  await page.goto('/configuracion');
+  await anadirEnAjustes(page, 'Añadir cliente', otro);
+
+  // Con la hora dentro, como todos los datos de prueba: si una ejecución falla
+  // a medias y deja trabajos, la siguiente no los confunde con los suyos.
+  const marca = Date.now();
+  const delPrimero = `Trabajo del primero ${marca}`;
+  const delSegundo = `Trabajo del segundo ${marca}`;
+
+  const urls: string[] = [];
+  for (const [quien, texto] of [[cliente, delPrimero], [otro, delSegundo]]) {
+    await page.getByRole('link', { name: 'Trabajos' }).click();
+    await page.getByRole('link', { name: 'Nuevo trabajo' }).click();
+    await elegir(page, 'Cliente', quien);
+    await elegir(page, 'Trabajador', trabajador);
+    await page.getByLabel('Qué se ha hecho').fill(texto);
+    await primerMaterial(page, material, '1');
+    await page.getByLabel('Horas').fill('1');
+    await page.getByRole('button', { name: 'Guardar borrador' }).click();
+    await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
+    urls.push(page.url());
+    await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+    await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
+    await expect(page.getByText('Enviado').first()).toBeVisible({ timeout: 15_000 });
+  }
+
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.locator('mat-button-toggle', { hasText: 'Enviados' }).click();
+
+  // Con un cliente elegido solo salen los suyos…
+  await elegir(page, 'Filtrar por cliente', cliente);
+  await expect(page.getByText(delPrimero)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(delSegundo)).toHaveCount(0);
+
+  // …y "Todos los clientes" quita el filtro: vuelven a salir los dos.
+  await elegir(page, 'Filtrar por cliente', 'Todos los clientes');
+  await expect(page.getByText(delPrimero)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(delSegundo)).toBeVisible();
+
+  for (const url of urls) {
+    await page.goto(url);
+    await borrarYConfirmar(page);
+    await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });
+  }
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });

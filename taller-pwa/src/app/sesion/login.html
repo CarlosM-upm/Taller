@@ -4,13 +4,11 @@
       <mat-progress-bar mode="indeterminate" />
     }
 
-    <mat-card-header class="cabecera">
-      <mat-icon class="logo">handyman</mat-icon>
-      <div>
-        <mat-card-title>Taller de Herrería</mat-card-title>
-        <mat-card-subtitle>Pedidos, trabajos y albaranes</mat-card-subtitle>
-      </div>
-    </mat-card-header>
+    <!-- El logotipo completo, con el nombre: aquí sí hay sitio para leerlo. -->
+    <div class="cabecera">
+      <img class="logo" src="logo-taller.jpg" alt="Nicolás Moreno · Agricultura y cerrajería" />
+      <p class="subtitulo">Pedidos, trabajos y albaranes</p>
+    </div>
 
     <mat-card-content>
       <form (ngSubmit)="entrar()">

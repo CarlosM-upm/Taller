@@ -21,6 +21,8 @@ import { GaleriaFotos } from '../comun/galeria-fotos';
 import { FilasMateriales } from '../comun/filas-materiales';
 import { SelectorFotos } from '../comun/selector-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
+import { LienzoFirma } from '../comun/lienzo-firma';
+import { SrcSeguro } from '../comun/src-seguro';
 
 const MAX_FOTOS = 5;
 
@@ -48,6 +50,7 @@ const OBLIGATORIOS_PARA_ENVIAR = [
 @Component({
   selector: 'app-detalle-trabajo',
   imports: [
+    SrcSeguro,
     DatePipe,
     FormsModule,
     RouterLink,
@@ -109,6 +112,30 @@ export class DetalleTrabajo implements OnInit {
   readonly puedeEditar = computed(
     () => this.trabajo() !== null && (this.esBorrador() || this.sesion.esJefe())
   );
+
+  /**
+   * Firmar lo puede hacer el trabajador en borrador y también en un enviado
+   * SIN firma: lo normal es enviarlo desde el taller y que el cliente firme
+   * después. Lo que no puede es sustituir la firma de un enviado; eso es del
+   * jefe (y el servidor responde 403 aunque se fuerce desde aquí).
+   */
+  readonly puedeFirmar = computed(() => {
+    const t = this.trabajo();
+    if (!t) return false;
+    return this.esBorrador() || !t.tieneFirma || this.sesion.esJefe();
+  });
+
+  /** Quitar la firma: en un borrador cualquiera, en un enviado solo el jefe. */
+  readonly puedeQuitarFirma = computed(() => {
+    const t = this.trabajo();
+    return !!t && t.tieneFirma && (this.esBorrador() || this.sesion.esJefe());
+  });
+
+  /**
+   * Con marca de tiempo para saltarse la caché del navegador: sin ella, al
+   * firmar de nuevo se seguiría viendo la firma anterior (misma URL).
+   */
+  readonly urlFirma = signal('');
 
   readonly huecos = computed(() => MAX_FOTOS - (this.trabajo()?.fotoIds.length ?? 0));
 
@@ -345,8 +372,67 @@ export class DetalleTrabajo implements OnInit {
 
   // ---------- auxiliares ----------
 
+  firmar(): void {
+    const t = this.trabajo();
+    if (!t || this.ocupado()) return;
+
+    this.dialogo
+      .open(LienzoFirma, { width: '640px', maxWidth: '96vw', disableClose: true })
+      .afterClosed()
+      .subscribe((firma: Blob | null | undefined) => {
+        if (!firma) return;
+        this.ocupado.set(true);
+        this.api.guardarFirmaTrabajo(t.id, firma).subscribe({
+          next: (actualizado) => {
+            this.aplicar(actualizado);
+            this.ocupado.set(false);
+            this.avisos.correcto('Firma del cliente guardada');
+          },
+          error: (fallo) => {
+            this.ocupado.set(false);
+            this.avisos.error(fallo, 'No se ha podido guardar la firma');
+          },
+        });
+      });
+  }
+
+  quitarFirma(): void {
+    const t = this.trabajo();
+    if (!t || this.ocupado()) return;
+
+    this.dialogo
+      .open(DialogoConfirmar, {
+        data: {
+          titulo: '¿Quitar la firma?',
+          mensaje: 'Se borra la firma que el cliente puso en este trabajo.',
+          aceptar: 'Quitar',
+          peligroso: true,
+        },
+        width: '440px',
+      })
+      .afterClosed()
+      .subscribe((confirmado) => {
+        if (!confirmado) return;
+        this.ocupado.set(true);
+        this.api.borrarFirmaTrabajo(t.id).subscribe({
+          next: (actualizado) => {
+            this.aplicar(actualizado);
+            this.ocupado.set(false);
+            this.avisos.correcto('Firma quitada');
+          },
+          error: (fallo) => {
+            this.ocupado.set(false);
+            this.avisos.error(fallo, 'No se ha podido quitar la firma');
+          },
+        });
+      });
+  }
+
   private aplicar(trabajo: Trabajo): void {
     this.trabajo.set(trabajo);
+    this.urlFirma.set(
+      trabajo.tieneFirma ? `${this.api.urlFirmaTrabajo(trabajo.id)}?v=${Date.now()}` : '',
+    );
     this.clienteId.set(trabajo.clienteId);
     this.trabajadorId.set(trabajo.trabajadorId);
     this.descripcion.set(trabajo.descripcion ?? '');

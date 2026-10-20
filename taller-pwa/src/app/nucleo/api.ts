@@ -7,7 +7,11 @@ import {
   AlbaranNuevo,
   AlbaranUnificado,
   Cliente,
+  DatosMaterialCatalogo,
   EstadoTrabajo,
+  FamiliaMaterial,
+  MaterialCatalogo,
+  MaterialCatalogoConPrecio,
   Pedido,
   PedidoCambios,
   PedidoNuevo,
@@ -83,6 +87,50 @@ export class ApiTaller {
 
   borrarTrabajador(id: number): Observable<void> {
     return this.http.delete<void>(`/api/trabajadores/${id}`);
+  }
+
+  // --- Catálogo de materiales -----------------------------------------------
+  //
+  // La tablet lee el catálogo SIN precios; la lista con precios y cualquier
+  // cambio son del jefe (el backend responde 403 al trabajador).
+
+  familiasMaterial(): Observable<FamiliaMaterial[]> {
+    return this.http.get<FamiliaMaterial[]>('/api/familias-material');
+  }
+
+  crearFamiliaMaterial(nombre: string): Observable<FamiliaMaterial> {
+    return this.http.post<FamiliaMaterial>('/api/familias-material', { nombre });
+  }
+
+  renombrarFamiliaMaterial(id: number, nombre: string): Observable<FamiliaMaterial> {
+    return this.http.put<FamiliaMaterial>(`/api/familias-material/${id}`, { nombre });
+  }
+
+  /** Falla con 409 si la familia tiene materiales. */
+  borrarFamiliaMaterial(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/familias-material/${id}`);
+  }
+
+  catalogo(): Observable<MaterialCatalogo[]> {
+    return this.http.get<MaterialCatalogo[]>('/api/catalogo');
+  }
+
+  /** Solo jefe. */
+  catalogoConPrecios(): Observable<MaterialCatalogoConPrecio[]> {
+    return this.http.get<MaterialCatalogoConPrecio[]>('/api/catalogo/precios');
+  }
+
+  crearMaterialCatalogo(datos: DatosMaterialCatalogo): Observable<MaterialCatalogoConPrecio> {
+    return this.http.post<MaterialCatalogoConPrecio>('/api/catalogo', datos);
+  }
+
+  editarMaterialCatalogo(id: number, datos: DatosMaterialCatalogo): Observable<MaterialCatalogoConPrecio> {
+    return this.http.put<MaterialCatalogoConPrecio>(`/api/catalogo/${id}`, datos);
+  }
+
+  /** Se permite aunque se haya usado: los documentos guardan su propia copia. */
+  borrarMaterialCatalogo(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/catalogo/${id}`);
   }
 
   // --- Pedidos -------------------------------------------------------------
@@ -169,6 +217,24 @@ export class ApiTaller {
 
   urlFotoTrabajo(id: number, fotoId: number): string {
     return `/api/trabajos/${id}/fotos/${fotoId}`;
+  }
+
+  /**
+   * Firma del cliente en la obra. La tablet puede firmar un borrador, y un
+   * enviado si aún no tiene firma; sustituirla en un enviado es del jefe.
+   */
+  guardarFirmaTrabajo(id: number, firma: Blob): Observable<Trabajo> {
+    const cuerpo = new FormData();
+    cuerpo.append('firma', firma, 'firma.png');
+    return this.http.put<Trabajo>(`/api/trabajos/${id}/firma`, cuerpo);
+  }
+
+  borrarFirmaTrabajo(id: number): Observable<Trabajo> {
+    return this.http.delete<Trabajo>(`/api/trabajos/${id}/firma`);
+  }
+
+  urlFirmaTrabajo(id: number): string {
+    return `/api/trabajos/${id}/firma`;
   }
 
   /** Solo jefe. */

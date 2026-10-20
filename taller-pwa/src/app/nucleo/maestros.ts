@@ -1,10 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ApiTaller } from './api';
-import { Cliente, Trabajador } from './modelos';
+import { Cliente, FamiliaMaterial, MaterialCatalogo, Trabajador } from './modelos';
 
 /**
- * Clientes y trabajadores, cargados una vez y compartidos.
+ * Clientes, trabajadores y el catálogo de materiales, cargados una vez y
+ * compartidos.
  *
  * Los necesitan casi todas las pantallas para poblar sus desplegables. Sin
  * esto, abrir el alta de un pedido, la de un trabajo y la ficha de un albarán
@@ -20,6 +21,9 @@ export class Maestros {
 
   readonly clientes = signal<Cliente[]>([]);
   readonly trabajadores = signal<Trabajador[]>([]);
+  readonly familias = signal<FamiliaMaterial[]>([]);
+  /** Sin precios: es la versión que puede recibir la tablet. */
+  readonly catalogo = signal<MaterialCatalogo[]>([]);
   readonly cargando = signal(false);
 
   private cargado = false;
@@ -35,10 +39,14 @@ export class Maestros {
     forkJoin({
       clientes: this.api.clientes(),
       trabajadores: this.api.trabajadores(),
+      familias: this.api.familiasMaterial(),
+      catalogo: this.api.catalogo(),
     }).subscribe({
-      next: ({ clientes, trabajadores }) => {
+      next: ({ clientes, trabajadores, familias, catalogo }) => {
         this.clientes.set(clientes);
         this.trabajadores.set(trabajadores);
+        this.familias.set(familias);
+        this.catalogo.set(catalogo);
         this.cargado = true;
         this.cargando.set(false);
       },

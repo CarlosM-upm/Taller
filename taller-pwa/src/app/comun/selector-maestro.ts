@@ -14,11 +14,13 @@ export interface OpcionMaestra {
  * Sustituye a los campos de texto que se tecleaban a mano, que era de donde
  * salía el mismo cliente escrito de tres formas distintas.
  *
- * No ofrece una opción de "(sin asignar)". La tuvo, y era mentira: el PATCH
- * interpreta un id nulo como "no toques este campo", así que elegirla no
- * vaciaba nada y el usuario se quedaba creyendo que sí. Mientras no se ha
- * elegido nada el desplegable ya sale vacío, que es el mismo estado; para
- * cambiar de cliente, se elige otro.
+ * En un FORMULARIO no ofrece opción de vaciar. La tuvo ("(sin asignar)") y era
+ * mentira: el PATCH interpreta un id nulo como "no toques este campo", así que
+ * elegirla no vaciaba nada. Para cambiar de cliente, se elige otro.
+ *
+ * En un FILTRO sí hace falta, y significa otra cosa: "todos". Para eso está
+ * opcionTodos, que solo debe usarse en filtros. Sin ella, una vez elegido un
+ * cliente en el listado no había forma de volver a ver los de todos.
  */
 @Component({
   selector: 'app-selector-maestro',
@@ -27,6 +29,9 @@ export interface OpcionMaestra {
     <mat-form-field appearance="outline">
       <mat-label>{{ etiqueta() }}</mat-label>
       <mat-select [(value)]="valor" [disabled]="deshabilitado()">
+        @if (opcionTodos(); as todos) {
+          <mat-option [value]="null">{{ todos }}</mat-option>
+        }
         @for (opcion of opciones(); track opcion.id) {
           <mat-option [value]="opcion.id">{{ opcion.nombre }}</mat-option>
         }
@@ -44,6 +49,8 @@ export class SelectorMaestro {
   readonly etiqueta = input.required<string>();
   readonly opciones = input.required<OpcionMaestra[]>();
   readonly deshabilitado = input(false);
+  /** SOLO en filtros: una primera opción que deja el valor a nulo = "todos". */
+  readonly opcionTodos = input<string | null>(null);
 
   /** Dos direcciones: el padre escribe el valor inicial y recibe los cambios. */
   readonly valor = model<number | null>(null);

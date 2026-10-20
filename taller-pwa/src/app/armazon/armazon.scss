@@ -7,10 +7,20 @@
 .barra {
   flex: 0 0 auto;
   gap: 8px;
+  // El verde exacto del logotipo, con texto blanco: es lo primero que se ve.
+  background: var(--taller-verde-logo);
+  color: #fff;
 }
 
+// El símbolo del logo va sobre una placa blanca: es verde sobre blanco, y
+// directamente sobre la barra verde se perdería.
 .marca {
-  color: inherit;
+  height: 36px;
+  width: 36px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 2px;
+  object-fit: contain;
 }
 
 .titulo {

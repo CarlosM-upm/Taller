@@ -15,16 +15,24 @@
 
 .cabecera {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding-top: 16px;
+  padding: 16px 16px 0;
 }
 
+// El logotipo trae mucho blanco alrededor; a este ancho el nombre se lee bien.
+// mix-blend-mode multiply hace que ese blanco tome el color de la tarjeta: sin
+// él, el JPG se veía como un recuadro blanco pegado encima del fondo verdoso.
 .logo {
-  font-size: 40px;
-  width: 40px;
-  height: 40px;
-  color: var(--mat-sys-primary);
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 form {
