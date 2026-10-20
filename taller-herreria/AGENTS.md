@@ -788,6 +788,9 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   Migración V6.
 - **"Nicolás Moreno, Taller"**, los verdes del logo en toda la aplicación y el
   símbolo como icono.
+- **«Firmado» / «Sin firmar» en la lista de trabajos**, con el mismo aspecto que en
+  la de albaranes y en todos los filtros (Todos, Sin terminar, Enviados). Solo
+  pantalla: el servidor ya mandaba `tieneFirma`.
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
 - Todo verificado contra PostgreSQL real y en Chrome: **18 de 18** en la

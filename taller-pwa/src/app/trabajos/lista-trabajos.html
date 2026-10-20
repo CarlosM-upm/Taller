@@ -102,6 +102,16 @@
               <span>{{ trabajo.horas }} h</span>
             }
             <span class="crece"></span>
+            <!-- Igual que en la lista de albaranes. Va en todos los filtros: la
+                 firma se recoge tanto en borrador como ya enviado. -->
+            @if (trabajo.tieneFirma) {
+              <span class="etiqueta firmado">
+                <mat-icon class="icono-pie">draw</mat-icon>
+                Firmado
+              </span>
+            } @else {
+              <span class="etiqueta sin-firmar">Sin firmar</span>
+            }
             @if (trabajo.fotoIds.length > 0) {
               <mat-icon class="icono-pie">photo_library</mat-icon>
               <span>{{ trabajo.fotoIds.length }}</span>

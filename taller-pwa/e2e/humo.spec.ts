@@ -876,6 +876,19 @@ async function firmarEnLienzo(page: Page) {
   await page.getByRole('button', { name: 'Guardar firma' }).click();
 }
 
+/**
+ * Comprueba la etiqueta de firma de un trabajo en la lista, con un filtro
+ * puesto. Busca la tarjeta por su descripción, que en cada prueba es única.
+ */
+async function etiquetaDeFirmaEnLista(page: Page, descripcion: string, filtro: string, etiqueta: string) {
+  await page.getByRole('link', { name: 'Trabajos' }).click();
+  await page.locator('mat-button-toggle', { hasText: filtro }).click();
+  const tarjeta = page.locator('mat-card.trabajo', { hasText: descripcion });
+  await expect(tarjeta.locator('.etiqueta', { hasText: etiqueta })).toBeVisible({ timeout: 15_000 });
+  const otra = etiqueta === 'Firmado' ? 'Sin firmar' : 'Firmado';
+  await expect(tarjeta.locator('.etiqueta', { hasText: otra })).toHaveCount(0);
+}
+
 /** Cambia de usuario sin pasar por el menú: la sesión vive en localStorage. */
 async function cambiarA(page: Page, cuenta: { usuario: string; contrasena: string }) {
   await page.evaluate(() => localStorage.clear());
@@ -928,10 +941,16 @@ test('el trabajador recoge la firma en la obra y el albarán la hereda', async (
   await expect(page).toHaveURL(/\/trabajos\/\d+$/, { timeout: 15_000 });
   const urlTrabajo = page.url();
 
+  // En la lista se ve si falta la firma, sin abrir el trabajo.
+  await etiquetaDeFirmaEnLista(page, 'Trabajo firmado en la obra', 'Sin terminar', 'Sin firmar');
+  await page.goto(urlTrabajo);
+
   await page.getByRole('button', { name: 'Recoger firma' }).click();
   await firmarEnLienzo(page);
   await expect(page.getByText('Firma del cliente guardada')).toBeVisible({ timeout: 15_000 });
   expect(await imagenCargada(page, 'img.firma'), 'la firma del trabajo no se ve').toBe(true);
+  await etiquetaDeFirmaEnLista(page, 'Trabajo firmado en la obra', 'Todos', 'Firmado');
+  await page.goto(urlTrabajo);
 
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();
   await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
@@ -939,6 +958,7 @@ test('el trabajador recoge la firma en la obra y el albarán la hereda', async (
 
   // Enviado y firmado: la tablet ya NO puede sustituir la firma.
   await expect(page.getByRole('button', { name: 'Volver a firmar' })).toHaveCount(0);
+  await etiquetaDeFirmaEnLista(page, 'Trabajo firmado en la obra', 'Enviados', 'Firmado');
 
   // El jefe genera el albarán de ESE trabajo, y sale ya firmado.
   await cambiarA(page, CUENTAS.jefe);

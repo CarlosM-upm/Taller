@@ -40,11 +40,25 @@ h2 {
 }
 
 .etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 10px;
   border-radius: 12px;
   font-size: 0.78rem;
   font-weight: 500;
   white-space: nowrap;
+}
+
+// Firmado / Sin firmar: los mismos colores que en la lista de albaranes.
+.firmado {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.sin-firmar {
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
 }
 
 // Un borrador es algo que aún reclama atención: se marca en color, no en gris.
