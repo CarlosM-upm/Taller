@@ -278,6 +278,13 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
 - **La tablet no recibe precios**: `GET /api/catalogo` va sin ellos y
   `GET /api/catalogo/precios` es del jefe. Son dos URLs a propósito, no un `if` por
   rol en el controlador: así el reparto lo sigue decidiendo `SecurityConfig`.
+- **Elegir un material = buscar o desplegar**, en el mismo campo (`comun/filas-materiales`,
+  un `mat-autocomplete`, no un `mat-select`: con ~200 materiales desplegar y deslizar no
+  basta). Al escribir salen los que **contienen** el texto en cualquier parte del nombre
+  ("nill" → Tornillo, Anilla), sin distinguir mayúsculas ni tildes ("tuberia" encuentra
+  "Tubería"), agrupados por familia. La flecha del campo borra la búsqueda a medias y
+  despliega el catálogo entero. Texto escrito sin elegir de la lista **no cuenta** como
+  material (lo avisa debajo del campo): sigue siendo "solo del catálogo".
 
 ### Firma del cliente en el trabajo
 
@@ -616,7 +623,7 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 17
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 18
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -625,7 +632,7 @@ el renombrado de un cliente propagándose a sus documentos, los varios trabajado
 un albarán, el bloqueo de un trabajo ya facturado, el descarte de un borrador
 guardado con el formato antiguo, el precio total del catálogo, la firma recogida
 en la obra y heredada por el albarán, y volver a ver los enviados de todos los
-clientes.
+clientes, y la búsqueda de materiales por un trozo del nombre.
 
 Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
 —ya no se teclean, se eligen— y **los borran al terminar**, en un `afterAll`
@@ -781,7 +788,9 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   Migración V6.
 - **"Nicolás Moreno, Taller"**, los verdes del logo en toda la aplicación y el
   símbolo como icono.
-- Todo verificado contra PostgreSQL real y en Chrome: **17 de 17** en la
+- **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
+  en el mismo campo (pensado para cuando haya cientos).
+- Todo verificado contra PostgreSQL real y en Chrome: **18 de 18** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente

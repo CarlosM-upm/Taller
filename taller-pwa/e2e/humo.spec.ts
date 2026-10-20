@@ -130,7 +130,8 @@ async function elegir(page: Page, etiqueta: string, opcion: string) {
 
 /** Elige el material de la primera fila (del catálogo) y escribe su cantidad. */
 async function primerMaterial(page: Page, material: string, cantidad: string) {
-  await page.locator('mat-select[data-fila="0"]').click();
+  // Como en la tablet: se escribe un trozo del nombre y se toca en la lista.
+  await page.locator('input[name="material-nombre-0"]').fill(material);
   await page.getByRole('option', { name: material, exact: true }).click();
   await page.locator('input[name="material-cantidad-0"]').fill(cantidad);
 }
@@ -1028,6 +1029,70 @@ test('las pantallas pendientes se abren sin romperse', async ({ page }) => {
   await page.goto('/trabajos');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Trabajos' })).toBeVisible();
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('el material se busca por cualquier trozo del nombre, o se despliega entero', async ({ page }) => {
+  const errores = vigilarErrores(page);
+
+  // El catálogo de esta prueba se crea por la API: lo que se prueba aquí es el
+  // buscador, no la pantalla de Ajustes (que ya recorren otras pruebas).
+  const marca = Date.now();
+  const api = await peticionApi.newContext({ baseURL: 'http://127.0.0.1:8080' });
+  const { token } = await (await api.post('/api/login', {
+    data: { usuario: 'jefe', contrasena: 'jefe123' },
+  })).json();
+  const h = { Authorization: `Bearer ${token}` };
+  const familia = await (await api.post('/api/familias-material', {
+    headers: h, data: { nombre: `PRUEBA-HUMO Ferretería ${marca}` },
+  })).json();
+  const nombres = {
+    tornillo: `PRUEBA-HUMO Tornillo M8 ${marca}`,
+    anilla: `PRUEBA-HUMO Anilla 20 ${marca}`,
+    tuberia: `PRUEBA-HUMO Tubería 1/2 ${marca}`,
+    tubo: `PRUEBA-HUMO Tubo 40x40 ${marca}`,
+  };
+  for (const nombre of Object.values(nombres)) {
+    await api.post('/api/catalogo', {
+      headers: h, data: { familiaId: familia.id, nombre, unidad: 'ud', precio: 1 },
+    });
+  }
+  await api.dispose();
+
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/trabajos/nuevo');
+  const campo = page.locator('input[name="material-nombre-0"]');
+
+  // "nill" está DENTRO de "Tornillo" y de "Anilla": salen los dos, y nada más.
+  await campo.fill('nill');
+  await expect(page.getByRole('option', { name: nombres.tornillo })).toBeVisible();
+  await expect(page.getByRole('option', { name: nombres.anilla })).toBeVisible();
+  await expect(page.getByRole('option', { name: nombres.tubo })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: nombres.tuberia })).toHaveCount(0);
+
+  // Sin tilde también encuentra la que la lleva: en la tablet nadie las pone.
+  await campo.fill('tuberia 1/2');
+  await expect(page.getByRole('option', { name: nombres.tuberia })).toBeVisible();
+
+  // Algo que no existe lo dice, en vez de dejar la lista vacía sin más.
+  await campo.fill('zzzz-no-existe');
+  await expect(page.getByRole('option', { name: /Ningún material contiene/ })).toBeVisible();
+
+  // Escrito pero sin elegir: avisa, porque esa fila no cuenta como material.
+  await page.getByLabel('Qué se ha hecho').click();
+  await expect(page.getByText('Elige un material de la lista')).toBeVisible();
+
+  // La flecha borra la búsqueda a medias y despliega el catálogo ENTERO.
+  await page.getByRole('button', { name: 'Ver todos los materiales' }).first().click();
+  for (const nombre of Object.values(nombres)) {
+    await expect(page.getByRole('option', { name: nombre })).toBeVisible();
+  }
+
+  // Al elegir, el aviso desaparece y la unidad sale junto a la cantidad.
+  await page.getByRole('option', { name: nombres.anilla }).click();
+  await expect(campo).toHaveValue(nombres.anilla);
+  await expect(page.getByText('Elige un material de la lista')).toHaveCount(0);
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });

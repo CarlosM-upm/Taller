@@ -1,17 +1,22 @@
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { Maestros } from '../nucleo/maestros';
 import { MaterialCatalogo, MaterialLinea } from '../nucleo/modelos';
 
 /** Una fila mientras se edita: los números, como TEXTO. */
 interface Fila {
-  /** Material elegido del catálogo. Nulo en una fila nueva o en una antigua. */
-  catalogoId: number | null;
+  /**
+   * Lo que hay en el campo del material: un NÚMERO si se ha elegido un material
+   * del catálogo (su id), o el TEXTO que se está escribiendo para buscar. Es lo
+   * que entrega el autocompletado: el texto mientras se teclea y el valor de la
+   * opción al elegirla.
+   */
+  valor: string | number | null;
   /** Solo para las líneas antiguas sin catálogo, que se enseñan tal cual. */
   nombreAntiguo: string | null;
   unidadAntigua: string | null;
@@ -28,14 +33,21 @@ interface GrupoFamilia {
  * Las líneas de material: un material DEL CATÁLOGO y su cantidad, más el precio
  * en los albaranes. Empieza con una fila y crece con el botón "+".
  *
- * El material se elige de un solo desplegable con las familias como cabeceras,
- * en lugar de dos encadenados (familia y luego material): en una tablet, con
- * guantes, un toque menos se nota. La unidad sale pegada a la cantidad.
+ * El material se elige en un campo que es desplegable y buscador a la vez:
+ * - la flecha de la derecha abre el catálogo entero, agrupado por familias,
+ *   para quien prefiera deslizar;
+ * - si se escribe, la lista se filtra al momento por cualquier trozo del
+ *   nombre ("nill" encuentra "Tornillo" y "Anilla"), sin mirar mayúsculas ni
+ *   tildes, que en una tablet nadie pone.
+ * Con un catálogo de cientos de materiales, deslizar hasta el que toca con
+ * guantes era lento; buscar lo resuelve, y la lista completa sigue ahí.
+ *
+ * Solo vale lo que se elige de la lista: si se escribe algo y no se elige, el
+ * campo avisa y esa fila no cuenta. El servidor lo exige igual.
  *
  * Las líneas que vienen sin catálogo (anteriores a él, o cuyo material se
  * borró) se enseñan con su nombre como texto fijo: se pueden quitar o cambiar de
- * cantidad, pero no convertir en otro material. El servidor solo admite líneas
- * sin catálogo si ya existían en el documento.
+ * cantidad, pero no convertir en otro material.
  *
  * Reglas de este componente que no hay que romper:
  * - Los números se guardan como TEXTO y se convierten al emitir. Con
@@ -52,11 +64,11 @@ interface GrupoFamilia {
   selector: 'app-filas-materiales',
   imports: [
     FormsModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
   ],
   template: `
     <div class="materiales">
@@ -70,22 +82,50 @@ interface GrupoFamilia {
           } @else {
             <mat-form-field appearance="outline" class="col-nombre">
               <mat-label>Material</mat-label>
-              <mat-select
-                [attr.data-fila]="$index"
-                [value]="fila.catalogoId"
-                (valueChange)="elegir($index, $event)"
+              <input
+                matInput
+                type="text"
+                [name]="'material-nombre-' + $index"
+                placeholder="Busca o despliega"
+                autocomplete="off"
+                [matAutocomplete]="lista"
+                #disparador="matAutocompleteTrigger"
+                [ngModel]="fila.valor"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="cambiarValor($index, $event)"
                 [disabled]="deshabilitado()"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                aria-label="Ver todos los materiales"
+                [disabled]="deshabilitado()"
+                (click)="verTodos($index, disparador, $event)"
               >
-                @for (grupo of grupos(); track grupo.familia) {
+                <mat-icon>arrow_drop_down</mat-icon>
+              </button>
+
+              <mat-autocomplete #lista="matAutocomplete" [displayWith]="nombreDe">
+                @for (grupo of gruposPara(fila); track grupo.familia) {
                   <mat-optgroup [label]="grupo.familia">
                     @for (material of grupo.materiales; track material.id) {
                       <mat-option [value]="material.id">{{ material.nombre }}</mat-option>
                     }
                   </mat-optgroup>
+                } @empty {
+                  <mat-option disabled>
+                    @if (catalogoVacio()) {
+                      El catálogo está vacío: se rellena en Ajustes.
+                    } @else {
+                      Ningún material contiene «{{ fila.valor }}»
+                    }
+                  </mat-option>
                 }
-              </mat-select>
-              @if (grupos().length === 0) {
-                <mat-hint>El catálogo está vacío: se rellena en Ajustes.</mat-hint>
+              </mat-autocomplete>
+
+              @if (sinElegir(fila)) {
+                <mat-hint class="aviso">Elige un material de la lista</mat-hint>
               }
             </mat-form-field>
           }
@@ -157,7 +197,8 @@ interface GrupoFamilia {
     /* El material se lleva el espacio sobrante; cantidad y precio van fijos
        para que las columnas no bailen de una fila a otra. */
     .col-nombre { flex: 1 1 auto; min-width: 0; }
-    .col-cantidad { flex: 0 0 120px; }
+    /* 140 y no 120: con la unidad detrás ("ud", "m"), "Cantidad" se le pegaba. */
+    .col-cantidad { flex: 0 0 140px; }
     .col-precio { flex: 0 0 120px; }
     .col-borrar { flex: 0 0 48px; margin-top: 4px; }
 
@@ -169,6 +210,8 @@ interface GrupoFamilia {
       padding: 0 4px 22px;
     }
     .antiguo small { opacity: 0.6; }
+
+    .aviso { color: var(--mat-sys-error); }
 
     .anadir { margin-top: 4px; }
   `,
@@ -185,24 +228,25 @@ export class FilasMateriales implements OnInit {
 
   readonly filas = signal<Fila[]>([]);
 
-  /** El catálogo agrupado por familia, en el orden en que llega (familia, nombre). */
-  readonly grupos = computed<GrupoFamilia[]>(() => {
-    const grupos: GrupoFamilia[] = [];
-    for (const material of this.maestros.catalogo()) {
-      const ultimo = grupos[grupos.length - 1];
-      if (ultimo && ultimo.familia === material.familia) ultimo.materiales.push(material);
-      else grupos.push({ familia: material.familia, materiales: [material] });
-    }
-    return grupos;
-  });
+  readonly catalogoVacio = computed(() => this.maestros.catalogo().length === 0);
+
+  /**
+   * Nombres de los materiales de las líneas iniciales. Hacen falta para pintar
+   * el nombre de un material ya elegido aunque el catálogo aún no haya llegado
+   * del servidor: el autocompletado traduce el id a texto UNA vez, al cargar.
+   */
+  private readonly nombresIniciales = new Map<number, string>();
 
   ngOnInit(): void {
     this.maestros.asegurarCargados();
     const iniciales = this.lineasIniciales();
+    for (const linea of iniciales) {
+      if (linea.catalogoId && linea.nombre) this.nombresIniciales.set(linea.catalogoId, linea.nombre);
+    }
     this.filas.set(
       iniciales.length > 0
         ? iniciales.map((linea) => ({
-            catalogoId: linea.catalogoId ?? null,
+            valor: linea.catalogoId ?? null,
             nombreAntiguo: linea.catalogoId ? null : (linea.nombre ?? ''),
             unidadAntigua: linea.catalogoId ? null : (linea.unidad ?? null),
             cantidad: texto(linea.cantidad),
@@ -212,9 +256,59 @@ export class FilasMateriales implements OnInit {
     );
   }
 
+  /**
+   * Lo que pinta el campo cuando el valor es un material elegido. Es una
+   * propiedad (función flecha) y no un método porque el autocompletado la
+   * llama suelta, sin "this".
+   */
+  readonly nombreDe = (valor: string | number | null): string => {
+    if (typeof valor !== 'number') return valor ?? '';
+    return (
+      this.maestros.catalogo().find((m) => m.id === valor)?.nombre ??
+      this.nombresIniciales.get(valor) ??
+      ''
+    );
+  };
+
+  /**
+   * Los grupos que se enseñan en la lista de esta fila.
+   *
+   * Sin texto escrito (o con un material ya elegido), el catálogo entero: así
+   * la flecha sirve también para cambiar de material. Con texto, solo los
+   * materiales cuyo nombre CONTIENE lo escrito, en cualquier posición, sin
+   * mayúsculas ni tildes: "nill" encuentra "Tornillo" y "Anilla".
+   */
+  gruposPara(fila: Fila): GrupoFamilia[] {
+    const consulta = typeof fila.valor === 'string' ? normalizar(fila.valor.trim()) : '';
+    const grupos: GrupoFamilia[] = [];
+    for (const material of this.maestros.catalogo()) {
+      if (consulta && !normalizar(material.nombre).includes(consulta)) continue;
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.familia === material.familia) ultimo.materiales.push(material);
+      else grupos.push({ familia: material.familia, materiales: [material] });
+    }
+    return grupos;
+  }
+
+  /** Hay algo escrito pero no se ha elegido ningún material de la lista. */
+  sinElegir(fila: Fila): boolean {
+    return typeof fila.valor === 'string' && fila.valor.trim().length > 0;
+  }
+
   unidadDe(fila: Fila): string | null {
-    if (fila.catalogoId === null) return fila.unidadAntigua;
-    return this.maestros.catalogo().find((m) => m.id === fila.catalogoId)?.unidad ?? null;
+    if (fila.nombreAntiguo !== null) return fila.unidadAntigua;
+    if (typeof fila.valor !== 'number') return null;
+    return this.maestros.catalogo().find((m) => m.id === fila.valor)?.unidad ?? null;
+  }
+
+  /**
+   * La flecha: abre la lista ENTERA. Si había una búsqueda a medias sin elegir
+   * nada, se borra, porque si no la lista seguiría filtrada por ella.
+   */
+  verTodos(indice: number, disparador: MatAutocompleteTrigger, evento: Event): void {
+    evento.stopPropagation();
+    if (this.sinElegir(this.filas()[indice])) this.cambiarValor(indice, '');
+    disparador.openPanel();
   }
 
   anadir(): void {
@@ -227,8 +321,8 @@ export class FilasMateriales implements OnInit {
     this.emitir();
   }
 
-  elegir(indice: number, catalogoId: number): void {
-    this.actualizar(indice, (fila) => ({ ...fila, catalogoId }));
+  cambiarValor(indice: number, valor: string | number | null): void {
+    this.actualizar(indice, (fila) => ({ ...fila, valor }));
   }
 
   cambiarCantidad(indice: number, valor: string): void {
@@ -245,14 +339,14 @@ export class FilasMateriales implements OnInit {
   }
 
   /**
-   * Se emiten solo las filas con material elegido (o las antiguas): la fila
-   * vacía del final, que está para seguir añadiendo, no es un material.
+   * Se emiten solo las filas con material ELEGIDO (o las antiguas): ni la fila
+   * vacía del final ni una búsqueda a medias son un material.
    */
   private emitir(): void {
     const lineas: MaterialLinea[] = this.filas()
-      .filter((fila) => fila.catalogoId !== null || fila.nombreAntiguo !== null)
+      .filter((fila) => typeof fila.valor === 'number' || fila.nombreAntiguo !== null)
       .map((fila) => ({
-        catalogoId: fila.catalogoId,
+        catalogoId: typeof fila.valor === 'number' ? fila.valor : null,
         nombre: fila.nombreAntiguo,
         cantidad: numero(fila.cantidad),
         precio: this.conPrecio() ? numero(fila.precio) : null,
@@ -262,7 +356,15 @@ export class FilasMateriales implements OnInit {
 }
 
 function filaVacia(): Fila {
-  return { catalogoId: null, nombreAntiguo: null, unidadAntigua: null, cantidad: '', precio: '' };
+  return { valor: null, nombreAntiguo: null, unidadAntigua: null, cantidad: '', precio: '' };
+}
+
+/**
+ * Para comparar al buscar: sin mayúsculas y sin tildes. NFD separa cada letra
+ * de su tilde, y luego se quitan las tildes sueltas: "Tubería" queda "tuberia".
+ */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 /** Del número del servidor al texto del campo, con coma decimal. */
