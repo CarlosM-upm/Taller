@@ -83,7 +83,6 @@ export class DetalleAlbaran implements OnInit {
   readonly numero = signal('');
   readonly fecha = signal('');
   readonly clienteId = signal<number | null>(null);
-  readonly dniCliente = signal('');
   readonly trabajadorIds = signal<number[]>([]);
   readonly descripcion = signal('');
 
@@ -167,7 +166,6 @@ export class DetalleAlbaran implements OnInit {
     this.numero.set(String(a.numero));
     this.fecha.set(a.fecha);
     this.clienteId.set(a.clienteId);
-    this.dniCliente.set(a.dniCliente ?? '');
     this.trabajadorIds.set(a.trabajadores.map((t) => t.id));
     this.descripcion.set(a.descripcion);
     this.horas.set(a.horas !== null ? String(a.horas).replace('.', ',') : '');
@@ -202,7 +200,6 @@ export class DetalleAlbaran implements OnInit {
         numero,
         fecha: this.fecha(),
         clienteId: this.clienteId() ?? undefined,
-        dniCliente: this.dniCliente().trim(),
         trabajadorIds: this.trabajadorIds(),
         descripcion: this.descripcion().trim(),
         horas: aNumero(this.horas()),

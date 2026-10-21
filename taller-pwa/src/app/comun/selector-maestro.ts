@@ -6,6 +6,8 @@ import { MatSelectModule } from '@angular/material/select';
 export interface OpcionMaestra {
   id: number;
   nombre: string;
+  /** Solo los clientes lo traen. Ver soloConDni. */
+  tieneDni?: boolean;
 }
 
 /**
@@ -33,11 +35,17 @@ export interface OpcionMaestra {
           <mat-option [value]="null">{{ todos }}</mat-option>
         }
         @for (opcion of opciones(); track opcion.id) {
-          <mat-option [value]="opcion.id">{{ opcion.nombre }}</mat-option>
+          @if (soloConDni() && opcion.tieneDni === false && opcion.id !== valor()) {
+            <mat-option [value]="opcion.id" disabled>{{ opcion.nombre }} (falta el DNI)</mat-option>
+          } @else {
+            <mat-option [value]="opcion.id">{{ opcion.nombre }}</mat-option>
+          }
         }
       </mat-select>
       @if (opciones().length === 0) {
         <mat-hint>No hay ninguno dado de alta. Se añaden en Ajustes.</mat-hint>
+      } @else if (soloConDni() && hayAlgunoSinDni()) {
+        <mat-hint>Los clientes sin DNI no se pueden elegir: se les pone en Ajustes.</mat-hint>
       }
     </mat-form-field>
   `,
@@ -51,6 +59,17 @@ export class SelectorMaestro {
   readonly deshabilitado = input(false);
   /** SOLO en filtros: una primera opción que deja el valor a nulo = "todos". */
   readonly opcionTodos = input<string | null>(null);
+  /**
+   * En los FORMULARIOS de cliente: los que no tienen DNI salen deshabilitados,
+   * porque el albarán lo lee del cliente. Se respeta el que ya estuviera
+   * puesto, igual que hace el servidor. En los filtros, no: filtrar por un
+   * cliente sin DNI no hace daño.
+   */
+  readonly soloConDni = input(false);
+
+  protected hayAlgunoSinDni(): boolean {
+    return this.opciones().some((o) => o.tieneDni === false);
+  }
 
   /** Dos direcciones: el padre escribe el valor inicial y recibe los cambios. */
   readonly valor = model<number | null>(null);

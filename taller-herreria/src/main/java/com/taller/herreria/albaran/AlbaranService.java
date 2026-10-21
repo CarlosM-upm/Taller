@@ -139,13 +139,19 @@ public class AlbaranService {
                                 + trabajo.getCliente().getNombre());
             }
         }
+        // El DNI sale del cliente y el albarán no se entrega sin él. Se mira
+        // antes de tomar número, para no gastar uno de la serie en balde.
+        if (!cliente.tieneDni()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El cliente \"" + cliente.getNombre() + "\" no tiene DNI: "
+                            + "póngaselo en Ajustes antes de generar el albarán");
+        }
 
         // En el orden en que se hicieron, para que la descripción se lea como el
         // histórico del mes. Un trabajo enviado siempre tiene fecha.
         trabajos.sort(Comparator.comparing(Trabajo::getFecha).thenComparing(Trabajo::getId));
 
         LocalDate fecha = (datos != null && datos.fecha() != null) ? datos.fecha() : LocalDate.now();
-        String dni = (datos != null) ? datos.dniCliente() : null;
 
         long numero = configuracion.tomarNumeroDeAlbaran();
         // Si el jefe reencauzó el contador hacia un número ya usado, avisamos claramente.
@@ -170,7 +176,7 @@ public class AlbaranService {
             if (trabajo.getHoras() != null) horas = horas.add(trabajo.getHoras());
         }
 
-        Albaran albaran = new Albaran(numero, fecha, cliente, dni, trabajadores,
+        Albaran albaran = new Albaran(numero, fecha, cliente, trabajadores,
                 descripcion.toString(), idsUnificados);
         albaran.setHoras(horas);
         albaranRepository.save(albaran);
@@ -233,7 +239,7 @@ public class AlbaranService {
         datos.put("numero", albaran.getNumero());
         datos.put("fecha", GeneradorPdf.fecha(albaran.getFecha()));
         datos.put("cliente", GeneradorPdf.texto(albaran.getCliente().getNombre()));
-        datos.put("dniCliente", GeneradorPdf.texto(albaran.getDniCliente()));
+        datos.put("dniCliente", GeneradorPdf.texto(albaran.getCliente().getDni()));
         datos.put("trabajador", GeneradorPdf.texto(nombresDe(albaran)));
         datos.put("descripcion", GeneradorPdf.texto(albaran.getDescripcion()));
         datos.put("firma", GeneradorPdf.imagen(albaran.getFirmaTipoContenido(), albaran.getFirma()));
@@ -272,8 +278,7 @@ public class AlbaranService {
         }
         if (cambios.fecha() != null) albaran.setFecha(cambios.fecha());
         if (cambios.clienteId() != null)
-            albaran.setCliente(clienteService.buscarOFallar(cambios.clienteId()));
-        if (cambios.dniCliente() != null) albaran.setDniCliente(cambios.dniCliente().trim());
+            albaran.setCliente(clienteService.paraElegir(cambios.clienteId(), albaran.getCliente()));
         if (cambios.trabajadorIds() != null) {
             if (cambios.trabajadorIds().isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -385,7 +390,6 @@ public class AlbaranService {
     /**
      * El albarán es un documento cerrado: un PATCH con "" o "   " no puede
      * dejar sin cliente, trabajador o descripción a algo que ya se imprimió.
-     * (El DNI sí puede quedar vacío: es opcional.)
      */
     private String exigirNoVacio(String valor, String campo) {
         if (valor.isBlank()) {
@@ -406,7 +410,7 @@ public class AlbaranService {
         BigDecimal extra = a.getImporteExtra() == null ? BigDecimal.ZERO : a.getImporteExtra();
 
         return new AlbaranResponse(a.getId(), a.getNumero(), a.getFecha(),
-                a.getCliente().getId(), a.getCliente().getNombre(), a.getDniCliente(),
+                a.getCliente().getId(), a.getCliente().getNombre(), a.getCliente().getDni(),
                 a.getTrabajadores().stream().map(TrabajadorDto.Resumen::de).toList(),
                 a.getDescripcion(), a.getHoras(),
                 materiales.stream().map(MaterialDto::de).toList(),

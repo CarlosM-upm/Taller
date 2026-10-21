@@ -23,6 +23,7 @@
       <form (ngSubmit)="guardar()">
         <app-selector-maestro
           etiqueta="Cliente"
+          [soloConDni]="true"
           [opciones]="maestros.clientes()"
           [(valor)]="clienteId"
           [deshabilitado]="guardando()"

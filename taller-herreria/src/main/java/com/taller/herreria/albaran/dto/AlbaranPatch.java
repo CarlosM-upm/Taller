@@ -18,7 +18,6 @@ public record AlbaranPatch(
         Long numero,
         LocalDate fecha,
         Long clienteId,
-        String dniCliente,
         List<Long> trabajadorIds,
         String descripcion,
         BigDecimal horas,

@@ -13,11 +13,10 @@ import java.util.List;
  */
 public record AlbaranUnificar(
         @NotEmpty(message = "seleccione al menos un trabajo") List<Long> trabajoIds,
-        LocalDate fecha,
-        String dniCliente
+        LocalDate fecha
 ) {
     /** Lo que el servicio necesita aparte de la lista de trabajos. */
     public AlbaranCrear datos() {
-        return new AlbaranCrear(fecha, dniCliente);
+        return new AlbaranCrear(fecha);
     }
 }

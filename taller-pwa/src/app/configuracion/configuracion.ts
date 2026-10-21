@@ -12,6 +12,7 @@ import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { Sesion } from '../nucleo/sesion';
 import { CatalogoMateriales } from './catalogo-materiales';
+import { ListaClientes } from './lista-clientes';
 import { ListaMaestros } from './lista-maestros';
 
 /**
@@ -34,6 +35,7 @@ import { ListaMaestros } from './lista-maestros';
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    ListaClientes,
     ListaMaestros,
     CatalogoMateriales,
   ],

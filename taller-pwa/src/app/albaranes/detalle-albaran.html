@@ -53,15 +53,13 @@
 
             <app-selector-maestro
               etiqueta="Cliente"
+              [soloConDni]="true"
               [opciones]="maestros.clientes()"
               [(valor)]="clienteId"
               [deshabilitado]="ocupado()"
             />
 
-            <mat-form-field appearance="outline">
-              <mat-label>DNI del cliente</mat-label>
-              <input matInput name="dniCliente" [ngModel]="dniCliente()" (ngModelChange)="dniCliente.set($event)" [disabled]="ocupado()" />
-            </mat-form-field>
+            <!-- El DNI no se edita aquí: es del cliente, y se corrige en Ajustes. -->
 
             <!-- Varios, porque el albarán puede unificar trabajos de distintas personas. -->
             <mat-form-field appearance="outline">

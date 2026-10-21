@@ -7,6 +7,7 @@ import {
   AlbaranNuevo,
   AlbaranUnificado,
   Cliente,
+  ClienteConDni,
   DatosMaterialCatalogo,
   EstadoTrabajo,
   FamiliaMaterial,
@@ -59,13 +60,19 @@ export class ApiTaller {
     return this.http.get<Cliente[]>('/api/clientes');
   }
 
-  crearCliente(nombre: string): Observable<Cliente> {
-    return this.http.post<Cliente>('/api/clientes', { nombre });
+  /** Con el DNI. Solo jefe, para Ajustes. */
+  clientesConDni(): Observable<ClienteConDni[]> {
+    return this.http.get<ClienteConDni[]>('/api/clientes/con-dni');
   }
 
-  /** Renombrar afecta a todos sus pedidos, trabajos y albaranes. */
-  renombrarCliente(id: number, nombre: string): Observable<Cliente> {
-    return this.http.put<Cliente>(`/api/clientes/${id}`, { nombre });
+  /** El DNI es obligatorio, y el servidor comprueba la letra. */
+  crearCliente(nombre: string, dni: string): Observable<ClienteConDni> {
+    return this.http.post<ClienteConDni>('/api/clientes', { nombre, dni });
+  }
+
+  /** Nombre y DNI cambian en todos sus pedidos, trabajos y albaranes. */
+  editarCliente(id: number, nombre: string, dni: string): Observable<ClienteConDni> {
+    return this.http.put<ClienteConDni>(`/api/clientes/${id}`, { nombre, dni });
   }
 
   /** Falla con 409 si el cliente tiene documentos. */

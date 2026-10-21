@@ -293,7 +293,7 @@ public class TrabajoService {
     private void aplicarDatos(Trabajo trabajo, TrabajoDatos datos) {
         boolean borrador = trabajo.esBorrador();
         if (datos.clienteId() != null)
-            trabajo.setCliente(clienteService.buscarOFallar(datos.clienteId()));
+            trabajo.setCliente(clienteService.paraElegir(datos.clienteId(), trabajo.getCliente()));
         if (datos.trabajadorId() != null)
             trabajo.setTrabajador(trabajadorService.buscarOFallar(datos.trabajadorId()));
         if (datos.descripcion() != null)

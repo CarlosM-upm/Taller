@@ -27,16 +27,23 @@ public class ClienteController {
         return servicio.listar().stream().map(ClienteDto.Resumen::de).toList();
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ClienteDto.Resumen crear(@Valid @RequestBody ClienteDto.Datos datos) {
-        return ClienteDto.Resumen.de(servicio.crear(datos.nombre()));
+    /** Con el DNI. Solo jefe: la regla está en SecurityConfig, no aquí. */
+    @GetMapping("/con-dni")
+    public List<ClienteDto.ConDni> listarConDni() {
+        return servicio.listar().stream().map(ClienteDto.ConDni::de).toList();
     }
 
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ClienteDto.ConDni crear(@Valid @RequestBody ClienteDto.Datos datos) {
+        return ClienteDto.ConDni.de(servicio.crear(datos.nombre(), datos.dni()));
+    }
+
+    /** Nombre y DNI. Los dos se reflejan en todos sus documentos. */
     @PutMapping("/{id}")
-    public ClienteDto.Resumen renombrar(@PathVariable Long id,
-                                        @Valid @RequestBody ClienteDto.Datos datos) {
-        return ClienteDto.Resumen.de(servicio.renombrar(id, datos.nombre()));
+    public ClienteDto.ConDni editar(@PathVariable Long id,
+                                    @Valid @RequestBody ClienteDto.Datos datos) {
+        return ClienteDto.ConDni.de(servicio.editar(id, datos.nombre(), datos.dni()));
     }
 
     @DeleteMapping("/{id}")

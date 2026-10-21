@@ -83,6 +83,9 @@ public class SecurityConfig {
                 // Clientes y trabajadores: el trabajador necesita LEERLOS para que
                 // los desplegables de la tablet tengan contenido, pero mantenerlos
                 // es cosa del jefe desde Ajustes. Por eso se abre solo el GET.
+                // El listado con DNI es del jefe; la tablet solo sabe si lo tiene.
+                // Va ANTES de la regla general del GET: gana la primera que encaja.
+                .requestMatchers(HttpMethod.GET, "/api/clientes/con-dni").hasRole("JEFE")
                 .requestMatchers(HttpMethod.GET, "/api/clientes/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/trabajadores/**").authenticated()
                 .requestMatchers("/api/clientes/**").hasRole("JEFE")

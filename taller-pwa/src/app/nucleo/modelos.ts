@@ -36,6 +36,18 @@ export interface RespuestaError {
 export interface Cliente {
   id: number;
   nombre: string;
+  /**
+   * Sin DNI no se puede elegir en ningún documento: el albarán lo lee del
+   * cliente. La lista que ven las dos cuentas no trae el DNI en sí.
+   */
+  tieneDni: boolean;
+}
+
+/** Lo que ve el jefe en Ajustes. Nulo solo en clientes de antes del DNI obligatorio. */
+export interface ClienteConDni {
+  id: number;
+  nombre: string;
+  dni: string | null;
 }
 
 export interface Trabajador {
@@ -157,6 +169,7 @@ export interface Albaran {
   fecha: string;
   clienteId: number;
   cliente: string;
+  /** El del cliente: se cambia en Ajustes y cambia en todos sus albaranes. */
   dniCliente: string | null;
   /** Varios, porque puede unificar trabajos de distintas personas. */
   trabajadores: Trabajador[];
@@ -178,7 +191,6 @@ export interface Albaran {
 
 export interface AlbaranNuevo {
   fecha?: string | null;
-  dniCliente?: string | null;
 }
 
 /** Varios trabajos del mismo cliente en un solo albarán. */
@@ -190,7 +202,6 @@ export interface AlbaranCambios {
   numero?: number;
   fecha?: string;
   clienteId?: number;
-  dniCliente?: string;
   trabajadorIds?: number[];
   descripcion?: string;
   horas?: number | null;

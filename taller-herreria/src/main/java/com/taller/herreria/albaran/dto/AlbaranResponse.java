@@ -19,6 +19,7 @@ public record AlbaranResponse(
         LocalDate fecha,
         Long clienteId,
         String cliente,
+        /** El del cliente, leído al responder: no se guarda en el albarán. */
         String dniCliente,
         List<TrabajadorDto.Resumen> trabajadores,
         String descripcion,

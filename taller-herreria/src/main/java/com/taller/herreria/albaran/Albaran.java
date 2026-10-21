@@ -42,8 +42,6 @@ public class Albaran {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    private String dniCliente;   // lo teclea el jefe
-
     /**
      * Varios, porque un albarán puede unificar trabajos de distintas personas.
      * EAGER explícito: ManyToMany es LAZY por defecto y el paso a DTO ocurre
@@ -111,12 +109,11 @@ public class Albaran {
 
     protected Albaran() { } // requerido por JPA
 
-    public Albaran(Long numero, LocalDate fecha, Cliente cliente, String dniCliente,
+    public Albaran(Long numero, LocalDate fecha, Cliente cliente,
                    Set<Trabajador> trabajadores, String descripcion, Set<Long> trabajoIds) {
         this.numero = numero;
         this.fecha = fecha;
         this.cliente = cliente;
-        this.dniCliente = dniCliente;
         this.trabajadores = new LinkedHashSet<>(trabajadores);
         this.descripcion = descripcion;
         this.trabajoIds = new LinkedHashSet<>(trabajoIds);
@@ -126,7 +123,6 @@ public class Albaran {
     public Long getNumero() { return numero; }
     public LocalDate getFecha() { return fecha; }
     public Cliente getCliente() { return cliente; }
-    public String getDniCliente() { return dniCliente; }
     public Set<Trabajador> getTrabajadores() { return trabajadores; }
     public String getDescripcion() { return descripcion; }
     public BigDecimal getHoras() { return horas; }
@@ -140,7 +136,6 @@ public class Albaran {
     public void setNumero(Long numero) { this.numero = numero; }
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
-    public void setDniCliente(String dniCliente) { this.dniCliente = dniCliente; }
 
     public void setTrabajadores(Set<Trabajador> trabajadores) {
         this.trabajadores = new LinkedHashSet<>(trabajadores);

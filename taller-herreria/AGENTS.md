@@ -233,7 +233,9 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   cliente, trabajador, descripción y **también las fotos** (como fotos propias del albarán).
   Editar el albarán después **no debe afectar al trabajo original**. Esto es deliberado:
   preserva la integridad histórica del documento.
-- `dniCliente` solo existe aquí y **lo teclea el jefe** al crearlo.
+- `dniCliente` **ya no se guarda en el albarán**: se lee del cliente al responder y al
+  generar el PDF (migración V7). Antes lo tecleaba el jefe en cada albarán. No se
+  genera un albarán de un cliente sin DNI (400, antes de gastar número de la serie).
 - La **fecha es elegida** por el jefe (no automática). Si no se indica, se usa la de hoy,
   y sigue siendo editable después.
 - `firma` es una imagen (la firma del cliente), guardada en la propia entidad.
@@ -251,7 +253,22 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   mismo cliente escrito como "Seica", "seica" y "SEICA " sin forma de agrupar sus
   trabajos, que es justo lo que hace falta para el albarán unificado.
 - El GET lo pueden hacer los dos roles (la tablet puebla sus desplegables); crear,
-  renombrar y borrar es solo del jefe.
+  editar y borrar es solo del jefe.
+- **El cliente lleva DNI, obligatorio** (V7). Se escribe al crearlo en Ajustes y sus
+  albaranes lo leen de ahí: corregirlo lo corrige en **todos** sus albaranes, igual
+  que el nombre (decidido así). `cliente/Dni` lo limpia (mayúsculas, sin espacios,
+  puntos ni guiones) y lo comprueba: DNI y NIE **con su letra**, CIF tal cual (sin
+  calcular el control, decidido). Un DNI de 7 cifras se rellena con un cero. Único:
+  dos clientes con el mismo DNI son el mismo dado de alta dos veces (409).
+- La columna admite nulo solo por los clientes anteriores a V7. **Un cliente sin DNI
+  no se puede ELEGIR** en un pedido, trabajo o albarán (`ClienteService.paraElegir`,
+  400), salvo que el documento ya lo tuviera: los formularios mandan el cliente
+  aunque no cambie, y no se debe bloquear la edición de lo antiguo. En la PWA sale
+  en gris con "(falta el DNI)" (`soloConDni` en `selectorMaestro`, solo en
+  formularios; los filtros lo muestran normal) y en Ajustes con "Falta el DNI".
+- **El DNI no se manda a la tablet**: `GET /api/clientes` lleva solo `tieneDni`, y
+  `GET /api/clientes/con-dni` (con el DNI) es del jefe. Mismo criterio que los
+  precios del catálogo: dos URLs, y el reparto lo decide `SecurityConfig`.
 
 ### Catálogo de materiales
 
@@ -418,8 +435,7 @@ pasa a ser territorio del jefe.
 - **Trabajo BORRADOR**: la cadena en blanco se guarda como `null`. Vaciar un campo a
   medio rellenar es legítimo, y así `camposQueFaltan()` lo detecta al enviar.
 - **Trabajo ENVIADO, Pedido y Albarán**: se rechaza con 400. Son documentos ya cerrados
-  y no pueden quedar incompletos. (El `dniCliente` del albarán sí admite vacío: es
-  opcional.)
+  y no pueden quedar incompletos.
 
 Esta última regla **no se puede expresar solo con la URL** (depende del estado del objeto),
 por eso vive en `TrabajoService.exigirJefeSiEnviado()` y no en `SecurityConfig`. Si añades
@@ -438,9 +454,10 @@ POST   /api/login                     abierto
 POST   /api/logout
 PUT    /api/password
 
-GET    /api/clientes                  ambos roles (pueblan los desplegables)
-POST   /api/clientes                  JEFE
-PUT    /api/clientes/{id}              JEFE — renombrar propaga a sus documentos
+GET    /api/clientes                  ambos roles — sin DNI, solo tieneDni
+GET    /api/clientes/con-dni          JEFE — con el DNI, para Ajustes
+POST   /api/clientes                  JEFE — nombre y DNI, los dos obligatorios
+PUT    /api/clientes/{id}              JEFE — nombre y DNI; propagan a sus documentos
 DELETE /api/clientes/{id}              JEFE — 409 si tiene documentos
 GET    /api/trabajadores               ambos roles
 GET    /api/familias-material          ambos roles
@@ -623,7 +640,7 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 
 `e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 18
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 19
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -632,7 +649,10 @@ el renombrado de un cliente propagándose a sus documentos, los varios trabajado
 un albarán, el bloqueo de un trabajo ya facturado, el descarte de un borrador
 guardado con el formato antiguo, el precio total del catálogo, la firma recogida
 en la obra y heredada por el albarán, y volver a ver los enviados de todos los
-clientes, y la búsqueda de materiales por un trozo del nombre.
+clientes, la búsqueda de materiales por un trozo del nombre, y el DNI del cliente
+(obligatorio, con la letra comprobada, sin repetirse, y corregido en un albarán ya
+hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al azar
+(`dniDePrueba()`) y se crean con `anadirCliente()`.
 
 Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
 —ya no se teclean, se eligen— y **los borran al terminar**, en un `afterAll`
@@ -795,9 +815,12 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   intenta abrir algo del jefe. El orden de la barra de abajo NO cambia (Pedidos
   sigue primero), a petición del taller. Las pruebas siguen empezando en Pedidos:
   `entrar()` comprueba que se llega a Trabajos y luego va a Pedidos.
+- **El DNI pasa del albarán al cliente**, migración V7: obligatorio al crearlo, con
+  la letra comprobada, y sin DNI no se puede elegir el cliente. Al desplegarla se
+  borraron a mano los trabajos y albaranes que había (decidido con el taller).
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
-- Todo verificado contra PostgreSQL real y en Chrome: **18 de 18** en la
+- Todo verificado contra PostgreSQL real y en Chrome: **19 de 19** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente

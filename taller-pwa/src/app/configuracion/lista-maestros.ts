@@ -9,14 +9,15 @@ import { Observable } from 'rxjs';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
-import { Cliente, FamiliaMaterial, Trabajador } from '../nucleo/modelos';
+import { FamiliaMaterial, Trabajador } from '../nucleo/modelos';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 
-type Tipo = 'cliente' | 'trabajador' | 'familia';
-type Elemento = Cliente | Trabajador | FamiliaMaterial;
+type Tipo = 'trabajador' | 'familia';
+type Elemento = Trabajador | FamiliaMaterial;
 
 /**
- * Alta, renombrado y borrado de clientes, trabajadores o familias de materiales.
+ * Alta, renombrado y borrado de trabajadores o familias de materiales. Los
+ * clientes tienen su propia lista (lista-clientes), porque llevan DNI.
  *
  * Es el mismo componente para las tres listas porque se comportan igual: un
  * nombre, único, que no se puede borrar mientras tenga algo colgando
@@ -128,13 +129,12 @@ export class ListaMaestros {
     if (!nombre || this.ocupado()) return;
 
     const peticiones = {
-      cliente: () => this.api.crearCliente(nombre),
       trabajador: () => this.api.crearTrabajador(nombre),
       familia: () => this.api.crearFamiliaMaterial(nombre),
     };
     this.ejecutar(
       peticiones[this.tipo()](),
-      { cliente: 'Cliente añadido', trabajador: 'Trabajador añadido', familia: 'Familia añadida' }[
+      { trabajador: 'Trabajador añadido', familia: 'Familia añadida' }[
         this.tipo()
       ],
       () => this.nuevo.set(''),
@@ -155,7 +155,6 @@ export class ListaMaestros {
     if (!nombre || this.ocupado()) return;
 
     const peticiones = {
-      cliente: () => this.api.renombrarCliente(id, nombre),
       trabajador: () => this.api.renombrarTrabajador(id, nombre),
       familia: () => this.api.renombrarFamiliaMaterial(id, nombre),
     };
@@ -185,13 +184,12 @@ export class ListaMaestros {
       .subscribe((confirmado) => {
         if (!confirmado) return;
         const peticiones = {
-          cliente: () => this.api.borrarCliente(elemento.id),
           trabajador: () => this.api.borrarTrabajador(elemento.id),
           familia: () => this.api.borrarFamiliaMaterial(elemento.id),
         };
         this.ejecutar(
           peticiones[this.tipo()](),
-          { cliente: 'Cliente borrado', trabajador: 'Trabajador borrado', familia: 'Familia borrada' }[
+          { trabajador: 'Trabajador borrado', familia: 'Familia borrada' }[
             this.tipo()
           ],
         );

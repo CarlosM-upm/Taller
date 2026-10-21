@@ -138,6 +138,7 @@ async function primerMaterial(page: Page, material: string, cantidad: string) {
 
 /**
  * Escribe un nombre en una de las listas de Ajustes y pulsa su "Añadir".
+ * Los clientes no: llevan DNI y tienen su propio ayudante, anadirCliente().
  *
  * Hay tres listas con el mismo botón (clientes, trabajadores y familias), así
  * que se pulsa el del propio formulario y no el primero o el último de la
@@ -147,6 +148,25 @@ async function anadirEnAjustes(page: Page, etiqueta: string, nombre: string) {
   const campo = page.getByLabel(etiqueta, { exact: true });
   await campo.fill(nombre);
   await campo.locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true }).click();
+  await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Un DNI válido (con su letra bien calculada) y distinto en cada llamada: dos
+ * clientes no pueden compartir DNI, y los de una ejecución fallida pueden
+ * seguir en la base.
+ */
+function dniDePrueba(): string {
+  const numero = Math.floor(10_000_000 + Math.random() * 89_999_999);
+  return `${numero}${'TRWAGMYFPDXBNJZSQVHLCKE'[numero % 23]}`;
+}
+
+/** Da de alta un cliente en Ajustes, con su DNI, que ya es obligatorio. */
+async function anadirCliente(page: Page, nombre: string, dni: string) {
+  await page.getByLabel('Añadir cliente', { exact: true }).fill(nombre);
+  const campoDni = page.locator('input[name="nuevo-dni"]');
+  await campoDni.fill(dni);
+  await campoDni.locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true }).click();
   await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
 }
 
@@ -162,9 +182,10 @@ async function crearMaestrosDePrueba(page: Page, sufijo: string) {
   const trabajador = `PRUEBA-HUMO Ana ${sufijo}`;
   const familia = `PRUEBA-HUMO Familia ${sufijo}`;
   const material = `PRUEBA-HUMO Material ${sufijo}`;
+  const dni = dniDePrueba();
 
   await page.goto('/configuracion');
-  await anadirEnAjustes(page, 'Añadir cliente', cliente);
+  await anadirCliente(page, cliente, dni);
   await anadirEnAjustes(page, 'Añadir trabajador', trabajador);
   await anadirEnAjustes(page, 'Añadir familia', familia);
   await crearMaterialEnAjustes(page, familia, material, { precio: '10', extra: '0', transporte: '0' });
@@ -174,7 +195,7 @@ async function crearMaestrosDePrueba(page: Page, sufijo: string) {
   await page.getByRole('link', { name: 'Pedidos', exact: true }).click();
   await expect(page).toHaveURL(/\/pedidos$/, { timeout: 10_000 });
 
-  return { cliente, trabajador, familia, material };
+  return { cliente, dni, trabajador, familia, material };
 }
 
 /** Elige la familia en Ajustes y da de alta un material dentro, en metros. */
@@ -375,7 +396,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   const errores = vigilarErrores(page, [409]);
   await entrar(page, CUENTAS.jefe);
 
-  const { cliente, trabajador, material } = await crearMaestrosDePrueba(page, 'circuito ' + Date.now());
+  const { cliente, dni, trabajador, material } = await crearMaestrosDePrueba(page, 'circuito ' + Date.now());
 
   // 1. Trabajo completo desde el principio
   await page.getByRole('link', { name: 'Trabajos' }).click();
@@ -396,14 +417,26 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   // 3. Generar su albarán
   await expect(page.getByText('Todavía no se ha generado el albarán')).toBeVisible();
   await page.getByRole('button', { name: 'Generar albarán' }).click();
-  await page.getByLabel('DNI del cliente').fill('12345678Z');
+  // El DNI ya no se pide: es del cliente.
+  await expect(page.getByLabel('DNI del cliente')).toHaveCount(0);
   await page.getByRole('button', { name: 'Generar', exact: true }).click();
 
   await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 15_000 });
   const urlAlbaran = page.url();
-  // Los datos se copian del trabajo en el servidor.
+  // Los datos se copian del trabajo en el servidor, y el DNI sale del cliente.
   await expect(page.getByText(cliente).first()).toBeVisible();
-  await expect(page.getByText('12345678Z')).toBeVisible();
+  await expect(page.getByText(dni)).toBeVisible();
+
+  // Corregir el DNI en Ajustes lo corrige también en el albarán ya hecho.
+  const dniCorregido = dniDePrueba();
+  await page.getByRole('link', { name: 'Ajustes' }).click();
+  await page.getByLabel(`Editar ${cliente}`).click();
+  await page.locator('input[name^="editar-dni-"]').fill(dniCorregido);
+  await page.getByLabel('Guardar el cliente').click();
+  await expect(page.getByText(dniCorregido, { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.goto(urlAlbaran);
+  await expect(page.getByText(dniCorregido)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(dni)).toHaveCount(0);
   await expect(page.getByText('Este albarán todavía no está firmado.')).toBeVisible();
 
   // 4. Firmar en el lienzo, arrastrando como haría un dedo
@@ -552,7 +585,6 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   await expect(page.getByText('2 trabajos seleccionados')).toBeVisible();
 
   await page.getByRole('button', { name: 'Generar albarán' }).click();
-  await page.getByLabel('DNI del cliente').fill('12345678Z');
   await page.getByRole('button', { name: 'Generar', exact: true }).click();
   await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 20_000 });
   const urlAlbaran = page.url();
@@ -657,7 +689,6 @@ test('los tres documentos se descargan en PDF y solo los ve el jefe', async ({ p
 
   // 3. Albarán, que es el documento que de verdad se imprime
   await page.getByRole('button', { name: 'Generar albarán' }).click();
-  await page.getByLabel('DNI del cliente').fill('12345678Z');
   await page.getByRole('button', { name: 'Generar', exact: true }).click();
   await expect(page).toHaveURL(/\/albaranes\/\d+$/, { timeout: 15_000 });
   const urlAlbaran = page.url();
@@ -717,9 +748,9 @@ test('renombrar un cliente en Ajustes cambia su nombre en los documentos', async
 
   // Renombrarlo sí, y eso alcanza a todos sus documentos.
   const nuevoNombre = `${cliente} RENOMBRADO`;
-  await page.getByLabel(`Renombrar ${cliente}`).click();
-  await page.locator('input[name^="editar-"]').fill(nuevoNombre);
-  await page.getByLabel('Guardar el nombre').click();
+  await page.getByLabel(`Editar ${cliente}`).click();
+  await page.locator('input[name^="editar-nombre-"]').fill(nuevoNombre);
+  await page.getByLabel('Guardar el cliente').click();
   await expect(page.getByText(nuevoNombre, { exact: true })).toBeVisible({ timeout: 15_000 });
 
   await page.goto(urlPedido);
@@ -996,7 +1027,7 @@ test('en Enviados se puede volver a ver los trabajos de todos los clientes', asy
 
   const otro = `${cliente} OTRO`;
   await page.goto('/configuracion');
-  await anadirEnAjustes(page, 'Añadir cliente', otro);
+  await anadirCliente(page, otro, dniDePrueba());
 
   // Con la hora dentro, como todos los datos de prueba: si una ejecución falla
   // a medias y deja trabajos, la siguiente no los confunde con los suyos.
@@ -1125,3 +1156,47 @@ test('el material se busca por cualquier trozo del nombre, o se despliega entero
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
+
+test('el DNI del cliente es obligatorio, se comprueba y no se repite', async ({ page }) => {
+  // Los 400 y el 409 los provoca la prueba a propósito: es lo que se comprueba.
+  const errores = vigilarErrores(page, [400, 409]);
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/configuracion');
+
+  const marca = Date.now();
+  const nombre = `PRUEBA-HUMO Cliente DNI ${marca}`;
+  const dni = dniDePrueba();
+
+  // Sin DNI no se puede ni pulsar "Añadir".
+  await page.getByLabel('Añadir cliente', { exact: true }).fill(nombre);
+  const botonAnadir = page.locator('input[name="nuevo-dni"]')
+    .locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true });
+  await expect(botonAnadir).toBeDisabled();
+
+  // Con la letra equivocada, el servidor lo rechaza y dice cuál sería.
+  const malaLetra = dni.slice(0, 8) + (dni.endsWith('A') ? 'B' : 'A');
+  await page.locator('input[name="nuevo-dni"]').fill(malaLetra);
+  await botonAnadir.click();
+  await expect(page.getByText(/no cuadra/)).toBeVisible({ timeout: 10_000 });
+
+  // Escrito con puntos, guion y en minúscula vale, y se guarda limpio.
+  const conFormato = `${dni.slice(0, 2)}.${dni.slice(2, 5)}.${dni.slice(5, 8)}-${dni[8].toLowerCase()}`;
+  await page.locator('input[name="nuevo-dni"]').fill(conFormato);
+  await botonAnadir.click();
+  await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(dni, { exact: true })).toBeVisible();
+
+  // Otro cliente con el mismo DNI: es el mismo dado de alta dos veces.
+  await anadirClienteSinEsperar(page, `${nombre} OTRO`, dni);
+  await expect(page.getByText(/ya es del cliente/)).toBeVisible({ timeout: 10_000 });
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+/** Como anadirCliente(), pero sin esperar a que salga: para los casos que fallan. */
+async function anadirClienteSinEsperar(page: Page, nombre: string, dni: string) {
+  await page.getByLabel('Añadir cliente', { exact: true }).fill(nombre);
+  const campoDni = page.locator('input[name="nuevo-dni"]');
+  await campoDni.fill(dni);
+  await campoDni.locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true }).click();
+}

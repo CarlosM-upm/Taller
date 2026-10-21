@@ -29,21 +29,48 @@ public class ClienteService {
                 HttpStatus.NOT_FOUND, "No existe el cliente " + id));
     }
 
-    public Cliente crear(String nombre) {
+    /**
+     * El cliente que se quiere poner en un pedido, trabajo o albarán.
+     *
+     * Solo se puede elegir uno con DNI: el albarán lo lee de aquí y no se
+     * teclea en ningún otro sitio. Si el documento YA tenía ese cliente no se
+     * vuelve a exigir, para no bloquear la edición de un pedido antiguo cuyo
+     * cliente aún no tiene DNI (los formularios mandan el cliente aunque no
+     * cambie).
+     */
+    @Transactional(readOnly = true)
+    public Cliente paraElegir(Long id, Cliente actual) {
+        if (actual != null && actual.getId().equals(id)) return actual;
+        Cliente cliente = buscarOFallar(id);
+        if (!cliente.tieneDni()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El cliente \"" + cliente.getNombre() + "\" no tiene DNI: "
+                            + "el jefe tiene que ponérselo en Ajustes antes de poder elegirlo");
+        }
+        return cliente;
+    }
+
+    public Cliente crear(String nombre, String dni) {
         String limpio = exigirNombre(nombre);
         exigirQueNoSeRepita(limpio, null);
-        return repositorio.save(new Cliente(limpio));
+        String dniLimpio = Dni.normalizar(dni);
+        exigirDniLibre(dniLimpio, null);
+        return repositorio.save(new Cliente(limpio, dniLimpio));
     }
 
     /**
-     * Renombrar afecta a todos los documentos del cliente, incluidos albaranes
-     * ya firmados. Es intencionado: sirve para corregir erratas.
+     * Cambiar el nombre o el DNI afecta a todos los documentos del cliente,
+     * incluidos albaranes ya firmados. Es intencionado: sirve para corregir
+     * erratas.
      */
-    public Cliente renombrar(Long id, String nombre) {
+    public Cliente editar(Long id, String nombre, String dni) {
         String limpio = exigirNombre(nombre);
         exigirQueNoSeRepita(limpio, id);
+        String dniLimpio = Dni.normalizar(dni);
+        exigirDniLibre(dniLimpio, id);
         Cliente cliente = buscarOFallar(id);
         cliente.setNombre(limpio);
+        cliente.setDni(dniLimpio);
         return cliente;
     }
 
@@ -79,6 +106,16 @@ public class ClienteService {
                     "Indique el nombre del cliente");
         }
         return limpio;
+    }
+
+    /** Dos clientes con el mismo DNI son el mismo cliente dado de alta dos veces. */
+    private void exigirDniLibre(String dni, Long idAExcluir) {
+        repositorio.findByDni(dni)
+                .filter(existente -> !existente.getId().equals(idAExcluir))
+                .ifPresent(existente -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "El DNI " + dni + " ya es del cliente \"" + existente.getNombre() + "\"");
+                });
     }
 
     /** El idAExcluir es el del propio cliente al renombrarlo: no choca consigo mismo. */

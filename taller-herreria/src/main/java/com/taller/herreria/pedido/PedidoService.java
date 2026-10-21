@@ -49,7 +49,7 @@ public class PedidoService {
     public PedidoResponse crear(PedidoRequest datos) {
         Pedido pedido = new Pedido(
                 trabajadorService.buscarOFallar(datos.trabajadorId()),
-                clienteService.buscarOFallar(datos.clienteId()),
+                clienteService.paraElegir(datos.clienteId(), null),
                 datos.descripcion());
         pedidoRepository.save(pedido);
         return aRespuesta(pedido);
@@ -94,7 +94,7 @@ public class PedidoService {
         if (cambios.trabajadorId() != null)
             pedido.setTrabajador(trabajadorService.buscarOFallar(cambios.trabajadorId()));
         if (cambios.clienteId() != null)
-            pedido.setCliente(clienteService.buscarOFallar(cambios.clienteId()));
+            pedido.setCliente(clienteService.paraElegir(cambios.clienteId(), pedido.getCliente()));
         if (cambios.descripcion() != null)
             pedido.setDescripcion(exigirNoVacio(cambios.descripcion(), "descripción"));
         return aRespuesta(pedido);

@@ -14,6 +14,9 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     /** Para detectar duplicados sin distinguir mayúsculas al crear o renombrar. */
     Optional<Cliente> findByNombreIgnoreCase(String nombre);
 
+    /** El DNI se guarda ya limpio, así que basta comparar tal cual. */
+    Optional<Cliente> findByDni(String dni);
+
     /**
      * Cuenta los documentos que apuntan a este cliente.
      *
