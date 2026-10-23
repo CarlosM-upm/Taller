@@ -109,7 +109,8 @@ src/main/java/com/taller/herreria/
 ├── documento/   GeneradorPdf, Documento y RespuestaPdf (los comparten las tres)
 ├── foto/        Foto, FotoRepository y ValidadorImagen (los comparten las tres)
 ├── config/      Configuracion: el contador de albaranes
-├── comun/       Transversal: manejo de errores, CORS y reenvío de la PWA
+├── comun/       Transversal: manejo de errores, CORS, reenvío de la PWA y
+│                RecuentoDocumentos (el "tiene 2 pedidos, 1 trabajo" al no poder borrar)
 └── seguridad/   Usuario, TokenAcceso, filtro, SecurityConfig, AuthService
 
 src/main/resources/db/migration/          Migraciones de Flyway (V1__, V2__…)
@@ -121,16 +122,20 @@ El cliente vive fuera del proyecto Maven, en `Taller/taller-pwa/`:
 ```
 taller-pwa/src/app/
 ├── nucleo/          sesión, API, interceptores, guardias, fotos, descargas,
-│                   borrador local y maestros (clientes y trabajadores en caché)
+│                   borrador local, maestros (clientes y trabajadores en caché) y
+│                   numeros (aNumero/aTexto/redondear: los números se teclean con coma)
 ├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro,
-│                   selectorMaestro (desplegable) y filasMateriales (líneas con "+")
+│                   selectorMaestro (desplegable), filasMateriales (líneas con "+"),
+│                   tarjetaFotos (la tarjeta de fotos de las tres fichas) y la función
+│                   confirmar() de dialogo-confirmar
 ├── armazon/         barra superior, aviso de sin red y navegación según el rol
 ├── sesion/          pantalla de login
 ├── pedidos/         listado, alta y ficha
 ├── trabajos/        listado con filtro por estado y cliente, selección múltiple
-│                   para unificar, alta a medias y ficha con envío
+│                   para unificar, alta a medias y ficha con envío; la ficha delega en
+│                   firma-del-trabajo, albaran-del-trabajo y para-enviar (qué falta)
 ├── albaranes/       listado, ficha con firma, precios y generación desde uno o
-│                   varios trabajos
+│                   varios trabajos; coste-en-vivo repite la cuenta del servidor
 └── configuracion/   clientes, trabajadores, contador de albaranes y contraseña
 ```
 
@@ -830,6 +835,12 @@ Verificado arrancando la aplicación contra PostgreSQL real:
 - **El DNI pasa del albarán al cliente**, migración V7: obligatorio al crearlo, con
   la letra comprobada, y sin DNI no se puede elegir el cliente. Al desplegarla se
   borraron a mano los trabajos y albaranes que había (decidido con el taller).
+- **Código partido por responsabilidades** (ESLint y PMD con límites 250/40/10,
+  obligatorios al empaquetar): pruebas de humo por área, AlbaranService y
+  TrabajoService en clases de una responsabilidad cada una, y en la PWA la tarjeta
+  de fotos común a las tres fichas y las tarjetas de firma y albarán del trabajo.
+  De paso se arregló que la ficha del albarán limitaba las fotos a 5: son 15, como
+  en el servidor.
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
 - Todo verificado contra PostgreSQL real y en Chrome: **19 de 19** en la
@@ -956,16 +967,16 @@ del jefe.
   PostgreSQL (la conexión acababa en un relay de WSL) y con `ng serve` (que escucha solo
   en `::1`, así que `127.0.0.1:4200` no responde). Ante un "conexión rechazada" o un
   "autenticación fallida" raro, comprueba primero IPv4 contra IPv6.
-- **Tamaño y complejidad, medidos (de momento solo avisan):** `npm run lint` en
+- **Tamaño y complejidad, obligatorios:** `npm run lint` en
   `taller-pwa` (ESLint con angular-eslint; reglas `max-lines`, `max-lines-per-function`,
   `complexity` y `max-depth` en `eslint.config.js`) y `.\mvnw.cmd pmd:check` en
   `taller-herreria` (PMD con `pmd-estructura.xml`). **Límites acordados** con el dueño
   del proyecto: **250 líneas de código por fichero o clase, 40 por función o método,
   complejidad 10, complejidad de lectura 15 (Java) y 3 niveles de anidamiento**; en
   las pruebas, 80 líneas por prueba. No cuentan comentarios ni líneas en blanco: en
-  este proyecto los comentarios explican el porqué y no deben penalizar. De momento
-  solo avisan; cuando esté todo partido, pasan a hacer fallar `npm run lint` y el
-  empaquetado del jar (decidido).
+  este proyecto los comentarios explican el porqué y no deben penalizar. **Hacen
+  fallar** `npm run lint` y el empaquetado del jar (`package` ejecuta los dos): si
+  algo se pasa, se parte por responsabilidades, no se sube el límite.
 - No hay tests automatizados del backend todavía. Si añades alguno, que no dependa de un
   PostgreSQL real levantado a mano. La PWA **sí** tiene una comprobación de humo en
   navegador (`npm run humo`, ver §7): pásala antes de dar por buena cualquier pantalla.

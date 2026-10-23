@@ -6,9 +6,8 @@
   250 líneas de código por clase, 40 por método, complejidad 10, complejidad de
   lectura 15 y 3 niveles de if anidados.
 
-  De momento solo MIDEN: el plugin no va enganchado al empaquetado, se lanza a
-  mano con  .\mvnw.cmd pmd:check  y no hace fallar nada. Cuando esté todo
-  partido se engancha al build para que falle si algo se pasa.
+  Son OBLIGATORIAS: van enganchadas a "package", y si algo se pasa el jar no se
+  construye. A mano, sin empaquetar:  .\mvnw.cmd pmd:check
 
   NCSS = sentencias de código (Non-Commenting Source Statements): no cuenta
   comentarios, líneas en blanco ni llaves. Medido en este proyecto, una clase

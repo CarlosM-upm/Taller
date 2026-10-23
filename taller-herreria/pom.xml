@@ -153,6 +153,16 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <!-- ESLint: si un fichero o una función de la PWA se pasa
+                             de los límites acordados, el jar no se construye. -->
+                        <id>revisar-pwa</id>
+                        <goals><goal>npm</goal></goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <arguments>run lint</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>compilar-pwa</id>
                         <goals><goal>npm</goal></goals>
                         <phase>prepare-package</phase>
@@ -187,10 +197,10 @@
             </plugin>
 
             <!-- PMD: tamaño y complejidad de clases y métodos (pmd-estructura.xml).
-                 De momento SOLO MIDE: no va enganchado a ninguna fase, así que
-                 "package" no lo ejecuta. Se lanza a mano:
-                     .\mvnw.cmd pmd:check
-                 y con failOnViolation a false informa sin hacer fallar nada. -->
+                 Va enganchado a "package": si una clase o un método se pasa de
+                 los límites acordados, el jar no se construye. En prepare-package
+                 y no antes para no frenar spring-boot:run en desarrollo.
+                 A mano, sin empaquetar:  .\mvnw.cmd pmd:check -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
@@ -201,9 +211,16 @@
                     </rulesets>
                     <targetJdk>${java.version}</targetJdk>
                     <printFailingErrors>true</printFailingErrors>
-                    <failOnViolation>false</failOnViolation>
+                    <failOnViolation>true</failOnViolation>
                     <linkXRef>false</linkXRef>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>revisar-estructura</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>check</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
