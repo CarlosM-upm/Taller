@@ -947,9 +947,13 @@ del jefe.
 - **Tamaño y complejidad, medidos (de momento solo avisan):** `npm run lint` en
   `taller-pwa` (ESLint con angular-eslint; reglas `max-lines`, `max-lines-per-function`,
   `complexity` y `max-depth` en `eslint.config.js`) y `.\mvnw.cmd pmd:check` en
-  `taller-herreria` (PMD con `pmd-estructura.xml`). Ninguno va enganchado al
-  empaquetado ni hace fallar nada. Los límites son provisionales, pendientes de
-  acordar antes de partir ficheros y de volverlos obligatorios.
+  `taller-herreria` (PMD con `pmd-estructura.xml`). **Límites acordados** con el dueño
+  del proyecto: **250 líneas de código por fichero o clase, 40 por función o método,
+  complejidad 10, complejidad de lectura 15 (Java) y 3 niveles de anidamiento**; en
+  las pruebas, 80 líneas por prueba. No cuentan comentarios ni líneas en blanco: en
+  este proyecto los comentarios explican el porqué y no deben penalizar. De momento
+  solo avisan; cuando esté todo partido, pasan a hacer fallar `npm run lint` y el
+  empaquetado del jar (decidido).
 - No hay tests automatizados del backend todavía. Si añades alguno, que no dependa de un
   PostgreSQL real levantado a mano. La PWA **sí** tiene una comprobación de humo en
   navegador (`npm run humo`, ver §7): pásala antes de dar por buena cualquier pantalla.

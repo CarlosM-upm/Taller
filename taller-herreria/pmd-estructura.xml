@@ -2,14 +2,18 @@
 <!--
   Reglas de PMD sobre el tamaño y la estructura del código Java.
 
+  Límites acordados con el dueño del proyecto (los mismos que ESLint en la PWA):
+  250 líneas de código por clase, 40 por método, complejidad 10, complejidad de
+  lectura 15 y 3 niveles de if anidados.
+
   De momento solo MIDEN: el plugin no va enganchado al empaquetado, se lanza a
-  mano con  .\mvnw.cmd pmd:check  y no hace fallar nada. Sirven para ver qué
-  clases y métodos se pasan antes de partirlos. Los límites son provisionales;
-  cuando se acuerden, se engancharán al build para que avisen solos.
+  mano con  .\mvnw.cmd pmd:check  y no hace fallar nada. Cuando esté todo
+  partido se engancha al build para que falle si algo se pasa.
 
   NCSS = sentencias de código (Non-Commenting Source Statements): no cuenta
-  comentarios, líneas en blanco ni llaves. 30 NCSS en un método son
-  aproximadamente 40 líneas de código; 200 en una clase, unas 300.
+  comentarios, líneas en blanco ni llaves. Medido en este proyecto, una clase
+  tiene unas 0,58 NCSS por línea de código: 140 NCSS ≈ 250 líneas, y 25 NCSS en
+  un método ≈ 40 líneas.
 -->
 <ruleset name="Estructura del taller"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
@@ -21,8 +25,8 @@
     <!-- Tamaño de métodos y clases -->
     <rule ref="category/java/design.xml/NcssCount">
         <properties>
-            <property name="methodReportLevel" value="30"/>
-            <property name="classReportLevel" value="200"/>
+            <property name="methodReportLevel" value="25"/>
+            <property name="classReportLevel" value="140"/>
         </properties>
     </rule>
 

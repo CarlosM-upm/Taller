@@ -5,13 +5,13 @@ const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
 /**
- * Tamaño y complejidad. De momento solo AVISAN ('warn'): sirven para medir
- * qué ficheros y funciones se pasan antes de partirlos. Los límites son
- * provisionales; cuando se acuerden, se pasarán a 'error'.
- * Se cuentan líneas de código: los comentarios y las líneas en blanco no.
+ * Tamaño y complejidad, con los límites acordados (los mismos que PMD en Java):
+ * 250 líneas de código por fichero, 40 por función, complejidad 10 y 3 niveles
+ * de anidamiento. Se cuentan líneas de código: comentarios y líneas en blanco no.
+ * De momento solo AVISAN ('warn'); cuando esté todo partido pasan a 'error'.
  */
 const estructura = {
-  'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
+  'max-lines': ['warn', { max: 250, skipBlankLines: true, skipComments: true }],
   'max-lines-per-function': ['warn', { max: 40, skipBlankLines: true, skipComments: true }],
   complexity: ['warn', 10],
   'max-depth': ['warn', 3],
@@ -45,6 +45,14 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
+    },
+  },
+  {
+    // Una prueba se lee como una historia de pasos seguidos: partirla en trozos
+    // la hace más difícil de seguir. Por eso 80 líneas por prueba, no 40.
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'max-lines-per-function': ['warn', { max: 80, skipBlankLines: true, skipComments: true }],
     },
   },
   {
