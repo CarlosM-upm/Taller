@@ -1,0 +1,34 @@
+<mat-card>
+  <mat-card-content>
+    <h3>Fotos <span class="ligero">({{ fotoIds().length }} de {{ maximo() }})</span></h3>
+
+    @if (fotoIds().length === 0) {
+      <p class="ligero">Este {{ documento() }} no tiene fotos.</p>
+    } @else {
+      <app-galeria-fotos
+        [fotoIds]="fotoIds()"
+        [urlDe]="urlDe()"
+        [puedeBorrar]="puedeBorrar()"
+        [desactivado]="ocupado()"
+        (borrar)="borrarFoto($event)"
+      />
+    }
+
+    @if (puedeAnadir() && huecos() > 0) {
+      <div class="anadir-fotos">
+        <app-selector-fotos
+          [huecos]="huecos()"
+          [desactivado]="ocupado()"
+          (cambio)="fotosNuevas.set($event)"
+        />
+        @if (fotosNuevas().length > 0) {
+          <div class="fila-fin">
+            <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
+              Subir {{ fotosNuevas().length }} foto(s)
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </mat-card-content>
+</mat-card>

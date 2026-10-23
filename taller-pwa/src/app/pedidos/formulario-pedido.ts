@@ -112,12 +112,7 @@ export class FormularioPedido implements OnInit {
       descripcion: this.descripcion().trim(),
     };
 
-    // Comprobación local para no gastar un viaje al servidor; la de verdad,
-    // la que manda, sigue estando en el backend.
-    const faltan: Record<string, string> = {};
-    if (!datos.clienteId) faltan['cliente'] = 'Elige el cliente';
-    if (!datos.trabajadorId) faltan['trabajador'] = 'Elige el trabajador';
-    if (!datos.descripcion) faltan['descripcion'] = 'Indica qué han pedido';
+    const faltan = camposQueFaltan(datos);
     if (Object.keys(faltan).length > 0) {
       this.errores.set(faltan);
       return;
@@ -130,31 +125,31 @@ export class FormularioPedido implements OnInit {
     this.borrador.guardar(CLAVE_BORRADOR, datos);
 
     this.api.crearPedido(datos).subscribe({
-      next: (pedido) => {
-        const fotos = this.fotos();
-        if (fotos.length === 0) {
-          this.terminar(pedido.id, 'Pedido guardado');
-          return;
-        }
-        this.api.subirFotosPedido(pedido.id, fotos).subscribe({
-          next: () => this.terminar(pedido.id, 'Pedido guardado con sus fotos'),
-          error: (fallo) => {
-            // El pedido SÍ se creó: se lleva al usuario a su ficha para que
-            // reintente las fotos, en lugar de dejarlo en un formulario que
-            // ya no debe volver a enviar.
-            this.guardando.set(false);
-            this.avisos.error(
-              fallo,
-              'El pedido se guardó, pero las fotos no se pudieron subir'
-            );
-            this.router.navigate(['/pedidos', pedido.id]);
-          },
-        });
-      },
+      next: (pedido) => this.subirFotos(pedido.id),
       error: (fallo) => {
         this.guardando.set(false);
         this.errores.set(this.avisos.camposDe(fallo));
         this.avisos.error(fallo, 'No se ha podido guardar el pedido');
+      },
+    });
+  }
+
+  /** Con el pedido ya creado, sus fotos (si hay). */
+  private subirFotos(pedidoId: number): void {
+    const fotos = this.fotos();
+    if (fotos.length === 0) {
+      this.terminar(pedidoId, 'Pedido guardado');
+      return;
+    }
+    this.api.subirFotosPedido(pedidoId, fotos).subscribe({
+      next: () => this.terminar(pedidoId, 'Pedido guardado con sus fotos'),
+      error: (fallo) => {
+        // El pedido SÍ se creó: se lleva al usuario a su ficha para que
+        // reintente las fotos, en lugar de dejarlo en un formulario que
+        // ya no debe volver a enviar.
+        this.guardando.set(false);
+        this.avisos.error(fallo, 'El pedido se guardó, pero las fotos no se pudieron subir');
+        this.router.navigate(['/pedidos', pedidoId]);
       },
     });
   }
@@ -166,4 +161,20 @@ export class FormularioPedido implements OnInit {
     this.avisos.correcto(mensaje);
     this.router.navigate(['/pedidos', id]);
   }
+}
+
+/**
+ * Comprobación local para no gastar un viaje al servidor; la de verdad, la que
+ * manda, sigue estando en el backend.
+ */
+function camposQueFaltan(datos: {
+  clienteId: number | null;
+  trabajadorId: number | null;
+  descripcion: string;
+}): Record<string, string> {
+  const faltan: Record<string, string> = {};
+  if (!datos.clienteId) faltan['cliente'] = 'Elige el cliente';
+  if (!datos.trabajadorId) faltan['trabajador'] = 'Elige el trabajador';
+  if (!datos.descripcion) faltan['descripcion'] = 'Indica qué han pedido';
+  return faltan;
 }

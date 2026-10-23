@@ -1,0 +1,39 @@
+.ancho { width: 100%; }
+/* Nombre y unidad en una fila, y los tres campos del precio en otra.
+   flex-basis 0 y width auto porque los mat-form-field van al 100 % de
+   ancho por defecto: así cada uno ocupaba una fila entera. */
+.fila { display: flex; gap: 8px; }
+.fila mat-form-field { width: auto; }
+.crece { flex: 1 1 0; min-width: 0; }
+.corto { flex: 0 0 110px; }
+
+.lista { list-style: none; margin: 0 0 8px; padding: 0; }
+.lista li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.precio { white-space: nowrap; padding: 0 4px; }
+small { opacity: 0.65; }
+.vacio { opacity: 0.7; }
+
+.formulario {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+}
+.formulario h4 { margin: 0 0 8px; }
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 8px;
+  border-top: 2px solid rgba(0, 0, 0, 0.25);
+  font-size: 17px;
+}
+.formula { margin: 2px 0 8px; font-size: 12px; opacity: 0.6; }
+.acciones { display: flex; justify-content: flex-end; gap: 8px; }

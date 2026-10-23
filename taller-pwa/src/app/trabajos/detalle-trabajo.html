@@ -147,94 +147,22 @@
 
     <!-- Albarán: solo para el jefe y solo si el trabajo ya está enviado -->
     @if (!esBorrador() && sesion.esJefe()) {
-      <mat-card class="tarjeta-albaran">
-        <mat-card-content>
-          <h3>Albarán</h3>
-          @if (albaran(); as alb) {
-            <div class="fila">
-              <span class="crece">Este trabajo ya generó el albarán nº <strong>{{ alb.numero }}</strong>.</span>
-              <a matButton [routerLink]="['/albaranes', alb.id]">
-                <mat-icon>receipt_long</mat-icon>
-                Ver albarán
-              </a>
-            </div>
-          } @else {
-            <div class="fila">
-              <span class="crece ligero">Todavía no se ha generado el albarán de este trabajo.</span>
-              <button matButton="filled" [disabled]="ocupado()" (click)="generarAlbaran()">
-                <mat-icon>receipt_long</mat-icon>
-                Generar albarán
-              </button>
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
+      <app-albaran-del-trabajo [trabajoId]="t.id" [(ocupado)]="ocupado" />
     }
 
-    <!-- Firma del cliente, recogida en la obra. Si el albarán sale solo de este
-         trabajo, la hereda; uno unificado no. -->
-    <mat-card class="tarjeta-firma">
-      <mat-card-content>
-        <h3>Firma del cliente</h3>
+    <app-firma-del-trabajo [trabajo]="t" [(ocupado)]="ocupado" (cambio)="aplicar($event)" />
 
-        @if (t.tieneFirma) {
-          <img class="firma" [appSrcSeguro]="urlFirma()" alt="Firma del cliente" />
-          <div class="fila-fin">
-            @if (puedeQuitarFirma()) {
-              <button matButton [disabled]="ocupado()" (click)="quitarFirma()">Quitar firma</button>
-            }
-            @if (puedeFirmar()) {
-              <button matButton [disabled]="ocupado()" (click)="firmar()">
-                <mat-icon>draw</mat-icon>
-                Volver a firmar
-              </button>
-            }
-          </div>
-        } @else {
-          <p class="ligero">El cliente todavía no ha firmado este trabajo.</p>
-          <div class="fila-fin">
-            <button matButton="filled" [disabled]="ocupado()" (click)="firmar()">
-              <mat-icon>draw</mat-icon>
-              Recoger firma
-            </button>
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="tarjeta-fotos">
-      <mat-card-content>
-        <h3>Fotos <span class="ligero">({{ t.fotoIds.length }} de 5)</span></h3>
-
-        @if (t.fotoIds.length === 0) {
-          <p class="ligero">Este trabajo no tiene fotos.</p>
-        } @else {
-          <app-galeria-fotos
-            [fotoIds]="t.fotoIds"
-            [urlDe]="urlFoto()"
-            [puedeBorrar]="puedeEditar()"
-            [desactivado]="ocupado()"
-            (borrar)="borrarFoto($event)"
-          />
-        }
-
-        @if (puedeEditar() && huecos() > 0) {
-          <div class="anadir-fotos">
-            <app-selector-fotos
-              [huecos]="huecos()"
-              [desactivado]="ocupado()"
-              (cambio)="fotosNuevas.set($event)"
-            />
-            @if (fotosNuevas().length > 0) {
-              <div class="fila-fin">
-                <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
-                  Subir {{ fotosNuevas().length }} foto(s)
-                </button>
-              </div>
-            }
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
+    <app-tarjeta-fotos
+      [fotoIds]="t.fotoIds"
+      [maximo]="maxFotos"
+      [urlDe]="urlFoto()"
+      documento="trabajo"
+      [puedeAnadir]="puedeEditar()"
+      [puedeBorrar]="puedeEditar()"
+      [subir]="subirFotos"
+      [borrar]="borrarFoto"
+      [(ocupado)]="ocupado"
+      (cambio)="fotosCambiadas($event)"
+    />
   }
 </div>

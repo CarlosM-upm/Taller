@@ -218,40 +218,17 @@
     </mat-card>
 
     <!-- Fotos -->
-    <mat-card class="tarjeta-fotos">
-      <mat-card-content>
-        <h3>Fotos <span class="ligero">({{ a.fotoIds.length }} de 5)</span></h3>
-
-        @if (a.fotoIds.length === 0) {
-          <p class="ligero">Este albarán no tiene fotos.</p>
-        } @else {
-          <app-galeria-fotos
-            [fotoIds]="a.fotoIds"
-            [urlDe]="urlFoto()"
-            [puedeBorrar]="true"
-            [desactivado]="ocupado()"
-            (borrar)="borrarFoto($event)"
-          />
-        }
-
-        @if (huecos() > 0) {
-          <div class="anadir-fotos">
-            <app-selector-fotos
-              [huecos]="huecos()"
-              [desactivado]="ocupado()"
-              (cambio)="fotosNuevas.set($event)"
-            />
-            @if (fotosNuevas().length > 0) {
-              <div class="fila-fin">
-                <button matButton="filled" [disabled]="ocupado()" (click)="subirFotos()">
-                  Subir {{ fotosNuevas().length }} foto(s)
-                </button>
-              </div>
-            }
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
+    <app-tarjeta-fotos
+      [fotoIds]="a.fotoIds"
+      [maximo]="maxFotos"
+      [urlDe]="urlFoto()"
+      documento="albarán"
+      [puedeBorrar]="true"
+      [subir]="subirFotos"
+      [borrar]="borrarFoto"
+      [(ocupado)]="ocupado"
+      (cambio)="fotosCambiadas($event)"
+    />
 
     <p class="origen">
       <mat-icon>info</mat-icon>

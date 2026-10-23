@@ -1,0 +1,96 @@
+<h3>Materiales</h3>
+
+<mat-form-field appearance="outline" class="ancho">
+  <mat-label>Familia</mat-label>
+  <mat-select [value]="familiaId()" (valueChange)="elegirFamilia($event)" [disabled]="ocupado()">
+    @for (familia of maestros.familias(); track familia.id) {
+      <mat-option [value]="familia.id">{{ familia.nombre }}</mat-option>
+    }
+  </mat-select>
+  @if (maestros.familias().length === 0) {
+    <mat-hint>Crea antes una familia, en la tarjeta de arriba.</mat-hint>
+  }
+</mat-form-field>
+
+@if (familiaId() !== null) {
+  @if (deLaFamilia().length === 0 && editandoId() === null) {
+    <p class="vacio">Esta familia aún no tiene materiales.</p>
+  }
+
+  <ul class="lista">
+    @for (material of deLaFamilia(); track material.id) {
+      <li>
+        <span class="nombre crece">
+          {{ material.nombre }} <small>({{ material.unidad }})</small>
+        </span>
+        <span class="precio">
+          @if (material.precioTotal !== null) {
+            {{ material.precioTotal | number: '1.2-2' }} €/{{ material.unidad }}
+          } @else {
+            <small>sin precio</small>
+          }
+        </span>
+        <button matIconButton [attr.aria-label]="'Editar ' + material.nombre" [disabled]="ocupado()" (click)="editar(material)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button matIconButton [attr.aria-label]="'Borrar ' + material.nombre" [disabled]="ocupado()" (click)="borrar(material)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (editandoId() === null) {
+    <button matButton (click)="nuevo()" [disabled]="ocupado()">
+      <mat-icon>add</mat-icon> Nuevo material
+    </button>
+  } @else {
+    <form class="formulario" (ngSubmit)="guardar()">
+      <h4>{{ editandoId() === 0 ? 'Nuevo material' : 'Editar material' }}</h4>
+
+      <div class="fila">
+        <mat-form-field appearance="outline" class="crece">
+          <mat-label>Nombre</mat-label>
+          <input matInput name="nombre" [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" [disabled]="ocupado()" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="corto">
+          <mat-label>Unidad</mat-label>
+          <input matInput name="unidad" placeholder="m, ud, kg" [ngModel]="unidad()" (ngModelChange)="unidad.set($event)" [disabled]="ocupado()" />
+        </mat-form-field>
+      </div>
+
+      <!-- type="text" con inputmode="decimal", no type="number": es la regla
+           de los campos numéricos de este proyecto, y deja teclear con coma. -->
+      <div class="fila">
+        <mat-form-field appearance="outline" class="crece">
+          <mat-label>Precio del material</mat-label>
+          <input matInput name="precio" type="text" inputmode="decimal" [ngModel]="precio()" (ngModelChange)="precio.set($event)" [disabled]="ocupado()" />
+          <span matTextSuffix>€</span>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="crece">
+          <mat-label>Extra sobre el material</mat-label>
+          <input matInput name="porcentajeExtra" type="text" inputmode="decimal" [ngModel]="extra()" (ngModelChange)="extra.set($event)" [disabled]="ocupado()" />
+          <span matTextSuffix>%</span>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="crece">
+          <mat-label>Transporte</mat-label>
+          <input matInput name="transporte" type="text" inputmode="decimal" [ngModel]="transporte()" (ngModelChange)="transporte.set($event)" [disabled]="ocupado()" />
+          <span matTextSuffix>€</span>
+        </mat-form-field>
+      </div>
+
+      <div class="total">
+        <span>Precio total por {{ unidad() || 'unidad' }}</span>
+        <strong>
+          @if (totalEnVivo() !== null) { {{ totalEnVivo() | number: '1.2-2' }} € } @else { — }
+        </strong>
+      </div>
+      <p class="formula">precio + precio × extra % + transporte</p>
+
+      <div class="acciones">
+        <button matButton type="button" (click)="cancelar()" [disabled]="ocupado()">Cancelar</button>
+        <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar material</button>
+      </div>
+    </form>
+  }
+}

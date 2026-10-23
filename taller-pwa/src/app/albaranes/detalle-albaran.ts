@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -16,15 +16,20 @@ import { Avisos } from '../nucleo/avisos';
 import { Descargas } from '../nucleo/descargas';
 import { Maestros } from '../nucleo/maestros';
 import { Albaran, MaterialLinea } from '../nucleo/modelos';
-import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { aNumero, aTexto, redondear } from '../nucleo/numeros';
+import { costeSumado } from './coste-en-vivo';
+import { confirmar } from '../comun/dialogo-confirmar';
 import { FilasMateriales } from '../comun/filas-materiales';
-import { GaleriaFotos } from '../comun/galeria-fotos';
 import { LienzoFirma } from '../comun/lienzo-firma';
-import { SelectorFotos } from '../comun/selector-fotos';
+import { TarjetaFotos } from '../comun/tarjeta-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
 import { SrcSeguro } from '../comun/src-seguro';
 
-const MAX_FOTOS = 5;
+/**
+ * 15, como en el servidor (FotosAlbaran.MAX_FOTOS): un albarán unificado junta
+ * las fotos de varios trabajos. Aquí ponía 5 y no dejaba añadir más.
+ */
+const MAX_FOTOS = 15;
 
 /**
  * Ficha del albarán. Territorio exclusivo del jefe.
@@ -50,11 +55,10 @@ const MAX_FOTOS = 5;
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
-    GaleriaFotos,
     FilasMateriales,
     MatCheckboxModule,
     MatSelectModule,
-    SelectorFotos,
+    TarjetaFotos,
     SelectorMaestro,
     SrcSeguro,
   ],
@@ -67,8 +71,6 @@ export class DetalleAlbaran implements OnInit {
   private readonly dialogo = inject(MatDialog);
   private readonly avisos = inject(Avisos);
   private readonly descargas = inject(Descargas);
-
-  private readonly selector = viewChild(SelectorFotos);
 
   readonly id = input.required<string>();
 
@@ -94,32 +96,14 @@ export class DetalleAlbaran implements OnInit {
   readonly incluirTotal = signal(false);
   readonly errores = signal<Record<string, string>>({});
 
-  /**
-   * El coste mientras se teclea, sin esperar a guardar.
-   *
-   * Repite la misma aritmética que el servidor (redondeo por línea incluido)
-   * para que el jefe vea el total al momento. Manda el del servidor: al
-   * guardar, el albarán se recarga con el suyo.
-   */
-  readonly costeSumadoEnVivo = computed(() => {
-    const lineas = this.materiales().reduce((suma, linea) => {
-      if (linea.cantidad === null || linea.precio === null || linea.precio === undefined) {
-        return suma;
-      }
-      return suma + redondear(linea.cantidad * linea.precio);
-    }, 0);
-    const horas = aNumero(this.horas());
-    const precio = aNumero(this.precioHora());
-    const mano = horas !== null && precio !== null ? redondear(horas * precio) : 0;
-    return redondear(lineas + mano);
-  });
+  /** El coste mientras se teclea, sin esperar a guardar (ver coste-en-vivo.ts). */
+  readonly costeSumadoEnVivo = computed(() =>
+    costeSumado(this.materiales(), aNumero(this.horas()), aNumero(this.precioHora())),
+  );
 
   readonly costeTotalEnVivo = computed(() =>
     redondear(this.costeSumadoEnVivo() + (aNumero(this.importeExtra()) ?? 0)),
   );
-
-  readonly fotosNuevas = signal<Blob[]>([]);
-  readonly huecos = computed(() => MAX_FOTOS - (this.albaran()?.fotoIds.length ?? 0));
 
   /**
    * Se le añade una marca de tiempo para saltarse la caché del navegador.
@@ -127,6 +111,10 @@ export class DetalleAlbaran implements OnInit {
    * es la misma y el navegador da por buena la imagen que ya tenía.
    */
   readonly urlFirma = signal('');
+
+  readonly maxFotos = MAX_FOTOS;
+  readonly subirFotos = (fotos: Blob[]) => this.api.subirFotosAlbaran(Number(this.id()), fotos);
+  readonly borrarFoto = (fotoId: number) => this.api.borrarFotoAlbaran(Number(this.id()), fotoId);
 
   readonly urlFoto = computed(() => {
     const id = Number(this.id());
@@ -168,10 +156,10 @@ export class DetalleAlbaran implements OnInit {
     this.clienteId.set(a.clienteId);
     this.trabajadorIds.set(a.trabajadores.map((t) => t.id));
     this.descripcion.set(a.descripcion);
-    this.horas.set(a.horas !== null ? String(a.horas).replace('.', ',') : '');
+    this.horas.set(aTexto(a.horas));
     this.materiales.set(a.materiales);
-    this.precioHora.set(a.precioHora !== null ? String(a.precioHora).replace('.', ',') : '');
-    this.importeExtra.set(a.importeExtra !== null ? String(a.importeExtra).replace('.', ',') : '');
+    this.precioHora.set(aTexto(a.precioHora));
+    this.importeExtra.set(aTexto(a.importeExtra));
     this.incluirTotal.set(a.incluirTotal);
     this.errores.set({});
     this.editando.set(true);
@@ -263,57 +251,11 @@ export class DetalleAlbaran implements OnInit {
       });
   }
 
-  subirFotos(): void {
-    const a = this.albaran();
-    const fotos = this.fotosNuevas();
-    if (!a || fotos.length === 0 || this.ocupado()) return;
-
-    this.ocupado.set(true);
-    this.api.subirFotosAlbaran(a.id, fotos).subscribe({
-      next: (fotoIds) => {
-        this.albaran.set({ ...a, fotoIds });
-        this.selector()?.vaciar();
-        this.ocupado.set(false);
-        this.avisos.correcto('Fotos añadidas');
-      },
-      error: (fallo) => {
-        this.ocupado.set(false);
-        this.avisos.error(fallo, 'No se han podido subir las fotos');
-      },
-    });
-  }
-
-  borrarFoto(fotoId: number): void {
-    const a = this.albaran();
-    if (!a || this.ocupado()) return;
-
-    this.confirmar({
-      titulo: 'Borrar la foto',
-      mensaje: 'Esta foto se borrará del albarán y no se puede recuperar.',
-      aceptar: 'Borrar',
-      peligroso: true,
-    }).then((seguro) => {
-      if (!seguro) return;
-      this.ocupado.set(true);
-      this.api.borrarFotoAlbaran(a.id, fotoId).subscribe({
-        next: () => {
-          this.albaran.set({ ...a, fotoIds: a.fotoIds.filter((f) => f !== fotoId) });
-          this.ocupado.set(false);
-          this.avisos.correcto('Foto borrada');
-        },
-        error: (fallo) => {
-          this.ocupado.set(false);
-          this.avisos.error(fallo, 'No se ha podido borrar la foto');
-        },
-      });
-    });
-  }
-
   borrar(): void {
     const a = this.albaran();
     if (!a || this.ocupado()) return;
 
-    this.confirmar({
+    confirmar(this.dialogo, {
       titulo: 'Borrar el albarán',
       mensaje: `Se borrará el albarán nº ${a.numero} con su firma y sus fotos. No se puede deshacer.`,
       aceptar: 'Borrar',
@@ -341,30 +283,8 @@ export class DetalleAlbaran implements OnInit {
     );
   }
 
-  private confirmar(datos: {
-    titulo: string;
-    mensaje: string;
-    aceptar: string;
-    peligroso: boolean;
-  }): Promise<boolean> {
-    return new Promise((resolver) => {
-      this.dialogo
-        .open(DialogoConfirmar, { data: datos, width: '440px' })
-        .afterClosed()
-        .subscribe((respuesta) => resolver(respuesta === true));
-    });
+  /** Tras subir o borrar en la tarjeta de fotos. */
+  fotosCambiadas(fotoIds: number[]): void {
+    this.albaran.update((actual) => (actual ? { ...actual, fotoIds } : actual));
   }
-}
-
-/** Del texto tecleado (con coma o con punto) al número que espera el servidor. */
-function aNumero(texto: string): number | null {
-  const limpio = texto.trim().replace(',', '.');
-  if (limpio.length === 0) return null;
-  const valor = Number(limpio);
-  return Number.isFinite(valor) ? valor : null;
-}
-
-/** Dos decimales, como el servidor. */
-function redondear(valor: number): number {
-  return Math.round(valor * 100) / 100;
 }

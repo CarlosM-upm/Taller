@@ -1,0 +1,28 @@
+<mat-card>
+  <mat-card-content>
+    <h3>Firma del cliente</h3>
+
+    @if (trabajo().tieneFirma) {
+      <img class="firma" [appSrcSeguro]="urlFirma()" alt="Firma del cliente" />
+      <div class="fila-fin">
+        @if (puedeQuitarFirma()) {
+          <button matButton [disabled]="ocupado()" (click)="quitarFirma()">Quitar firma</button>
+        }
+        @if (puedeFirmar()) {
+          <button matButton [disabled]="ocupado()" (click)="firmar()">
+            <mat-icon>draw</mat-icon>
+            Volver a firmar
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="ligero">El cliente todavía no ha firmado este trabajo.</p>
+      <div class="fila-fin">
+        <button matButton="filled" [disabled]="ocupado()" (click)="firmar()">
+          <mat-icon>draw</mat-icon>
+          Recoger firma
+        </button>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>

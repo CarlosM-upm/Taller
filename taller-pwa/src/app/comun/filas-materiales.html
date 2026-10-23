@@ -1,0 +1,113 @@
+<div class="materiales">
+  @for (fila of filas(); track $index) {
+    <div class="fila">
+      @if (fila.nombreAntiguo !== null) {
+        <div class="col-nombre antiguo" [attr.data-material]="fila.nombreAntiguo">
+          <span>{{ fila.nombreAntiguo }}</span>
+          <small>fuera del catálogo</small>
+        </div>
+      } @else {
+        <mat-form-field appearance="outline" class="col-nombre">
+          <mat-label>Material</mat-label>
+          <input
+            matInput
+            type="text"
+            [name]="'material-nombre-' + $index"
+            placeholder="Busca o despliega"
+            autocomplete="off"
+            [matAutocomplete]="lista"
+            #disparador="matAutocompleteTrigger"
+            [ngModel]="fila.valor"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="cambiarValor($index, $event)"
+            [disabled]="deshabilitado()"
+          />
+          <button
+            matIconButton
+            matSuffix
+            type="button"
+            aria-label="Ver todos los materiales"
+            [disabled]="deshabilitado()"
+            (click)="verTodos($index, disparador, $event)"
+          >
+            <mat-icon>arrow_drop_down</mat-icon>
+          </button>
+
+          <mat-autocomplete #lista="matAutocomplete" [displayWith]="nombreDe">
+            @for (grupo of gruposPara(fila); track grupo.familia) {
+              <mat-optgroup [label]="grupo.familia">
+                @for (material of grupo.materiales; track material.id) {
+                  <mat-option [value]="material.id">{{ material.nombre }}</mat-option>
+                }
+              </mat-optgroup>
+            } @empty {
+              <mat-option disabled>
+                @if (catalogoVacio()) {
+                  El catálogo está vacío: se rellena en Ajustes.
+                } @else {
+                  Ningún material contiene «{{ fila.valor }}»
+                }
+              </mat-option>
+            }
+          </mat-autocomplete>
+
+          @if (sinElegir(fila)) {
+            <mat-hint class="aviso">Elige un material de la lista</mat-hint>
+          }
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="outline" class="col-cantidad">
+        <mat-label>Cantidad</mat-label>
+        <input
+          matInput
+          type="text"
+          inputmode="decimal"
+          [name]="'material-cantidad-' + $index"
+          placeholder="5"
+          [ngModel]="fila.cantidad"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="cambiarCantidad($index, $event)"
+          [disabled]="deshabilitado()"
+        />
+        @if (unidadDe(fila); as unidad) {
+          <span matTextSuffix>{{ unidad }}</span>
+        }
+      </mat-form-field>
+
+      @if (conPrecio()) {
+        <mat-form-field appearance="outline" class="col-precio">
+          <mat-label>Precio/ud</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="decimal"
+            [name]="'material-precio-' + $index"
+            placeholder="del catálogo"
+            [ngModel]="fila.precio"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="cambiarPrecio($index, $event)"
+            [disabled]="deshabilitado()"
+          />
+          <span matTextSuffix>€</span>
+        </mat-form-field>
+      }
+
+      <button
+        matIconButton
+        type="button"
+        class="col-borrar"
+        aria-label="Quitar esta línea de material"
+        [disabled]="deshabilitado() || filas().length === 1"
+        (click)="quitar($index)"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+  <button matButton type="button" class="anadir" [disabled]="deshabilitado()" (click)="anadir()">
+    <mat-icon>add</mat-icon>
+    Añadir material
+  </button>
+</div>

@@ -1,0 +1,59 @@
+<h3>Clientes</h3>
+
+<form class="alta" (ngSubmit)="crear()">
+  <mat-form-field appearance="outline" class="crece">
+    <mat-label>Añadir cliente</mat-label>
+    <input matInput name="nuevo-cliente" [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" [disabled]="ocupado()" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="dni">
+    <mat-label>DNI</mat-label>
+    <input matInput name="nuevo-dni" placeholder="12345678Z" [ngModel]="dni()" (ngModelChange)="dni.set($event)" [disabled]="ocupado()" />
+  </mat-form-field>
+  <button matButton="filled" type="submit" [disabled]="ocupado() || !nombre().trim() || !dni().trim()">
+    Añadir
+  </button>
+</form>
+
+@if (clientes().length === 0) {
+  <p class="vacio">Todavía no hay ninguno.</p>
+}
+
+<ul class="lista">
+  @for (cliente of clientes(); track cliente.id) {
+    <li>
+      @if (editandoId() === cliente.id) {
+        <form class="edicion" (ngSubmit)="guardar(cliente.id)">
+          <mat-form-field appearance="outline" class="crece">
+            <mat-label>Nombre</mat-label>
+            <input matInput [name]="'editar-nombre-' + cliente.id" [ngModel]="nombreEditado()" (ngModelChange)="nombreEditado.set($event)" [disabled]="ocupado()" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="dni">
+            <mat-label>DNI</mat-label>
+            <input matInput [name]="'editar-dni-' + cliente.id" [ngModel]="dniEditado()" (ngModelChange)="dniEditado.set($event)" [disabled]="ocupado()" />
+          </mat-form-field>
+          <button matIconButton type="submit" aria-label="Guardar el cliente" [disabled]="ocupado()">
+            <mat-icon>check</mat-icon>
+          </button>
+          <button matIconButton type="button" aria-label="Cancelar" [disabled]="ocupado()" (click)="editandoId.set(null)">
+            <mat-icon>close</mat-icon>
+          </button>
+        </form>
+      } @else {
+        <span class="nombre crece">
+          <span>{{ cliente.nombre }}</span>
+          @if (cliente.dni) {
+            <small>{{ cliente.dni }}</small>
+          } @else {
+            <span class="falta">Falta el DNI</span>
+          }
+        </span>
+        <button matIconButton [attr.aria-label]="'Editar ' + cliente.nombre" [disabled]="ocupado()" (click)="editar(cliente)">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button matIconButton [attr.aria-label]="'Borrar ' + cliente.nombre" [disabled]="ocupado()" (click)="borrar(cliente)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      }
+    </li>
+  }
+</ul>

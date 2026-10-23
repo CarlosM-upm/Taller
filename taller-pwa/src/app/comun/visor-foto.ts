@@ -8,8 +8,11 @@ import { SrcSeguro } from './src-seguro';
 @Component({
   selector: 'app-visor-foto',
   imports: [MatButtonModule, MatDialogModule, MatIconModule, SrcSeguro],
+  // Tocar en cualquier sitio cierra: es lo cómodo en la tablet. Con teclado se
+  // cierra con el botón o con Esc; el tabindex y el keydown son para que el
+  // fondo también responda si alguien llega a él, como pide la accesibilidad.
   template: `
-    <div class="visor" (click)="cerrar()">
+    <div class="visor" tabindex="-1" (click)="cerrar()" (keydown.escape)="cerrar()">
       <button matIconButton class="cerrar" aria-label="Cerrar">
         <mat-icon>close</mat-icon>
       </button>

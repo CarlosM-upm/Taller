@@ -37,76 +37,8 @@ type Elemento = Trabajador | FamiliaMaterial;
     MatIconModule,
     MatInputModule,
   ],
-  template: `
-    <h3>{{ titulo() }}</h3>
-
-    <form class="alta" (ngSubmit)="crear()">
-      <mat-form-field appearance="outline" class="crece">
-        <mat-label>Añadir {{ singular() }}</mat-label>
-        <input
-          matInput
-          [name]="'nuevo-' + tipo()"
-          [ngModel]="nuevo()"
-          (ngModelChange)="nuevo.set($event)"
-          [disabled]="ocupado()"
-        />
-      </mat-form-field>
-      <button matButton="filled" type="submit" [disabled]="ocupado() || !nuevo().trim()">
-        Añadir
-      </button>
-    </form>
-
-    @if (elementos().length === 0) {
-      <p class="vacio">Todavía no hay ninguno.</p>
-    }
-
-    <ul class="lista">
-      @for (elemento of elementos(); track elemento.id) {
-        <li>
-          @if (editandoId() === elemento.id) {
-            <mat-form-field appearance="outline" class="crece">
-              <input
-                matInput
-                [name]="'editar-' + elemento.id"
-                [ngModel]="nombreEditado()"
-                (ngModelChange)="nombreEditado.set($event)"
-                [disabled]="ocupado()"
-              />
-            </mat-form-field>
-            <button matIconButton aria-label="Guardar el nombre" [disabled]="ocupado()" (click)="guardarNombre(elemento.id)">
-              <mat-icon>check</mat-icon>
-            </button>
-            <button matIconButton aria-label="Cancelar" [disabled]="ocupado()" (click)="cancelar()">
-              <mat-icon>close</mat-icon>
-            </button>
-          } @else {
-            <span class="nombre crece">{{ elemento.nombre }}</span>
-            <button matIconButton [attr.aria-label]="'Renombrar ' + elemento.nombre" [disabled]="ocupado()" (click)="empezarEdicion(elemento)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button matIconButton [attr.aria-label]="'Borrar ' + elemento.nombre" [disabled]="ocupado()" (click)="borrar(elemento)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          }
-        </li>
-      }
-    </ul>
-  `,
-  styles: `
-    .alta { display: flex; gap: 8px; align-items: flex-start; }
-    .crece { flex: 1 1 auto; min-width: 0; }
-
-    .lista { list-style: none; margin: 0; padding: 0; }
-    .lista li {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      min-height: 48px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-    .nombre { padding: 4px 0; }
-    .vacio { opacity: 0.7; }
-  `,
+  templateUrl: './lista-maestros.html',
+  styleUrl: './lista-maestros.scss',
 })
 export class ListaMaestros {
   private readonly api = inject(ApiTaller);

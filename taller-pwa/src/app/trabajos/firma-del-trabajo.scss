@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  margin-top: 12px;
+}
+
+h3 {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-medium);
+}
+
+.ligero {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+// Fondo blanco explícito: la firma es un PNG con fondo blanco, y sobre un
+// tema oscuro sin recuadro quedaría flotando de forma extraña.
+.firma {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 12px;
+}

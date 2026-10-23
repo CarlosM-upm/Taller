@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
 export interface DatosConfirmar {
@@ -54,4 +54,18 @@ export class DialogoConfirmar {
   cerrar(respuesta: boolean): void {
     this.referencia.close(respuesta);
   }
+}
+
+/**
+ * Abre la confirmación y resuelve true solo si se pulsa el botón de aceptar
+ * (cerrar el diálogo o pulsar Cancelar es "no"). Lo usan las fichas antes de
+ * enviar o borrar; antes cada una llevaba su propia copia de esto.
+ */
+export function confirmar(dialogo: MatDialog, datos: DatosConfirmar): Promise<boolean> {
+  return new Promise((resolver) => {
+    dialogo
+      .open(DialogoConfirmar, { data: datos, width: '440px' })
+      .afterClosed()
+      .subscribe((respuesta) => resolver(respuesta === true));
+  });
 }

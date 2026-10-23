@@ -1,0 +1,28 @@
+.materiales { display: block; }
+
+.fila {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* El material se lleva el espacio sobrante; cantidad y precio van fijos
+   para que las columnas no bailen de una fila a otra. */
+.col-nombre { flex: 1 1 auto; min-width: 0; }
+/* 140 y no 120: con la unidad detrás ("ud", "m"), "Cantidad" se le pegaba. */
+.col-cantidad { flex: 0 0 140px; }
+.col-precio { flex: 0 0 120px; }
+.col-borrar { flex: 0 0 48px; margin-top: 4px; }
+
+.antiguo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 4px 22px;
+}
+.antiguo small { opacity: 0.6; }
+
+.aviso { color: var(--mat-sys-error); }
+
+.anadir { margin-top: 4px; }

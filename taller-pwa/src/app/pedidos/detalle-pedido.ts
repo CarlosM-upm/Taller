@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -15,9 +15,8 @@ import { Avisos } from '../nucleo/avisos';
 import { Descargas } from '../nucleo/descargas';
 import { Sesion } from '../nucleo/sesion';
 import { Pedido } from '../nucleo/modelos';
-import { DialogoConfirmar } from '../comun/dialogo-confirmar';
-import { GaleriaFotos } from '../comun/galeria-fotos';
-import { SelectorFotos } from '../comun/selector-fotos';
+import { confirmar } from '../comun/dialogo-confirmar';
+import { TarjetaFotos } from '../comun/tarjeta-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
 
 const MAX_FOTOS = 5;
@@ -44,8 +43,7 @@ const MAX_FOTOS = 5;
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
-    GaleriaFotos,
-    SelectorFotos,
+    TarjetaFotos,
     SelectorMaestro,
   ],
   templateUrl: './detalle-pedido.html',
@@ -58,8 +56,6 @@ export class DetallePedido implements OnInit {
   private readonly avisos = inject(Avisos);
   private readonly descargas = inject(Descargas);
   readonly sesion = inject(Sesion);
-
-  private readonly selector = viewChild(SelectorFotos);
 
   /** Llega de la ruta /pedidos/:id gracias a withComponentInputBinding. */
   readonly id = input.required<string>();
@@ -77,10 +73,11 @@ export class DetallePedido implements OnInit {
   readonly descripcion = signal('');
   readonly errores = signal<Record<string, string>>({});
 
-  readonly fotosNuevas = signal<Blob[]>([]);
-  readonly huecos = computed(() => MAX_FOTOS - (this.pedido()?.fotoIds.length ?? 0));
-
   /** La galería necesita saber construir la URL de cada foto. */
+  readonly maxFotos = MAX_FOTOS;
+  readonly subirFotos = (fotos: Blob[]) => this.api.subirFotosPedido(Number(this.id()), fotos);
+  readonly borrarFoto = (fotoId: number) => this.api.borrarFotoPedido(Number(this.id()), fotoId);
+
   readonly urlFoto = computed(() => {
     const id = Number(this.id());
     return (fotoId: number) => this.api.urlFotoPedido(id, fotoId);
@@ -175,60 +172,11 @@ export class DetallePedido implements OnInit {
       });
   }
 
-  subirFotos(): void {
-    const pedido = this.pedido();
-    const fotos = this.fotosNuevas();
-    if (!pedido || fotos.length === 0 || this.ocupado()) return;
-
-    this.ocupado.set(true);
-    this.api.subirFotosPedido(pedido.id, fotos).subscribe({
-      next: (fotoIds) => {
-        this.pedido.set({ ...pedido, fotoIds });
-        this.selector()?.vaciar();
-        this.ocupado.set(false);
-        this.avisos.correcto('Fotos añadidas');
-      },
-      error: (fallo) => {
-        this.ocupado.set(false);
-        this.avisos.error(fallo, 'No se han podido subir las fotos');
-      },
-    });
-  }
-
-  borrarFoto(fotoId: number): void {
-    const pedido = this.pedido();
-    if (!pedido || this.ocupado()) return;
-
-    this.confirmar({
-      titulo: 'Borrar la foto',
-      mensaje: 'Esta foto se borrará del pedido y no se puede recuperar.',
-      aceptar: 'Borrar',
-      peligroso: true,
-    }).then((seguro) => {
-      if (!seguro) return;
-      this.ocupado.set(true);
-      this.api.borrarFotoPedido(pedido.id, fotoId).subscribe({
-        next: () => {
-          this.pedido.set({
-            ...pedido,
-            fotoIds: pedido.fotoIds.filter((f) => f !== fotoId),
-          });
-          this.ocupado.set(false);
-          this.avisos.correcto('Foto borrada');
-        },
-        error: (fallo) => {
-          this.ocupado.set(false);
-          this.avisos.error(fallo, 'No se ha podido borrar la foto');
-        },
-      });
-    });
-  }
-
   borrarPedido(): void {
     const pedido = this.pedido();
     if (!pedido || this.ocupado()) return;
 
-    this.confirmar({
+    confirmar(this.dialogo, {
       titulo: 'Borrar el pedido',
       mensaje: `Se borrará el pedido de ${pedido.cliente} junto con sus fotos. No se puede deshacer.`,
       aceptar: 'Borrar',
@@ -249,17 +197,8 @@ export class DetallePedido implements OnInit {
     });
   }
 
-  private confirmar(datos: {
-    titulo: string;
-    mensaje: string;
-    aceptar: string;
-    peligroso: boolean;
-  }): Promise<boolean> {
-    return new Promise((resolver) => {
-      this.dialogo
-        .open(DialogoConfirmar, { data: datos, width: '420px' })
-        .afterClosed()
-        .subscribe((respuesta) => resolver(respuesta === true));
-    });
+  /** Tras subir o borrar en la tarjeta de fotos. */
+  fotosCambiadas(fotoIds: number[]): void {
+    this.pedido.update((actual) => (actual ? { ...actual, fotoIds } : actual));
   }
 }

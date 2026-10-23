@@ -1,0 +1,28 @@
+/* En la tablet caben en una fila; en un móvil el DNI baja debajo. */
+.alta, .edicion { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: flex-start; width: 100%; }
+.alta mat-form-field, .edicion mat-form-field { width: auto; }
+.crece { flex: 1 1 180px; min-width: 0; }
+.dni { flex: 0 1 170px; min-width: 130px; }
+.alta button[type='submit'] { margin-top: 4px; }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.nombre { padding: 4px 0; }
+.nombre small { margin-left: 8px; opacity: 0.65; }
+/* Sin DNI no se puede elegir en ningún documento: tiene que verse. */
+.falta {
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+.vacio { opacity: 0.7; }
