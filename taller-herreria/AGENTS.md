@@ -638,7 +638,13 @@ igual que abrir un favorito o reabrir la PWA instalada.
 npm run humo        # en taller-pwa, con la API arrancada en el 8080
 ```
 
-`e2e/humo.spec.ts` abre la aplicación en el Chrome instalado (no descarga navegadores),
+Las pruebas están en `e2e/`, repartidas por área: `sesion`, `pedidos`, `trabajos`,
+`albaranes` y `ajustes` (`.spec.ts`), con los ayudantes comunes en `e2e/comun/`
+(`ayudantes.ts` y `datos-de-prueba.ts`) y la limpieza en `e2e/limpieza.ts`, que es el
+`globalTeardown` de `playwright.config.ts`: se ejecuta **una sola vez al final**, no al
+acabar cada fichero. Una sola área: `npx playwright test albaranes`.
+
+Abren la aplicación en el Chrome instalado (no descargan navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
 cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 19
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
@@ -655,7 +661,7 @@ hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al 
 (`dniDePrueba()`) y se crean con `anadirCliente()`.
 
 Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
-—ya no se teclean, se eligen— y **los borran al terminar**, en un `afterAll`
+—ya no se teclean, se eligen— y **los borran al terminar**, en `e2e/limpieza.ts`
 (los materiales antes que sus familias: una familia con materiales no se borra).
 
 Dos detalles de los ayudantes que costaron una ejecución fallida cada uno:

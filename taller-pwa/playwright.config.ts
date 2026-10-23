@@ -17,6 +17,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // Las pruebas están repartidas por área (sesion, pedidos, trabajos, albaranes,
+  // ajustes). La limpieza de los datos PRUEBA-HUMO va aquí y no en cada fichero:
+  // se ejecuta una sola vez, al terminar todas.
+  globalTeardown: './e2e/limpieza.ts',
   // Sin paralelismo: las pruebas crean y borran datos en la MISMA base de
   // datos del taller. En paralelo se pisarían entre ellas.
   workers: 1,

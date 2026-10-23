@@ -94,7 +94,7 @@ export class DetallePedido implements OnInit {
    * en el constructor lanza NG0950 ("Input is required but no value is
    * available yet"), el componente no llega a crearse y el router aborta la
    * navegación. El efecto que se ve es que pinchar en la lista no hace nada,
-   * sin ningún aviso. Ocurrió, y por eso existe e2e/humo.spec.ts.
+   * sin ningún aviso. Ocurrió, y por eso existe la comprobación de humo (e2e/).
    */
   ngOnInit(): void {
     this.maestros.asegurarCargados();
