@@ -86,6 +86,11 @@ public class LineasMaterial {
         }
     }
 
+    /** Todas las líneas de un documento, al borrarlo. */
+    public void borrarDe(Material.OrigenTipo tipo, Long origenId) {
+        repositorio.deleteByOrigenTipoAndOrigenId(tipo, origenId);
+    }
+
     /**
      * Copia las líneas de varios trabajos a un albarán, agrupando las que son el
      * mismo material y sumando cantidades.

@@ -3,11 +3,23 @@ package com.taller.herreria.albaran;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface AlbaranRepository extends JpaRepository<Albaran, Long> {
+
+    /**
+     * El albarán, o 404 con un mensaje para el jefe. Va aquí y no en un servicio
+     * porque lo necesitan las cuatro clases del albarán (edición, fotos, PDF y
+     * firma) y así ninguna depende de otra solo para buscarlo.
+     */
+    default Albaran buscarOFallar(Long id) {
+        return findById(id).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "No existe el albarán " + id));
+    }
 
     boolean existsByNumero(Long numero);
 

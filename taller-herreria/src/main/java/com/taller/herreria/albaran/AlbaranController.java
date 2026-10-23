@@ -20,9 +20,16 @@ import java.util.List;
 public class AlbaranController {
 
     private final AlbaranService servicio;
+    private final AltaAlbaran alta;
+    private final FotosAlbaran fotos;
+    private final PdfAlbaran pdf;
 
-    public AlbaranController(AlbaranService servicio) {
+    public AlbaranController(AlbaranService servicio, AltaAlbaran alta,
+                             FotosAlbaran fotos, PdfAlbaran pdf) {
         this.servicio = servicio;
+        this.alta = alta;
+        this.fotos = fotos;
+        this.pdf = pdf;
     }
 
     @GetMapping
@@ -44,13 +51,13 @@ public class AlbaranController {
     @PostMapping("/unificado")
     @ResponseStatus(HttpStatus.CREATED)
     public AlbaranResponse unificar(@Valid @RequestBody AlbaranUnificar peticion) {
-        return servicio.crearDesdeTrabajos(peticion.trabajoIds(), peticion.datos());
+        return alta.desdeTrabajos(peticion.trabajoIds(), peticion.datos());
     }
 
     /** Documento PDF del albarán: el que se imprime y se archiva. */
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
-        return RespuestaPdf.de(servicio.pdf(id));
+        return RespuestaPdf.de(pdf.generar(id));
     }
 
     /** Edición parcial, incluido el número (con validación de choques). */
@@ -89,12 +96,12 @@ public class AlbaranController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<Long> subirFotos(@PathVariable Long id,
                                  @RequestParam("fotos") List<MultipartFile> fotos) {
-        return servicio.subirFotos(id, fotos);
+        return this.fotos.subir(id, fotos);
     }
 
     @GetMapping("/{id}/fotos/{fotoId}")
     public ResponseEntity<byte[]> verFoto(@PathVariable Long id, @PathVariable Long fotoId) {
-        Foto foto = servicio.obtenerFoto(id, fotoId);
+        Foto foto = fotos.obtener(id, fotoId);
         return ResponseEntity.ok()
                 .header("Content-Type", foto.getTipoContenido())
                 .body(foto.getDatos());
@@ -103,6 +110,6 @@ public class AlbaranController {
     @DeleteMapping("/{id}/fotos/{fotoId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void borrarFoto(@PathVariable Long id, @PathVariable Long fotoId) {
-        servicio.borrarFoto(id, fotoId);
+        fotos.borrar(id, fotoId);
     }
 }

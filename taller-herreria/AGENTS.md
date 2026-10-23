@@ -99,7 +99,10 @@ src/main/java/com/taller/herreria/
 │                las reglas para construirlas desde el catálogo, en un solo sitio
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
 ├── trabajo/     Trabajo, Repository, Service, Controller, dto/
-├── albaran/     Albaran, Repository, Service, 2 Controllers, dto/
+├── albaran/     Albaran, Repository, 2 Controllers, dto/ y el servicio partido en cinco:
+│                AltaAlbaran (crear desde trabajos), AlbaranService (consultar,
+│                editar, borrar y firma), FotosAlbaran, PdfAlbaran y RespuestaAlbaran
+│                (respuesta de la API y cálculo del coste, en un solo sitio)
 ├── documento/   GeneradorPdf, Documento y RespuestaPdf (los comparten las tres)
 ├── foto/        Foto, FotoRepository y ValidadorImagen (los comparten las tres)
 ├── config/      Configuracion: el contador de albaranes

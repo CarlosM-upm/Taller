@@ -13,16 +13,16 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/trabajos/{trabajoId}/albaran")
 public class AlbaranDesdeTrabajoController {
 
-    private final AlbaranService servicio;
+    private final AltaAlbaran alta;
 
-    public AlbaranDesdeTrabajoController(AlbaranService servicio) {
-        this.servicio = servicio;
+    public AlbaranDesdeTrabajoController(AltaAlbaran alta) {
+        this.alta = alta;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AlbaranResponse crear(@PathVariable Long trabajoId,
                                  @RequestBody(required = false) AlbaranCrear datos) {
-        return servicio.crearDesdeTrabajo(trabajoId, datos);
+        return alta.desdeTrabajo(trabajoId, datos);
     }
 }
