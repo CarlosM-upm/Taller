@@ -22,9 +22,16 @@ import java.util.List;
 public class TrabajoController {
 
     private final TrabajoService servicio;
+    private final FirmaTrabajo firma;
+    private final FotosTrabajo fotos;
+    private final PdfTrabajo pdf;
 
-    public TrabajoController(TrabajoService servicio) {
+    public TrabajoController(TrabajoService servicio, FirmaTrabajo firma,
+                             FotosTrabajo fotos, PdfTrabajo pdf) {
         this.servicio = servicio;
+        this.firma = firma;
+        this.fotos = fotos;
+        this.pdf = pdf;
     }
 
     /** Crear un trabajo (tablet). Nace como BORRADOR, puede venir a medias. */
@@ -53,7 +60,7 @@ public class TrabajoController {
     /** Documento PDF del trabajo (solo jefe). */
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
-        return RespuestaPdf.de(servicio.pdf(id));
+        return RespuestaPdf.de(pdf.generar(id));
     }
 
     /** Guardar avances del borrador ("sigo otro día") o edición del jefe. */
@@ -78,16 +85,16 @@ public class TrabajoController {
 
     // ---------- Firma del cliente ----------
 
-    /** Recoger la firma (imagen). Las reglas de quién puede, en el servicio. */
+    /** Recoger la firma (imagen). Las reglas de quién puede, en FirmaTrabajo. */
     @PutMapping(path = "/{id}/firma", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public TrabajoResponse guardarFirma(@PathVariable Long id,
                                         @RequestParam("firma") MultipartFile firma) {
-        return servicio.guardarFirma(id, firma);
+        return this.firma.guardar(id, firma);
     }
 
     @GetMapping("/{id}/firma")
     public ResponseEntity<byte[]> verFirma(@PathVariable Long id) {
-        Trabajo trabajo = servicio.obtenerConFirma(id);
+        Trabajo trabajo = firma.obtener(id);
         return ResponseEntity.ok()
                 .header("Content-Type", trabajo.getFirmaTipoContenido())
                 .body(trabajo.getFirma());
@@ -95,7 +102,7 @@ public class TrabajoController {
 
     @DeleteMapping("/{id}/firma")
     public TrabajoResponse borrarFirma(@PathVariable Long id) {
-        return servicio.borrarFirma(id);
+        return firma.borrar(id);
     }
 
     // ---------- Fotos ----------
@@ -104,12 +111,12 @@ public class TrabajoController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<Long> subirFotos(@PathVariable Long id,
                                  @RequestParam("fotos") List<MultipartFile> fotos) {
-        return servicio.subirFotos(id, fotos);
+        return this.fotos.subir(id, fotos);
     }
 
     @GetMapping("/{id}/fotos/{fotoId}")
     public ResponseEntity<byte[]> verFoto(@PathVariable Long id, @PathVariable Long fotoId) {
-        Foto foto = servicio.obtenerFoto(id, fotoId);
+        Foto foto = fotos.obtener(id, fotoId);
         return ResponseEntity.ok()
                 .header("Content-Type", foto.getTipoContenido())
                 .body(foto.getDatos());
@@ -118,6 +125,6 @@ public class TrabajoController {
     @DeleteMapping("/{id}/fotos/{fotoId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void borrarFoto(@PathVariable Long id, @PathVariable Long fotoId) {
-        servicio.borrarFoto(id, fotoId);
+        fotos.borrar(id, fotoId);
     }
 }

@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
  * Reparto de permisos, tal como se diseñó:
  * - Albaranes, configuración (contador) y ediciones/borrados de pedidos: SOLO JEFE.
  * - Pedidos (crear, ver, fotos) y trabajos: ambos roles.
- *   (La regla "un trabajo ENVIADO solo lo toca el jefe" se aplica en TrabajoService,
+ *   (La regla "un trabajo ENVIADO solo lo toca el jefe" se aplica en PermisosTrabajo,
  *    porque depende del estado, no solo de la URL.)
  * - Login: abierto. Todo lo demás requiere estar autenticado.
  */

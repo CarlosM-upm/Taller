@@ -98,7 +98,10 @@ src/main/java/com/taller/herreria/
 ├── material/    Líneas de material de trabajos y albaranes, y LineasMaterial:
 │                las reglas para construirlas desde el catálogo, en un solo sitio
 ├── pedido/      Pedido, Repository, Service, Controller, dto/
-├── trabajo/     Trabajo, Repository, Service, Controller, dto/
+├── trabajo/     Trabajo, Repository, Controller, dto/ y el servicio partido: TrabajoService
+│                (ciclo borrador -> enviado), DatosTrabajo (aplicar el formulario),
+│                FirmaTrabajo, FotosTrabajo, PdfTrabajo, RespuestaTrabajo y
+│                PermisosTrabajo (la regla "enviado = solo el jefe", en un sitio)
 ├── albaran/     Albaran, Repository, 2 Controllers, dto/ y el servicio partido en cinco:
 │                AltaAlbaran (crear desde trabajos), AlbaranService (consultar,
 │                editar, borrar y firma), FotosAlbaran, PdfAlbaran y RespuestaAlbaran
@@ -441,7 +444,7 @@ pasa a ser territorio del jefe.
   y no pueden quedar incompletos.
 
 Esta última regla **no se puede expresar solo con la URL** (depende del estado del objeto),
-por eso vive en `TrabajoService.exigirJefeSiEnviado()` y no en `SecurityConfig`. Si añades
+por eso vive en `PermisosTrabajo.exigirJefeSiEnviado()` y no en `SecurityConfig`. Si añades
 operaciones nuevas sobre trabajos, aplícala también.
 
 ---

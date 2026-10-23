@@ -86,6 +86,11 @@ public class LineasMaterial {
         }
     }
 
+    /** Si el documento lleva al menos una línea: un trabajo sin materiales no se envía. */
+    public boolean hayAlguna(Material.OrigenTipo tipo, Long origenId) {
+        return repositorio.countByOrigenTipoAndOrigenId(tipo, origenId) > 0;
+    }
+
     /** Todas las líneas de un documento, al borrarlo. */
     public void borrarDe(Material.OrigenTipo tipo, Long origenId) {
         repositorio.deleteByOrigenTipoAndOrigenId(tipo, origenId);
