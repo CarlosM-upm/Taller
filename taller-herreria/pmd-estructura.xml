@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reglas de PMD sobre el tamaño y la estructura del código Java.
+
+  De momento solo MIDEN: el plugin no va enganchado al empaquetado, se lanza a
+  mano con  .\mvnw.cmd pmd:check  y no hace fallar nada. Sirven para ver qué
+  clases y métodos se pasan antes de partirlos. Los límites son provisionales;
+  cuando se acuerden, se engancharán al build para que avisen solos.
+
+  NCSS = sentencias de código (Non-Commenting Source Statements): no cuenta
+  comentarios, líneas en blanco ni llaves. 30 NCSS en un método son
+  aproximadamente 40 líneas de código; 200 en una clase, unas 300.
+-->
+<ruleset name="Estructura del taller"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Tamaño y complejidad de clases y métodos</description>
+
+    <!-- Tamaño de métodos y clases -->
+    <rule ref="category/java/design.xml/NcssCount">
+        <properties>
+            <property name="methodReportLevel" value="30"/>
+            <property name="classReportLevel" value="200"/>
+        </properties>
+    </rule>
+
+    <!-- Cuántos caminos tiene un método (cada if, for, case, &&…) -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="10"/>
+            <property name="classReportLevel" value="80"/>
+        </properties>
+    </rule>
+
+    <!-- Lo difícil que es de LEER un método: penaliza el anidamiento -->
+    <rule ref="category/java/design.xml/CognitiveComplexity">
+        <properties>
+            <property name="reportLevel" value="15"/>
+        </properties>
+    </rule>
+
+    <!-- Clase que hace demasiadas cosas y depende de demasiado -->
+    <rule ref="category/java/design.xml/GodClass"/>
+    <rule ref="category/java/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="threshold" value="20"/>
+        </properties>
+    </rule>
+
+    <!-- if dentro de if dentro de if… -->
+    <rule ref="category/java/design.xml/AvoidDeeplyNestedIfStmts">
+        <properties>
+            <property name="problemDepth" value="3"/>
+        </properties>
+    </rule>
+
+    <!-- Demasiados parámetros: suele pedir un objeto que los agrupe -->
+    <rule ref="category/java/design.xml/ExcessiveParameterList">
+        <properties>
+            <property name="minimum" value="7"/>
+        </properties>
+    </rule>
+</ruleset>

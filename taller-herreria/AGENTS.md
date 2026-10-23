@@ -944,6 +944,12 @@ del jefe.
   PostgreSQL (la conexión acababa en un relay de WSL) y con `ng serve` (que escucha solo
   en `::1`, así que `127.0.0.1:4200` no responde). Ante un "conexión rechazada" o un
   "autenticación fallida" raro, comprueba primero IPv4 contra IPv6.
+- **Tamaño y complejidad, medidos (de momento solo avisan):** `npm run lint` en
+  `taller-pwa` (ESLint con angular-eslint; reglas `max-lines`, `max-lines-per-function`,
+  `complexity` y `max-depth` en `eslint.config.js`) y `.\mvnw.cmd pmd:check` en
+  `taller-herreria` (PMD con `pmd-estructura.xml`). Ninguno va enganchado al
+  empaquetado ni hace fallar nada. Los límites son provisionales, pendientes de
+  acordar antes de partir ficheros y de volverlos obligatorios.
 - No hay tests automatizados del backend todavía. Si añades alguno, que no dependa de un
   PostgreSQL real levantado a mano. La PWA **sí** tiene una comprobación de humo en
   navegador (`npm run humo`, ver §7): pásala antes de dar por buena cualquier pantalla.

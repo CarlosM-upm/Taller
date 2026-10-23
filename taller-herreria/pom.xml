@@ -185,6 +185,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- PMD: tamaño y complejidad de clases y métodos (pmd-estructura.xml).
+                 De momento SOLO MIDE: no va enganchado a ninguna fase, así que
+                 "package" no lo ejecuta. Se lanza a mano:
+                     .\mvnw.cmd pmd:check
+                 y con failOnViolation a false informa sin hacer fallar nada. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.28.0</version>
+                <configuration>
+                    <rulesets>
+                        <ruleset>${project.basedir}/pmd-estructura.xml</ruleset>
+                    </rulesets>
+                    <targetJdk>${java.version}</targetJdk>
+                    <printFailingErrors>true</printFailingErrors>
+                    <failOnViolation>false</failOnViolation>
+                    <linkXRef>false</linkXRef>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
