@@ -45,44 +45,65 @@ public class LineasMaterial {
     }
 
     public void reemplazar(Material.OrigenTipo tipo, Long origenId, List<MaterialDto> lineas) {
-        boolean conPrecio = tipo == Material.OrigenTipo.ALBARAN;
-
-        // Las líneas sin catálogo que ya tenía este documento, con su unidad:
-        // son las únicas que se admiten sin catalogoId.
-        Map<String, String> sinCatalogoPrevias = new HashMap<>();
-        for (Material previa : repositorio.findByOrigenTipoAndOrigenIdOrderByIdAsc(tipo, origenId)) {
-            if (previa.getCatalogoId() == null) {
-                sinCatalogoPrevias.putIfAbsent(clave(previa.getNombre()), previa.getUnidad());
-            }
-        }
-
+        Map<String, String> sinCatalogoPrevias = sinCatalogoPrevias(tipo, origenId);
         repositorio.deleteByOrigenTipoAndOrigenId(tipo, origenId);
 
         for (MaterialDto linea : lineas) {
-            if (conPrecio && linea.precio() != null && linea.precio().compareTo(BigDecimal.ZERO) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "El precio de un material no puede ser negativo");
-            }
-
+            exigirPrecioNoNegativo(tipo, linea);
             Material material;
             if (linea.catalogoId() != null) {
-                MaterialCatalogo delCatalogo = catalogo.materialOFallar(linea.catalogoId());
-                material = new Material(tipo, origenId, delCatalogo.getNombre(), linea.cantidad());
-                material.setCatalogoId(delCatalogo.getId());
-                material.setUnidad(delCatalogo.getUnidad());
-                if (conPrecio) {
-                    material.setPrecio(linea.precio() != null ? linea.precio() : delCatalogo.precioTotal());
-                }
+                material = delCatalogo(tipo, origenId, linea);
             } else if (linea.nombre() != null && sinCatalogoPrevias.containsKey(clave(linea.nombre()))) {
-                material = new Material(tipo, origenId, linea.nombre().trim(), linea.cantidad());
-                material.setUnidad(sinCatalogoPrevias.get(clave(linea.nombre())));
-                if (conPrecio) material.setPrecio(linea.precio());
+                material = antiguaSinCatalogo(tipo, origenId, linea, sinCatalogoPrevias);
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Los materiales se eligen del catálogo. Si falta alguno, el jefe "
                                 + "lo da de alta en Ajustes");
             }
             repositorio.save(material);
+        }
+    }
+
+    /**
+     * Las líneas sin catálogo que ya tenía este documento, con su unidad: son
+     * las únicas que se admiten sin catalogoId.
+     */
+    private Map<String, String> sinCatalogoPrevias(Material.OrigenTipo tipo, Long origenId) {
+        Map<String, String> previas = new HashMap<>();
+        for (Material previa : repositorio.findByOrigenTipoAndOrigenIdOrderByIdAsc(tipo, origenId)) {
+            if (previa.getCatalogoId() == null) {
+                previas.putIfAbsent(clave(previa.getNombre()), previa.getUnidad());
+            }
+        }
+        return previas;
+    }
+
+    /** Nombre y unidad del catálogo; en el albarán, su precio total si la línea no trae otro. */
+    private Material delCatalogo(Material.OrigenTipo tipo, Long origenId, MaterialDto linea) {
+        MaterialCatalogo delCatalogo = catalogo.materialOFallar(linea.catalogoId());
+        Material material = new Material(tipo, origenId, delCatalogo.getNombre(), linea.cantidad());
+        material.setCatalogoId(delCatalogo.getId());
+        material.setUnidad(delCatalogo.getUnidad());
+        if (tipo == Material.OrigenTipo.ALBARAN) {
+            material.setPrecio(linea.precio() != null ? linea.precio() : delCatalogo.precioTotal());
+        }
+        return material;
+    }
+
+    private static Material antiguaSinCatalogo(Material.OrigenTipo tipo, Long origenId,
+                                               MaterialDto linea, Map<String, String> previas) {
+        Material material = new Material(tipo, origenId, linea.nombre().trim(), linea.cantidad());
+        material.setUnidad(previas.get(clave(linea.nombre())));
+        if (tipo == Material.OrigenTipo.ALBARAN) material.setPrecio(linea.precio());
+        return material;
+    }
+
+    /** Solo el albarán lleva precio, y no puede ser negativo. */
+    private static void exigirPrecioNoNegativo(Material.OrigenTipo tipo, MaterialDto linea) {
+        if (tipo != Material.OrigenTipo.ALBARAN || linea.precio() == null) return;
+        if (linea.precio().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El precio de un material no puede ser negativo");
         }
     }
 

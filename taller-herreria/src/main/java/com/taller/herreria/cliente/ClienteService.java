@@ -1,11 +1,11 @@
 package com.taller.herreria.cliente;
 
+import com.taller.herreria.comun.RecuentoDocumentos;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -82,18 +82,12 @@ public class ClienteService {
     public void borrar(Long id) {
         Cliente cliente = buscarOFallar(id);
 
-        long pedidos = repositorio.contarPedidos(id);
-        long trabajos = repositorio.contarTrabajos(id);
-        long albaranes = repositorio.contarAlbaranes(id);
-
-        if (pedidos + trabajos + albaranes > 0) {
-            List<String> partes = new ArrayList<>();
-            if (pedidos > 0) partes.add(pedidos + (pedidos == 1 ? " pedido" : " pedidos"));
-            if (trabajos > 0) partes.add(trabajos + (trabajos == 1 ? " trabajo" : " trabajos"));
-            if (albaranes > 0) partes.add(albaranes + (albaranes == 1 ? " albarán" : " albaranes"));
+        String documentos = RecuentoDocumentos.texto(repositorio.contarPedidos(id),
+                repositorio.contarTrabajos(id), repositorio.contarAlbaranes(id));
+        if (!documentos.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede borrar el cliente \"" + cliente.getNombre() + "\": tiene "
-                            + String.join(", ", partes));
+                            + documentos);
         }
 
         repositorio.delete(cliente);
