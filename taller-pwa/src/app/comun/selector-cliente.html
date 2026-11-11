@@ -1,4 +1,4 @@
-<mat-form-field appearance="outline">
+<mat-form-field appearance="outline" [class.con-aviso]="aviso()">
   <mat-label>{{ etiqueta() }}</mat-label>
   <input
     matInput
@@ -45,9 +45,7 @@
     }
   </mat-autocomplete>
 
-  @if (opciones().length === 0) {
-    <mat-hint>No hay ninguno dado de alta. Se añaden en Ajustes.</mat-hint>
-  } @else if (soloConDni() && hayAlgunoSinDni()) {
-    <mat-hint>Los clientes sin DNI no se pueden elegir: se les pone en Ajustes.</mat-hint>
+  @if (aviso(); as texto) {
+    <mat-hint>{{ texto }}</mat-hint>
   }
 </mat-form-field>

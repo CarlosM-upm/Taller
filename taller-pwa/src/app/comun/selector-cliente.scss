@@ -1,3 +1,9 @@
 mat-form-field {
   width: 100%;
 }
+
+// El aviso llena el hueco de debajo del campo, y la etiqueta del campo
+// siguiente se le quedaba pegada encima. Un poco de aire lo separa.
+.con-aviso {
+  margin-bottom: 12px;
+}

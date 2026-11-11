@@ -59,6 +59,15 @@ export class SelectorCliente {
 
   readonly hayAlgunoSinDni = computed(() => this.opciones().some((c) => !c.tieneDni));
 
+  /** El aviso de debajo del campo, si hace falta alguno. */
+  readonly aviso = computed(() => {
+    if (this.opciones().length === 0) return 'No hay ninguno dado de alta. Se añaden en Ajustes.';
+    if (this.soloConDni() && this.hayAlgunoSinDni()) {
+      return 'Los clientes sin DNI no se pueden elegir: se les pone en Ajustes.';
+    }
+    return null;
+  });
+
   /** Para el autocompletado: del id al nombre que se ve en el campo. */
   readonly nombreDe = (id: number | null): string =>
     id === null ? '' : (this.opciones().find((c) => c.id === id)?.nombre ?? '');

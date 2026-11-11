@@ -43,6 +43,10 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
   await page.getByRole('button', { name: 'Enviar', exact: true }).last().click();
   await expect(page.getByText(/Enviado el/)).toBeVisible({ timeout: 15_000 });
 
+  // Al volver a abrirlo, las horas salen con coma aunque se tecleara "2.5".
+  await page.reload();
+  await expect(page.getByLabel('Horas')).toHaveValue('2,5');
+
   // Limpieza
   await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/trabajos$/, { timeout: 15_000 });

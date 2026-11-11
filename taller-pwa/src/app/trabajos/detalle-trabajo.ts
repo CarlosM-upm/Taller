@@ -25,6 +25,7 @@ import { AlbaranDelTrabajo } from './albaran-del-trabajo';
 import { FirmaDelTrabajo } from './firma-del-trabajo';
 import { queFaltaParaEnviar } from './para-enviar';
 import { aHoras, vacioONulo } from './campos-del-trabajo';
+import { aTexto } from '../nucleo/numeros';
 
 const MAX_FOTOS = 5;
 
@@ -122,7 +123,7 @@ export class DetalleTrabajo implements OnInit {
       this.trabajadorId() !== t.trabajadorId ||
       this.descripcion().trim() !== (t.descripcion ?? '') ||
       JSON.stringify(this.materiales()) !== JSON.stringify(t.materiales) ||
-      this.horas().trim() !== (t.horas !== null ? String(t.horas) : '')
+      this.horas().trim() !== aTexto(t.horas)
     );
   });
 
@@ -287,7 +288,8 @@ export class DetalleTrabajo implements OnInit {
     this.trabajadorId.set(trabajo.trabajadorId);
     this.descripcion.set(trabajo.descripcion ?? '');
     this.materiales.set(trabajo.materiales);
-    this.horas.set(trabajo.horas !== null ? String(trabajo.horas) : '');
+    // Con coma, como en la lista y en el albarán ("6,5", no "6.5").
+    this.horas.set(aTexto(trabajo.horas));
     this.errorHoras.set(null);
   }
 
