@@ -89,3 +89,10 @@ test.describe('en la tablet', () => {
     await recargar.dispatchEvent('touchend');
   });
 });
+
+test('el icono de la cuenta se ve sobre la barra verde', async ({ page }) => {
+  await entrar(page, CUENTAS.jefe);
+  // En blanco, como el título. Con el gris que pone Material casi no se veía (1,2:1).
+  const icono = page.getByRole('button', { name: 'Cuenta' }).locator('mat-icon');
+  await expect(icono).toHaveCSS('color', 'rgb(255, 255, 255)');
+});

@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 .marco {
   display: flex;
   flex-direction: column;
@@ -10,6 +12,17 @@
   // El verde exacto del logotipo, con texto blanco: es lo primero que se ve.
   background: var(--taller-verde-logo);
   color: #fff;
+  // El botón de la cuenta, también en blanco. Material pone a sus botones de
+  // icono un gris propio que no hereda el blanco de la barra: sobre este verde
+  // se quedaba en 1,2:1 y casi no se veía. En blanco, 11,2:1. El sombreado al
+  // pasar el ratón y el de la pulsación, también claros.
+  @include mat.icon-button-overrides(
+    (
+      icon-color: #fff,
+      state-layer-color: #fff,
+      ripple-color: rgba(255, 255, 255, 0.2),
+    )
+  );
 }
 
 // El símbolo del logo va sobre una placa blanca: es verde sobre blanco, y
