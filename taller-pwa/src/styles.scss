@@ -190,6 +190,13 @@ h3 {
   margin-bottom: 12px;
 }
 
+/* El texto de dentro de un campo vacío (ejemplos como "p. ej. 2,5" o
+   indicaciones como "Busca o despliega") va en cursiva: así no se confunde con
+   un dato ya escrito. Con "2,5" a secas, las horas parecían puestas. */
+.mat-mdc-input-element::placeholder {
+  font-style: italic;
+}
+
 .error-campo {
   margin: -12px 0 12px;
   color: var(--mat-sys-error, #b3261e);

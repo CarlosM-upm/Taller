@@ -105,14 +105,14 @@
             <div class="fila-precios">
               <mat-form-field appearance="outline">
                 <mat-label>Horas</mat-label>
-                <input matInput name="horas" type="text" inputmode="decimal" placeholder="12,5"
+                <input matInput name="horas" type="text" inputmode="decimal" placeholder="p. ej. 12,5"
                        [ngModel]="horas()" (ngModelChange)="horas.set($event)" [disabled]="ocupado()" />
                 <span matTextSuffix>h</span>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Precio por hora</mat-label>
-                <input matInput name="precioHora" type="text" inputmode="decimal" placeholder="28"
+                <input matInput name="precioHora" type="text" inputmode="decimal" placeholder="p. ej. 28"
                        [ngModel]="precioHora()" (ngModelChange)="precioHora.set($event)" [disabled]="ocupado()" />
                 <span matTextSuffix>€</span>
               </mat-form-field>
@@ -128,7 +128,7 @@
 
               <mat-form-field appearance="outline" class="extra">
                 <mat-label>Añadir al coste</mat-label>
-                <input matInput name="importeExtra" type="text" inputmode="decimal" placeholder="45,50"
+                <input matInput name="importeExtra" type="text" inputmode="decimal" placeholder="p. ej. 45,50"
                        [ngModel]="importeExtra()" (ngModelChange)="importeExtra.set($event)" [disabled]="ocupado()" />
                 <span matTextSuffix>€</span>
                 <mat-hint>Desplazamiento, un extra pactado… En negativo, un descuento.</mat-hint>

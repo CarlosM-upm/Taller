@@ -218,3 +218,13 @@ test('los filtros de Trabajos miden 48px de alto, como el resto de botones', asy
     expect(caja!.height, filtro).toBeGreaterThanOrEqual(48);
   }
 });
+
+test('el ejemplo de dentro de un campo no parece un dato escrito', async ({ page }) => {
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/trabajos/nuevo');
+  // Con "2,5" a secas, al pulsar en Horas parecía que ya estaban puestas.
+  const horas = page.getByLabel('Horas');
+  await expect(horas).toHaveAttribute('placeholder', /^p\. ej\. /);
+  const estilo = await horas.evaluate((campo) => getComputedStyle(campo, '::placeholder').fontStyle);
+  expect(estilo).toBe('italic');
+});

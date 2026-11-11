@@ -82,7 +82,7 @@
           type="text"
           inputmode="decimal"
           [name]="'material-cantidad-' + $index"
-          placeholder="5"
+          placeholder="p. ej. 5"
           [ngModel]="fila.cantidad"
           [ngModelOptions]="{ standalone: true }"
           (ngModelChange)="cambiarCantidad($index, $event)"
