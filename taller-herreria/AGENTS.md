@@ -305,7 +305,8 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   contraseña cierra todas las sesiones. Borrar ya preguntaba. Dar de alta no pregunta.
 - **Se edita en el sitio**: al pulsar el lápiz, la fila se convierte en el recuadro de
   edición en su misma posición (también la de un material, cuyo formulario es una
-  `ng-template` que usan la fila y "Nuevo material", este debajo de la lista). Lo que
+  `ng-template` que usan la fila y "Añadir material"; este va arriba, justo debajo de
+  la familia y el buscador, que es donde se elige en qué familia se añade). Lo que
   se edita va en `.recuadro-edicion` (global, en `styles.scss`): el verde suave del
   apartado activo de la barra de abajo (`secondary-container`) y un borde fino. Se
   probó un verde más intenso y el taller lo prefirió más discreto. Cada paginación lleva

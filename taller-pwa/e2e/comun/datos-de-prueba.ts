@@ -92,7 +92,7 @@ export async function crearMaterialEnAjustes(
   precio: { precio: string; extra: string; transporte: string },
 ) {
   await elegir(page, 'Familia', familia);
-  await page.getByRole('button', { name: 'Nuevo material' }).click();
+  await page.getByRole('button', { name: 'Añadir material' }).click();
   await page.getByLabel('Nombre', { exact: true }).fill(material);
   await page.getByLabel('Unidad', { exact: true }).fill('m');
   await page.getByLabel('Precio del material').fill(precio.precio);

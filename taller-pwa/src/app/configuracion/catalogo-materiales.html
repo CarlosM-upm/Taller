@@ -22,6 +22,19 @@
   </mat-form-field>
 </div>
 
+<!-- Añadir, arriba: justo debajo de la familia, que es donde se añade. -->
+@if (editandoId() === 0) {
+  <div class="recuadro-edicion">
+    <ng-container *ngTemplateOutlet="formulario" />
+  </div>
+} @else if (familiaId() !== null) {
+  <button matButton class="anadir" (click)="nuevo()" [disabled]="ocupado() || editandoId() !== null">
+    <mat-icon>add</mat-icon> Añadir material
+  </button>
+} @else if (maestros.familias().length > 0) {
+  <p class="vacio">Para añadir un material, elige antes su familia.</p>
+}
+
 @if (materiales().length === 0) {
   <p class="vacio">El catálogo está vacío.</p>
 } @else if (visibles().length === 0 && editandoId() === null) {
@@ -75,24 +88,10 @@
   (paginaChange)="pagina.set($event)"
 />
 
-@if (editandoId() === null) {
-  @if (familiaId() !== null) {
-    <button matButton (click)="nuevo()" [disabled]="ocupado()">
-      <mat-icon>add</mat-icon> Nuevo material
-    </button>
-  } @else if (maestros.familias().length > 0) {
-    <p class="vacio">Para añadir un material, elige antes su familia.</p>
-  }
-} @else if (editandoId() === 0) {
-  <div class="recuadro-edicion">
-    <ng-container *ngTemplateOutlet="formulario" />
-  </div>
-}
-
-<!-- El formulario de un material, para editarlo en su fila o para darlo de alta. -->
+<!-- El formulario de un material: para editarlo en su fila o para añadirlo arriba. -->
 <ng-template #formulario>
   <form class="formulario" (ngSubmit)="guardar()">
-    <h4>{{ editandoId() === 0 ? 'Nuevo material' : 'Editar material' }}</h4>
+    <h4>{{ editandoId() === 0 ? 'Añadir material' : 'Editar material' }}</h4>
 
     <div class="fila">
       <mat-form-field appearance="outline" class="crece">

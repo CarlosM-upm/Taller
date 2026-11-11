@@ -104,7 +104,7 @@ test('el catálogo calcula el precio total con extra y transporte', async ({ pag
   await anadirEnAjustes(page, 'Añadir familia', familia);
 
   await elegir(page, 'Familia', familia);
-  await page.getByRole('button', { name: 'Nuevo material' }).click();
+  await page.getByRole('button', { name: 'Añadir material' }).click();
   await page.getByLabel('Nombre', { exact: true }).fill(material);
   await page.getByLabel('Unidad', { exact: true }).fill('m');
   await page.getByLabel('Precio del material').fill('10');
