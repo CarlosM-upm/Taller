@@ -128,7 +128,8 @@ taller-pwa/src/app/
 ├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro,
 │                   selectorCliente (buscar o desplegar), selectorMaestro (desplegable
 │                   del trabajador), paginacion, filasMateriales (líneas con "+"),
-│                   tarjetaFotos (la tarjeta de fotos de las tres fichas) y la función
+│                   tarjetaFotos (la tarjeta de fotos de las tres fichas), estadoVacio
+│                   (lo que se ve cuando una lista no tiene nada) y la función
 │                   confirmar() de dialogo-confirmar
 ├── armazon/         barra superior, aviso de sin red y navegación según el rol
 ├── sesion/          pantalla de login
@@ -672,7 +673,36 @@ igual que abrir un favorito o reabrir la PWA instalada.
   muevas una regla de permisos al cliente quitándola de `SecurityConfig`.
 - Navegación **abajo**: es lo que alcanza el pulgar sujetando una tablet. Objetivos
   táctiles de 48-64 px, pensados para manos con guantes. No bajes la densidad de
-  Material a valores negativos.
+  Material a valores negativos. El apartado activo lleva una píldora detrás del icono.
+
+### Aspecto común (`src/styles.scss`)
+
+Lo que se repite en varias pantallas está una sola vez en `styles.scss`. Antes de dar
+estilo a algo en un componente, mira si ya existe aquí:
+
+- **Títulos**: `h2` es el de la pantalla y va dentro de `<div class="fila cabecera">`
+  con sus botones (Volver, PDF, Recargar...); `h3` es el de cada tarjeta. Usan la
+  escala de Material (`headline-small` y `title-medium`). No los redefinas en un
+  componente: antes cada pantalla tenía su copia con márgenes distintos, y los `h3` de
+  los componentes hijos de Ajustes se quedaban con el estilo del navegador.
+- **Etiquetas de estado**: `.chip` más su tipo. `.chip-hecho` (Firmado),
+  `.chip-pendiente` (Sin terminar, Sin firmar: solo contorno), `.chip-info` (Ya en un
+  albarán, la familia de un material) y `.chip-aviso` (Falta el DNI). Un mismo estado
+  se ve igual en todas las listas; solo lleva relleno lo hecho o lo que bloquea.
+- **Lo que se está editando**: `.recuadro-edicion` (ver Clientes y trabajadores).
+- **Lista vacía**: el componente `comun/estado-vacio` (icono, título, una frase y, si
+  tiene sentido, el botón para empezar), no un párrafo suelto.
+- **Botones de solo icono**: siempre con `aria-label` y con `matTooltip` **con el mismo
+  texto**. Si coinciden, Material no lo repite como descripción aparte (el lector de
+  pantalla no lo dice dos veces, y las pruebas que buscan por texto no encuentran
+  copias ocultas). El tooltip solo sale con ratón: `MAT_TOOLTIP_DEFAULT_OPTIONS` en
+  `app.config.ts` lleva `touchGestures: 'off'`, porque en la tablet habría que dejar el
+  dedo pulsado y en "Borrar" eso acaba borrando.
+- **Números**: con el formato español (`LOCALE_ID` `'es'` en `app.config.ts`), con el
+  pipe `number` (`'1.2-2'` en dinero, `'1.0-2'` en cantidades y horas) y la unidad del
+  material detrás (`m`, `kg`, `ud` si no tiene).
+- **Ajustes** tiene un índice pegado arriba (`.indice`, sticky) que salta a cada
+  tarjeta por su `id="seccion-…"`, y 12px entre tarjetas, como el resto de pantallas.
 
 ### Detalles del entorno que hacen perder tiempo
 
@@ -697,7 +727,7 @@ acabar cada fichero. Una sola área: `npx playwright test albaranes`.
 
 Abren la aplicación en el Chrome instalado (no descargan navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 24
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 26
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -709,7 +739,9 @@ en la obra y heredada por el albarán, y volver a ver los enviados de todos los
 clientes, la búsqueda de materiales por un trozo del nombre, y el DNI del cliente
 (obligatorio, con la letra comprobada, sin repetirse, y corregido en un albarán ya
 hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al azar
-(`dniDePrueba()`) y se crean con `anadirCliente()`. Las cinco de `busqueda.spec.ts`
+(`dniDePrueba()`) y se crean con `anadirCliente()`. Las dos últimas de `sesion.spec.ts`
+comprueban que el texto de un botón de solo icono sale al pasar el ratón y que en la
+tablet (Android táctil emulado) no sale ni con una pulsación larga. Las cinco de `busqueda.spec.ts`
 cubren el campo de cliente (buscar sin tildes, salir sin elegir, desplegar), los
 clientes de Ajustes por nombre, por DNI y por páginas, los materiales de Ajustes en
 todas las familias, el filtro de familia en las líneas de un trabajo, y "Todas las
@@ -898,7 +930,12 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   materiales por páginas de 20 con buscadores, materiales por familia o todas, filtro
   de familia en las líneas de material, y confirmación en toda edición. Solo pantalla:
   el servidor no cambia.
-- Todo verificado contra PostgreSQL real y en Chrome: **24 de 24** en la
+- **Repaso visual** en siete pasos, uno por commit (para volver al punto de partida:
+  etiqueta `antes-del-diseno`): números en formato español con la unidad, etiquetas de
+  estado comunes, píldora en la barra de abajo, listas vacías con icono y qué hacer,
+  índice fijo en Ajustes, textos al pasar el ratón por los botones de solo icono, y
+  títulos y separaciones iguales en todas las pantallas. Solo pantalla.
+- Todo verificado contra PostgreSQL real y en Chrome: **26 de 26** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente
