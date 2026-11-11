@@ -52,6 +52,16 @@ export class Configuracion implements OnInit {
   private readonly dialogo = inject(MatDialog);
   readonly maestros = inject(Maestros);
 
+  /** El índice de arriba: cada botón lleva a su tarjeta (id="seccion-…"). */
+  readonly secciones = [
+    { id: 'clientes', texto: 'Clientes' },
+    { id: 'trabajadores', texto: 'Trabajadores' },
+    { id: 'familias', texto: 'Familias' },
+    { id: 'materiales', texto: 'Materiales' },
+    { id: 'numeracion', texto: 'Numeración' },
+    { id: 'contrasena', texto: 'Contraseña' },
+  ];
+
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
 
@@ -72,6 +82,10 @@ export class Configuracion implements OnInit {
 
   ngOnInit(): void {
     this.maestros.asegurarCargados();
+  }
+
+  irA(seccion: string): void {
+    document.getElementById(`seccion-${seccion}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   cargarContador(): void {

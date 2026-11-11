@@ -5,17 +5,25 @@
 <div class="contenedor">
   <h2>Ajustes</h2>
 
+  <!-- Índice: con cientos de clientes la página es larga, y así se salta a cada
+       sección sin deslizar. Se queda pegado arriba al bajar. -->
+  <nav class="indice" aria-label="Secciones de Ajustes">
+    @for (seccion of secciones; track seccion.id) {
+      <button matButton type="button" (click)="irA(seccion.id)">{{ seccion.texto }}</button>
+    }
+  </nav>
+
   <!-- Numeración de albaranes -->
   <!-- Clientes y trabajadores: lo que alimenta los desplegables del resto de
        pantallas. Van los primeros porque sin ellos no se puede dar de alta
        ni un pedido. -->
-  <mat-card class="tarjeta-maestros">
+  <mat-card id="seccion-clientes" class="tarjeta-maestros">
     <mat-card-content>
       <app-lista-clientes />
     </mat-card-content>
   </mat-card>
 
-  <mat-card class="tarjeta-maestros">
+  <mat-card id="seccion-trabajadores" class="tarjeta-maestros">
     <mat-card-content>
       <app-lista-maestros
         tipo="trabajador"
@@ -28,7 +36,7 @@
 
   <!-- Catálogo de materiales: primero las familias, que lo ordenan, y debajo los
        materiales de la familia que se elija. -->
-  <mat-card class="tarjeta-maestros">
+  <mat-card id="seccion-familias" class="tarjeta-maestros">
     <mat-card-content>
       <app-lista-maestros
         tipo="familia"
@@ -39,13 +47,13 @@
     </mat-card-content>
   </mat-card>
 
-  <mat-card class="tarjeta-maestros">
+  <mat-card id="seccion-materiales" class="tarjeta-maestros">
     <mat-card-content>
       <app-catalogo-materiales />
     </mat-card-content>
   </mat-card>
 
-  <mat-card>
+  <mat-card id="seccion-numeracion">
     <mat-card-content>
       <h3>Numeración de albaranes</h3>
       <p class="explicacion">
@@ -85,7 +93,7 @@
   </mat-card>
 
   <!-- Contraseña -->
-  <mat-card class="tarjeta-contrasena">
+  <mat-card id="seccion-contrasena" class="tarjeta-contrasena">
     <mat-card-content>
       <h3>Mi contraseña</h3>
 

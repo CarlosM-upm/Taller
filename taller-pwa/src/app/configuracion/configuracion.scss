@@ -49,6 +49,28 @@ form {
   margin-top: 12px;
 }
 
+.indice {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  margin: 0 -16px 12px;
+  padding: 4px 12px;
+  overflow-x: auto;
+  background: var(--mat-sys-surface-container-low);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  button {
+    flex: 0 0 auto;
+  }
+}
+
+// Al saltar desde el índice, que la tarjeta no quede tapada por él.
+mat-card {
+  scroll-margin-top: 64px;
+}
+
 .tarjeta-maestros {
   margin-bottom: 16px;
 }
