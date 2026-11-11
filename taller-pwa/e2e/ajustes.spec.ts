@@ -112,10 +112,10 @@ test('el catálogo calcula el precio total con extra y transporte', async ({ pag
   await page.getByLabel('Transporte').fill('2');
 
   // 10 + 10 % de 10 + 2 = 13, y se ve al teclear, antes de guardar.
-  await expect(page.locator('.total strong')).toHaveText(/13\.00 €/);
+  await expect(page.locator('.total strong')).toHaveText(/13,00 €/);
 
   await page.getByRole('button', { name: 'Guardar material' }).click();
-  await expect(page.getByText('13.00 €/m')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('13,00 €/m')).toBeVisible({ timeout: 10_000 });
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });

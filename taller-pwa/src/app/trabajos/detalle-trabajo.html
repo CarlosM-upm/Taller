@@ -124,14 +124,14 @@
                 —
               } @else {
                 @for (linea of t.materiales; track linea.id) {
-                  <span class="linea-material">{{ linea.nombre }} &times; {{ linea.cantidad }}</span>
+                  <span class="linea-material">{{ linea.nombre }} &times; {{ linea.cantidad | number: '1.0-2' }} {{ linea.unidad || 'ud' }}</span>
                 }
               }
             </span>
           </div>
           <div class="dato">
             <span class="etiqueta">Horas</span>
-            <span class="valor">{{ t.horas }} h</span>
+            <span class="valor">@if (t.horas !== null) { {{ t.horas | number: '1.0-2' }} h } @else { — }</span>
           </div>
         }
       </mat-card-content>

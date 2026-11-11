@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -45,6 +45,7 @@ const MAX_FOTOS = 5;
     AlbaranDelTrabajo,
     FirmaDelTrabajo,
     DatePipe,
+    DecimalPipe,
     FormsModule,
     RouterLink,
     MatButtonModule,

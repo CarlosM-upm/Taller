@@ -162,9 +162,9 @@
               @if (a.materiales.length === 0) { — } @else {
                 @for (linea of a.materiales; track linea.id) {
                   <span class="linea-material">
-                    {{ linea.nombre }} &times; {{ linea.cantidad }}
+                    {{ linea.nombre }} &times; {{ linea.cantidad | number: '1.0-2' }} {{ linea.unidad || 'ud' }}
                     @if (linea.precio !== null && linea.precio !== undefined) {
-                      · {{ linea.precio | number: '1.2-2' }} €/ud
+                      · {{ linea.precio | number: '1.2-2' }} €/{{ linea.unidad || 'ud' }}
                     }
                   </span>
                 }
@@ -174,8 +174,8 @@
           <div class="dato">
             <span class="etiqueta">Horas</span>
             <span class="valor">
-              {{ a.horas ?? '—' }}
-              @if (a.precioHora !== null) { h · {{ a.precioHora | number: '1.2-2' }} €/h }
+              @if (a.horas !== null) { {{ a.horas | number: '1.0-2' }} h } @else { — }
+              @if (a.precioHora !== null) { · {{ a.precioHora | number: '1.2-2' }} €/h }
             </span>
           </div>
           <div class="dato">
@@ -183,7 +183,8 @@
             <span class="valor destacado">
               {{ a.costeTotal | number: '1.2-2' }} €
               <small>
-                ({{ a.costeSumado | number: '1.2-2' }} € + {{ (a.importeExtra ?? 0) | number: '1.2-2' }} €)
+                <!-- Un descuento se lee como resta, no como "+ -15". -->
+                ({{ a.costeSumado | number: '1.2-2' }} €@if ((a.importeExtra ?? 0) > 0) { + {{ a.importeExtra | number: '1.2-2' }} €}@else if ((a.importeExtra ?? 0) < 0) { − {{ (a.importeExtra ?? 0) * -1 | number: '1.2-2' }} €})
                 @if (a.incluirTotal) { · sale en el PDF } @else { · no sale en el PDF }
               </small>
             </span>

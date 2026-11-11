@@ -99,7 +99,7 @@
             }
             @if (trabajo.horas !== null) {
               <mat-icon class="icono-pie">schedule</mat-icon>
-              <span>{{ trabajo.horas }} h</span>
+              <span>{{ trabajo.horas | number: '1.0-2' }} h</span>
             }
             <span class="crece"></span>
             <!-- Igual que en la lista de albaranes. Va en todos los filtros: la

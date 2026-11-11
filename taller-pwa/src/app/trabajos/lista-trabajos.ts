@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -23,6 +23,7 @@ type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
   selector: 'app-lista-trabajos',
   imports: [
     DatePipe,
+    DecimalPipe,
     RouterLink,
     MatButtonModule,
     MatButtonToggleModule,

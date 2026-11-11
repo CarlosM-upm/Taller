@@ -154,7 +154,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   // Las dos descripciones, y las horas SUMADAS (4 + 2,5).
   await expect(page.getByText('Primera visita de prueba')).toBeVisible();
   await expect(page.getByText('Segunda visita de prueba')).toBeVisible();
-  await expect(page.getByText('6.5')).toBeVisible();
+  await expect(page.getByText('6,5 h')).toBeVisible();
 
   // Poner precios y comprobar el total en vivo: 12 tornillos a 2 € son 24 €,
   // más 6,5 h a 10 € son 65 €, más 11 € de extra = 100 €.
@@ -162,7 +162,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   await page.locator('input[name="material-precio-0"]').fill('2');
   await page.getByLabel('Precio por hora').fill('10');
   await page.getByLabel('Añadir al coste').fill('11');
-  await expect(page.getByText('100.00 €')).toBeVisible();
+  await expect(page.getByText('100,00 €')).toBeVisible();
 
   // Que el total salga impreso es una decisión del jefe, casilla aparte.
   await page.getByRole('checkbox', { name: /Incluir el total/ }).check();
