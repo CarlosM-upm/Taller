@@ -77,6 +77,25 @@ button.mat-mdc-button {
   align-items: center;
 }
 
+/* Títulos, iguales en todas las pantallas:
+     h2   el de la pantalla, dentro de su .fila.cabecera con Volver, PDF, Recargar...
+     h3   el de cada tarjeta
+   Antes cada pantalla repetía estas reglas con márgenes distintos, y los h3 de las
+   tarjetas de Ajustes (Clientes, Trabajadores...) se quedaban con los del navegador. */
+h2 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+h3 {
+  margin: 0 0 12px;
+  font: var(--mat-sys-title-medium);
+}
+
+.fila.cabecera {
+  margin: 8px 0 16px;
+}
+
 .fila-fin {
   display: flex;
   gap: 12px;
