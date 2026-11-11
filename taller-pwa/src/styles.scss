@@ -182,6 +182,14 @@ h3 {
   display: block;
 }
 
+/* Un campo con aviso o con error debajo: Material reserva una franja estrecha
+   para ese texto, el aviso la llena entera y la etiqueta del campo siguiente
+   (montada sobre su borde) se le quedaba pegada. Con esto, 12px de aire. Vale
+   para cualquier aviso o error, también los que se añadan más adelante. */
+.mat-mdc-form-field:has(.mat-mdc-form-field-hint, .mat-mdc-form-field-error) {
+  margin-bottom: 12px;
+}
+
 .error-campo {
   margin: -12px 0 12px;
   color: var(--mat-sys-error, #b3261e);

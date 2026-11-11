@@ -183,3 +183,20 @@ test('el material se busca por cualquier trozo del nombre, o se despliega entero
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
+
+test('el aviso de debajo de un campo no se pega al campo siguiente', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/configuracion');
+
+  // La etiqueta del campo siguiente va montada sobre su borde: sin aire, el
+  // aviso y la etiqueta se tocan.
+  const aviso = await page.locator('mat-hint', { hasText: 'Al menos 6 caracteres' }).boundingBox();
+  const siguiente = await page
+    .locator('mat-form-field', { hasText: 'Repite la nueva' })
+    .locator('.mat-mdc-text-field-wrapper')
+    .boundingBox();
+  expect(siguiente!.y - (aviso!.y + aviso!.height)).toBeGreaterThanOrEqual(12);
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
