@@ -88,11 +88,12 @@ button.mat-mdc-button {
 }
 
 // Lo que se está editando en Ajustes (un cliente, un material…): otro tono y
-// un borde, para que se vea a la primera qué fila está abierta.
+// un borde fino, para que se vea qué fila está abierta. El mismo verde suave que
+// marca el apartado activo en la barra de abajo: se distingue sin llamar la atención.
 .recuadro-edicion {
-  background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
-  border: 2px solid var(--mat-sys-primary);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 12px;
   padding: 8px 12px;
   margin: 6px 0;

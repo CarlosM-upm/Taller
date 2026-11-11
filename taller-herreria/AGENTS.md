@@ -306,8 +306,9 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
 - **Se edita en el sitio**: al pulsar el lápiz, la fila se convierte en el recuadro de
   edición en su misma posición (también la de un material, cuyo formulario es una
   `ng-template` que usan la fila y "Nuevo material", este debajo de la lista). Lo que
-  se edita va en `.recuadro-edicion` (global, en `styles.scss`): fondo y borde del
-  verde del tema, para que se vea a la primera qué está abierto. Cada paginación lleva
+  se edita va en `.recuadro-edicion` (global, en `styles.scss`): el verde suave del
+  apartado activo de la barra de abajo (`secondary-container`) y un borde fino. Se
+  probó un verde más intenso y el taller lo prefirió más discreto. Cada paginación lleva
   su nombre (`etiqueta`: "Páginas de clientes", "Páginas de materiales"): hay dos en la
   misma página y las pruebas, y los lectores de pantalla, tienen que distinguirlas.
 - **El DNI no se manda a la tablet**: `GET /api/clientes` lleva solo `tieneDni`, y
