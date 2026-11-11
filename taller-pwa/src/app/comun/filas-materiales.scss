@@ -8,6 +8,7 @@
 
 /* El material se lleva el espacio sobrante; cantidad y precio van fijos
    para que las columnas no bailen de una fila a otra. */
+.col-familia { flex: 0 0 150px; }
 .col-nombre { flex: 1 1 auto; min-width: 0; }
 /* 140 y no 120: con la unidad detrás ("ud", "m"), "Cantidad" se le pegaba. */
 .col-cantidad { flex: 0 0 140px; }
@@ -26,3 +27,10 @@
 .aviso { color: var(--mat-sys-error); }
 
 .anadir { margin-top: 4px; }
+
+/* En un móvil no caben cinco columnas: la familia y el material van en una
+   fila, y cantidad, precio y la X debajo. */
+@media (max-width: 600px) {
+  .fila { flex-wrap: wrap; }
+  .col-nombre { flex: 1 1 calc(100% - 158px); }
+}

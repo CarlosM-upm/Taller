@@ -7,6 +7,21 @@
           <small>fuera del catálogo</small>
         </div>
       } @else {
+        <mat-form-field appearance="outline" class="col-familia">
+          <mat-label>Familia</mat-label>
+          <!-- "Todas" va como 0: con null el desplegable se queda en blanco. -->
+          <mat-select
+            [value]="fila.familiaId ?? 0"
+            (valueChange)="cambiarFamilia($index, $event || null)"
+            [disabled]="deshabilitado()"
+            [attr.data-fila]="$index"
+          >
+            <mat-option [value]="0">Todas</mat-option>
+            @for (familia of maestros.familias(); track familia.id) {
+              <mat-option [value]="familia.id">{{ familia.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
         <mat-form-field appearance="outline" class="col-nombre">
           <mat-label>Material</mat-label>
           <input
@@ -44,8 +59,10 @@
               <mat-option disabled>
                 @if (catalogoVacio()) {
                   El catálogo está vacío: se rellena en Ajustes.
+                } @else if (sinElegir(fila)) {
+                  Ningún material contiene «{{ fila.valor }}»{{ fila.familiaId !== null ? ' en esta familia' : '' }}
                 } @else {
-                  Ningún material contiene «{{ fila.valor }}»
+                  Esta familia no tiene materiales
                 }
               </mat-option>
             }

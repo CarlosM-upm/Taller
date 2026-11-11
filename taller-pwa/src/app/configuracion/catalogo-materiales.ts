@@ -7,24 +7,29 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { Observable } from 'rxjs';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { MaterialCatalogoConPrecio } from '../nucleo/modelos';
 import { aNumero, aTexto } from '../nucleo/numeros';
 import { contiene } from '../nucleo/busqueda';
-import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { confirmar } from '../comun/dialogo-confirmar';
+import { Paginacion } from '../comun/paginacion';
 
 /**
- * Los materiales del catálogo, familia a familia. Solo jefe.
+ * Los materiales del catálogo. Solo jefe.
  *
- * Se elige una familia en el desplegable y salen sus materiales para crear,
- * editar o borrar. Cada uno lleva unidad y tres campos de precio; el total por
- * unidad = precio + precio·extra% + transporte se ve calcularse al teclear,
- * repitiendo la misma cuenta que el servidor (que es el que manda al guardar).
+ * Se ven todos, o los de una familia si se elige en el desplegable ("Todas las
+ * familias" vuelve a todos). El buscador filtra dentro de lo que se ve, y la
+ * lista va por páginas de 20, como los clientes. Cada material lleva unidad y
+ * tres campos de precio; el total por unidad = precio + precio·extra% +
+ * transporte se ve calcularse al teclear, repitiendo la misma cuenta que el
+ * servidor (que es el que manda al guardar).
  *
- * Borrar un material no rompe ningún documento: cada trabajo y albarán guarda
- * su propia copia del nombre, la unidad y el precio.
+ * Para AÑADIR hay que elegir antes la familia. Editar pregunta antes de guardar.
+ * Borrar o editar un material no cambia ningún documento hecho: cada trabajo y
+ * albarán guarda su propia copia del nombre, la unidad y el precio.
  */
 @Component({
   selector: 'app-catalogo-materiales',
@@ -36,6 +41,7 @@ import { DialogoConfirmar } from '../comun/dialogo-confirmar';
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    Paginacion,
   ],
   templateUrl: './catalogo-materiales.html',
   styleUrl: './catalogo-materiales.scss',
@@ -47,31 +53,43 @@ export class CatalogoMateriales implements OnInit {
   readonly maestros = inject(Maestros);
 
   readonly materiales = signal<MaterialCatalogoConPrecio[]>([]);
+  /** El filtro de la lista. null: todas las familias. */
   readonly familiaId = signal<number | null>(null);
   readonly ocupado = signal(false);
 
   /** null: no se edita nada. 0: material nuevo. Otro: el id que se edita. */
   readonly editandoId = signal<number | null>(null);
+  /** La familia del material del formulario: no tiene por qué ser la del filtro. */
+  private familiaDelFormulario: number | null = null;
+  private nombreOriginal = '';
   readonly nombre = signal('');
   readonly unidad = signal('ud');
   readonly precio = signal('');
   readonly extra = signal('');
   readonly transporte = signal('');
 
-  /** Lo escrito en el buscador, que mira en todas las familias a la vez. */
+  // --- Buscar y paginar ---
+  readonly porPagina = POR_PAGINA;
   readonly busqueda = signal('');
-  readonly buscando = computed(() => this.busqueda().trim().length > 0);
+  readonly pagina = signal(0);
 
-  /** Buscando: lo que coincide en cualquier familia. Si no, la familia elegida. */
-  readonly visibles = computed(() =>
-    this.buscando()
-      ? this.materiales().filter((m) => contiene(m.nombre, this.busqueda()))
-      : this.materiales().filter((m) => m.familiaId === this.familiaId()),
+  /** Los de la familia elegida (o de todas) cuyo nombre contiene lo buscado. */
+  readonly visibles = computed(() => {
+    const familia = this.familiaId();
+    return this.materiales().filter(
+      (m) => (familia === null || m.familiaId === familia) && contiene(m.nombre, this.busqueda()),
+    );
+  });
+
+  /** Si al borrar se vacía la última página, se vuelve a la anterior. */
+  readonly paginaActual = computed(() =>
+    Math.min(this.pagina(), Math.max(0, Math.ceil(this.visibles().length / POR_PAGINA) - 1)),
   );
 
-  private readonly familias = computed(
-    () => new Map(this.maestros.familias().map((f) => [f.id, f.nombre])),
-  );
+  readonly deLaPagina = computed(() => {
+    const desde = this.paginaActual() * POR_PAGINA;
+    return this.visibles().slice(desde, desde + POR_PAGINA);
+  });
 
   /** La misma cuenta que MaterialCatalogo.precioTotal() en el servidor. */
   readonly totalEnVivo = computed<number | null>(() => {
@@ -87,24 +105,31 @@ export class CatalogoMateriales implements OnInit {
     this.cargar();
   }
 
-  elegirFamilia(id: number): void {
+  /** Cada familia o búsqueda nueva empieza por la primera página. */
+  elegirFamilia(id: number | null): void {
     this.familiaId.set(id);
+    this.pagina.set(0);
     this.editandoId.set(null);
   }
 
+  buscar(texto: string): void {
+    this.busqueda.set(texto);
+    this.pagina.set(0);
+  }
+
+  /** Se añade en la familia elegida en el filtro. */
   nuevo(): void {
+    this.familiaDelFormulario = this.familiaId();
+    this.nombreOriginal = '';
     this.rellenar(0, '', 'ud', null, 0, 0);
   }
 
-  /** Desde la búsqueda también: se guarda en su familia, sea cual sea la elegida. */
+  /** Se guarda en SU familia, aunque se esté viendo "Todas" u otra búsqueda. */
   editar(material: MaterialCatalogoConPrecio): void {
-    this.familiaId.set(material.familiaId);
+    this.familiaDelFormulario = material.familiaId;
+    this.nombreOriginal = material.nombre;
     this.rellenar(material.id, material.nombre, material.unidad, material.precio,
       material.porcentajeExtra, material.transporte);
-  }
-
-  nombreFamilia(id: number): string {
-    return this.familias().get(id) ?? '';
   }
 
   cancelar(): void {
@@ -112,7 +137,7 @@ export class CatalogoMateriales implements OnInit {
   }
 
   guardar(): void {
-    const familiaId = this.familiaId();
+    const familiaId = this.familiaDelFormulario;
     const editando = this.editandoId();
     if (familiaId === null || editando === null || this.ocupado()) return;
 
@@ -124,10 +149,43 @@ export class CatalogoMateriales implements OnInit {
       porcentajeExtra: aNumero(this.extra()),
       transporte: aNumero(this.transporte()),
     };
-    const peticion = editando === 0
-      ? this.api.crearMaterialCatalogo(datos)
-      : this.api.editarMaterialCatalogo(editando, datos);
+    if (editando === 0) {
+      this.enviar(this.api.crearMaterialCatalogo(datos));
+      return;
+    }
+    confirmar(this.dialogo, {
+      titulo: `¿Guardar los cambios de ${this.nombreOriginal}?`,
+      mensaje:
+        'Los trabajos y albaranes que ya lo llevan no cambian: guardan su propia copia. ' +
+        'Lo nuevo se usará a partir de ahora.',
+      aceptar: 'Guardar',
+    }).then((seguro) => {
+      if (seguro) this.enviar(this.api.editarMaterialCatalogo(editando, datos));
+    });
+  }
 
+  borrar(material: MaterialCatalogoConPrecio): void {
+    confirmar(this.dialogo, {
+      titulo: `¿Borrar ${material.nombre}?`,
+      mensaje:
+        'Desaparece del catálogo y no se podrá elegir en trabajos nuevos. ' +
+        'Los trabajos y albaranes que ya lo llevan no cambian: guardan su propia copia.',
+      aceptar: 'Borrar',
+      peligroso: true,
+    }).then((seguro) => {
+      if (!seguro) return;
+      this.ocupado.set(true);
+      this.api.borrarMaterialCatalogo(material.id).subscribe({
+        next: () => this.despuesDeCambiar('Material borrado'),
+        error: (fallo) => {
+          this.ocupado.set(false);
+          this.avisos.error(fallo, 'No se ha podido borrar el material');
+        },
+      });
+    });
+  }
+
+  private enviar(peticion: Observable<unknown>): void {
     this.ocupado.set(true);
     peticion.subscribe({
       next: () => {
@@ -139,32 +197,6 @@ export class CatalogoMateriales implements OnInit {
         this.avisos.error(fallo, 'No se ha podido guardar el material');
       },
     });
-  }
-
-  borrar(material: MaterialCatalogoConPrecio): void {
-    this.dialogo
-      .open(DialogoConfirmar, {
-        data: {
-          titulo: `¿Borrar ${material.nombre}?`,
-          mensaje:
-            'Desaparece del catálogo y no se podrá elegir en trabajos nuevos. ' +
-            'Los trabajos y albaranes que ya lo llevan no cambian: guardan su propia copia.',
-          aceptar: 'Borrar',
-          peligroso: true,
-        },
-      })
-      .afterClosed()
-      .subscribe((confirmado) => {
-        if (!confirmado) return;
-        this.ocupado.set(true);
-        this.api.borrarMaterialCatalogo(material.id).subscribe({
-          next: () => this.despuesDeCambiar('Material borrado'),
-          error: (fallo) => {
-            this.ocupado.set(false);
-            this.avisos.error(fallo, 'No se ha podido borrar el material');
-          },
-        });
-      });
   }
 
   private cargar(): void {
@@ -200,3 +232,5 @@ export class CatalogoMateriales implements OnInit {
     this.transporte.set(aTexto(transporte));
   }
 }
+
+const POR_PAGINA = 20;

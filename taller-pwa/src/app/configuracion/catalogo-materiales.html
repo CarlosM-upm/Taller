@@ -1,110 +1,126 @@
-<h3>Materiales</h3>
+<h3>Materiales <span class="ligero">({{ materiales().length }})</span></h3>
 
-<!-- Buscar mira en TODAS las familias; sin nada escrito, se ve la familia elegida. -->
-<mat-form-field appearance="outline" class="ancho">
-  <mat-label>Buscar material</mat-label>
-  <mat-icon matPrefix>search</mat-icon>
-  <input matInput name="buscar-material" placeholder="En todas las familias" autocomplete="off" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
-</mat-form-field>
-
-<mat-form-field appearance="outline" class="ancho" [class.oculto]="buscando()">
-  <mat-label>Familia</mat-label>
-  <mat-select [value]="familiaId()" (valueChange)="elegirFamilia($event)" [disabled]="ocupado()">
-    @for (familia of maestros.familias(); track familia.id) {
-      <mat-option [value]="familia.id">{{ familia.nombre }}</mat-option>
+<!-- La familia es opcional: sin ella se ven todas. El buscador filtra dentro de lo que se ve.
+     "Todas" va como 0 y no como null: con null el desplegable se queda en blanco. -->
+<div class="filtros">
+  <mat-form-field appearance="outline" class="crece">
+    <mat-label>Familia</mat-label>
+    <mat-select [value]="familiaId() ?? 0" (valueChange)="elegirFamilia($event || null)" [disabled]="ocupado()">
+      <mat-option [value]="0">Todas las familias</mat-option>
+      @for (familia of maestros.familias(); track familia.id) {
+        <mat-option [value]="familia.id">{{ familia.nombre }}</mat-option>
+      }
+    </mat-select>
+    @if (maestros.familias().length === 0) {
+      <mat-hint>Crea antes una familia, en la tarjeta de arriba.</mat-hint>
     }
-  </mat-select>
-  @if (maestros.familias().length === 0) {
-    <mat-hint>Crea antes una familia, en la tarjeta de arriba.</mat-hint>
-  }
-</mat-form-field>
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="crece">
+    <mat-label>Buscar material</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput name="buscar-material" placeholder="Un trozo del nombre" autocomplete="off" [ngModel]="busqueda()" (ngModelChange)="buscar($event)" />
+  </mat-form-field>
+</div>
 
-@if (buscando() || familiaId() !== null) {
-  @if (visibles().length === 0 && editandoId() === null) {
-    <p class="vacio">
-      @if (buscando()) { Ningún material contiene «{{ busqueda().trim() }}». } @else { Esta familia aún no tiene materiales. }
-    </p>
-  }
-
-  <ul class="lista">
-    @for (material of visibles(); track material.id) {
-      <li>
-        <span class="nombre crece">
-          {{ material.nombre }} <small>({{ material.unidad }})</small>
-          @if (buscando()) {
-            <small class="familia">{{ nombreFamilia(material.familiaId) }}</small>
-          }
-        </span>
-        <span class="precio">
-          @if (material.precioTotal !== null) {
-            {{ material.precioTotal | number: '1.2-2' }} €/{{ material.unidad }}
-          } @else {
-            <small>sin precio</small>
-          }
-        </span>
-        <button matIconButton [attr.aria-label]="'Editar ' + material.nombre" [disabled]="ocupado()" (click)="editar(material)">
-          <mat-icon>edit</mat-icon>
-        </button>
-        <button matIconButton [attr.aria-label]="'Borrar ' + material.nombre" [disabled]="ocupado()" (click)="borrar(material)">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </li>
+@if (materiales().length === 0) {
+  <p class="vacio">El catálogo está vacío.</p>
+} @else if (visibles().length === 0 && editandoId() === null) {
+  <p class="vacio">
+    @if (busqueda().trim()) {
+      Ningún material contiene «{{ busqueda().trim() }}»{{ familiaId() !== null ? ' en esta familia' : '' }}.
+    } @else {
+      Esta familia aún no tiene materiales.
     }
-  </ul>
+  </p>
+}
 
-  @if (editandoId() === null) {
-    @if (!buscando()) {
-      <button matButton (click)="nuevo()" [disabled]="ocupado()">
-        <mat-icon>add</mat-icon> Nuevo material
+<ul class="lista">
+  @for (material of deLaPagina(); track material.id) {
+    <li>
+      <span class="nombre crece">
+        {{ material.nombre }} <small>({{ material.unidad }})</small>
+        @if (familiaId() === null) {
+          <small class="familia">{{ material.familia }}</small>
+        }
+      </span>
+      <span class="precio">
+        @if (material.precioTotal !== null) {
+          {{ material.precioTotal | number: '1.2-2' }} €/{{ material.unidad }}
+        } @else {
+          <small>sin precio</small>
+        }
+      </span>
+      <button matIconButton [attr.aria-label]="'Editar ' + material.nombre" [disabled]="ocupado()" (click)="editar(material)">
+        <mat-icon>edit</mat-icon>
       </button>
-    }
-  } @else {
-    <form class="formulario" (ngSubmit)="guardar()">
-      <h4>{{ editandoId() === 0 ? 'Nuevo material' : 'Editar material' }}</h4>
-
-      <div class="fila">
-        <mat-form-field appearance="outline" class="crece">
-          <mat-label>Nombre</mat-label>
-          <input matInput name="nombre" [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" [disabled]="ocupado()" />
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="corto">
-          <mat-label>Unidad</mat-label>
-          <input matInput name="unidad" placeholder="m, ud, kg" [ngModel]="unidad()" (ngModelChange)="unidad.set($event)" [disabled]="ocupado()" />
-        </mat-form-field>
-      </div>
-
-      <!-- type="text" con inputmode="decimal", no type="number": es la regla
-           de los campos numéricos de este proyecto, y deja teclear con coma. -->
-      <div class="fila">
-        <mat-form-field appearance="outline" class="crece">
-          <mat-label>Precio del material</mat-label>
-          <input matInput name="precio" type="text" inputmode="decimal" [ngModel]="precio()" (ngModelChange)="precio.set($event)" [disabled]="ocupado()" />
-          <span matTextSuffix>€</span>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="crece">
-          <mat-label>Extra sobre el material</mat-label>
-          <input matInput name="porcentajeExtra" type="text" inputmode="decimal" [ngModel]="extra()" (ngModelChange)="extra.set($event)" [disabled]="ocupado()" />
-          <span matTextSuffix>%</span>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="crece">
-          <mat-label>Transporte</mat-label>
-          <input matInput name="transporte" type="text" inputmode="decimal" [ngModel]="transporte()" (ngModelChange)="transporte.set($event)" [disabled]="ocupado()" />
-          <span matTextSuffix>€</span>
-        </mat-form-field>
-      </div>
-
-      <div class="total">
-        <span>Precio total por {{ unidad() || 'unidad' }}</span>
-        <strong>
-          @if (totalEnVivo() !== null) { {{ totalEnVivo() | number: '1.2-2' }} € } @else { — }
-        </strong>
-      </div>
-      <p class="formula">precio + precio × extra % + transporte</p>
-
-      <div class="acciones">
-        <button matButton type="button" (click)="cancelar()" [disabled]="ocupado()">Cancelar</button>
-        <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar material</button>
-      </div>
-    </form>
+      <button matIconButton [attr.aria-label]="'Borrar ' + material.nombre" [disabled]="ocupado()" (click)="borrar(material)">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </li>
   }
+</ul>
+
+<app-paginacion
+  [total]="visibles().length"
+  [porPagina]="porPagina"
+  [pagina]="paginaActual()"
+  (paginaChange)="pagina.set($event)"
+/>
+
+@if (editandoId() === null) {
+  @if (familiaId() !== null) {
+    <button matButton (click)="nuevo()" [disabled]="ocupado()">
+      <mat-icon>add</mat-icon> Nuevo material
+    </button>
+  } @else if (maestros.familias().length > 0) {
+    <p class="vacio">Para añadir un material, elige antes su familia.</p>
+  }
+} @else {
+  <form class="formulario" (ngSubmit)="guardar()">
+    <h4>{{ editandoId() === 0 ? 'Nuevo material' : 'Editar material' }}</h4>
+
+    <div class="fila">
+      <mat-form-field appearance="outline" class="crece">
+        <mat-label>Nombre</mat-label>
+        <input matInput name="nombre" [ngModel]="nombre()" (ngModelChange)="nombre.set($event)" [disabled]="ocupado()" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="corto">
+        <mat-label>Unidad</mat-label>
+        <input matInput name="unidad" placeholder="m, ud, kg" [ngModel]="unidad()" (ngModelChange)="unidad.set($event)" [disabled]="ocupado()" />
+      </mat-form-field>
+    </div>
+
+    <!-- type="text" con inputmode="decimal", no type="number": es la regla
+         de los campos numéricos de este proyecto, y deja teclear con coma. -->
+    <div class="fila">
+      <mat-form-field appearance="outline" class="crece">
+        <mat-label>Precio del material</mat-label>
+        <input matInput name="precio" type="text" inputmode="decimal" [ngModel]="precio()" (ngModelChange)="precio.set($event)" [disabled]="ocupado()" />
+        <span matTextSuffix>€</span>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="crece">
+        <mat-label>Extra sobre el material</mat-label>
+        <input matInput name="porcentajeExtra" type="text" inputmode="decimal" [ngModel]="extra()" (ngModelChange)="extra.set($event)" [disabled]="ocupado()" />
+        <span matTextSuffix>%</span>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="crece">
+        <mat-label>Transporte</mat-label>
+        <input matInput name="transporte" type="text" inputmode="decimal" [ngModel]="transporte()" (ngModelChange)="transporte.set($event)" [disabled]="ocupado()" />
+        <span matTextSuffix>€</span>
+      </mat-form-field>
+    </div>
+
+    <div class="total">
+      <span>Precio total por {{ unidad() || 'unidad' }}</span>
+      <strong>
+        @if (totalEnVivo() !== null) { {{ totalEnVivo() | number: '1.2-2' }} € } @else { — }
+      </strong>
+    </div>
+    <p class="formula">precio + precio × extra % + transporte</p>
+
+    <div class="acciones">
+      <button matButton type="button" (click)="cancelar()" [disabled]="ocupado()">Cancelar</button>
+      <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar material</button>
+    </div>
+  </form>
 }

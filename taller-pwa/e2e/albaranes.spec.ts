@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { vigilarErrores, imagenCargada, borrarYConfirmar, descargarPdf, elegir, primerMaterial, entrar, pestanaDeAjustes, sesionLimpia } from './comun/ayudantes';
+import { vigilarErrores, imagenCargada, borrarYConfirmar, descargarPdf, elegir, primerMaterial, entrar, responderDialogo, sesionLimpia } from './comun/ayudantes';
 import { CUENTAS, dniDePrueba, anadirEnAjustes, crearMaestrosDePrueba } from './comun/datos-de-prueba';
 
 /** Albaranes: generación, unificación, precios, numeración, PDF y firma. */
@@ -50,6 +50,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   await page.getByLabel(`Editar ${cliente}`).click();
   await page.locator('input[name^="editar-dni-"]').fill(dniCorregido);
   await page.getByLabel('Guardar el cliente').click();
+  await responderDialogo(page, 'Guardar');
   await expect(page.getByText(dniCorregido, { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.goto(urlAlbaran);
   await expect(page.getByText(dniCorregido)).toBeVisible({ timeout: 15_000 });
@@ -191,7 +192,6 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
   await entrar(page, CUENTAS.jefe);
   await page.getByRole('link', { name: 'Ajustes' }).click();
   await expect(page).toHaveURL(/\/configuracion$/);
-  await pestanaDeAjustes(page, 'Otros');
 
   // Se lee el valor actual para poder dejarlo como estaba al terminar.
   const campo = page.getByLabel('Próximo número');
@@ -200,6 +200,7 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
 
   await campo.fill('777');
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await responderDialogo(page, 'Cambiar');
   await expect(page.getByText('El próximo albarán llevará el número 777')).toBeVisible({
     timeout: 15_000,
   });
@@ -208,6 +209,7 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
   // Restaurar: esta prueba no debe alterar la numeración real del taller.
   await campo.fill(original);
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await responderDialogo(page, 'Cambiar');
   await expect(page.getByText(`El próximo albarán llevará el número ${original}`)).toBeVisible({
     timeout: 15_000,
   });
@@ -294,7 +296,6 @@ test('un albarán admite varios trabajadores', async ({ page }) => {
   // Un segundo trabajador, para poder añadirlo al albarán después.
   const segundo = `PRUEBA-HUMO Segundo ${Date.now()}`;
   await page.getByRole('link', { name: 'Ajustes' }).click();
-  await pestanaDeAjustes(page, 'Trabajadores');
   await anadirEnAjustes(page, 'Añadir trabajador', segundo);
 
   await page.getByRole('link', { name: 'Trabajos' }).click();

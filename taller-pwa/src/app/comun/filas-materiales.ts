@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { Maestros } from '../nucleo/maestros';
 import { MaterialCatalogo, MaterialLinea } from '../nucleo/modelos';
 import { normalizar } from '../nucleo/busqueda';
@@ -18,6 +19,11 @@ interface Fila {
    * opción al elegirla.
    */
   valor: string | number | null;
+  /**
+   * Familia para acotar la lista de esta fila, o null para verlas todas. Solo
+   * filtra lo que se ve: no se guarda ni cambia el material ya elegido.
+   */
+  familiaId: number | null;
   /** Solo para las líneas antiguas sin catálogo, que se enseñan tal cual. */
   nombreAntiguo: string | null;
   unidadAntigua: string | null;
@@ -42,6 +48,8 @@ interface GrupoFamilia {
  *   tildes, que en una tablet nadie pone.
  * Con un catálogo de cientos de materiales, deslizar hasta el que toca con
  * guantes era lento; buscar lo resuelve, y la lista completa sigue ahí.
+ * Delante va un desplegable de familia, opcional: con una elegida, la lista
+ * (y la búsqueda) se queda en esa familia; con "Todas", vuelve el catálogo entero.
  *
  * Solo vale lo que se elige de la lista: si se escribe algo y no se elige, el
  * campo avisa y esa fila no cuenta. El servidor lo exige igual.
@@ -70,12 +78,13 @@ interface GrupoFamilia {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
   ],
   templateUrl: './filas-materiales.html',
   styleUrl: './filas-materiales.scss',
 })
 export class FilasMateriales implements OnInit {
-  private readonly maestros = inject(Maestros);
+  protected readonly maestros = inject(Maestros);
 
   /** Se leen UNA vez, al crear el componente. Ver el comentario de la clase. */
   readonly lineasIniciales = input<MaterialLinea[]>([]);
@@ -105,6 +114,7 @@ export class FilasMateriales implements OnInit {
       iniciales.length > 0
         ? iniciales.map((linea) => ({
             valor: linea.catalogoId ?? null,
+            familiaId: null,
             nombreAntiguo: linea.catalogoId ? null : (linea.nombre ?? ''),
             unidadAntigua: linea.catalogoId ? null : (linea.unidad ?? null),
             cantidad: texto(linea.cantidad),
@@ -140,6 +150,7 @@ export class FilasMateriales implements OnInit {
     const consulta = typeof fila.valor === 'string' ? normalizar(fila.valor.trim()) : '';
     const grupos: GrupoFamilia[] = [];
     for (const material of this.maestros.catalogo()) {
+      if (fila.familiaId !== null && material.familiaId !== fila.familiaId) continue;
       if (consulta && !normalizar(material.nombre).includes(consulta)) continue;
       const ultimo = grupos[grupos.length - 1];
       if (ultimo && ultimo.familia === material.familia) ultimo.materiales.push(material);
@@ -183,6 +194,11 @@ export class FilasMateriales implements OnInit {
     this.actualizar(indice, (fila) => ({ ...fila, valor }));
   }
 
+  /** Solo cambia lo que se ve en la lista: las líneas que se emiten no cambian. */
+  cambiarFamilia(indice: number, familiaId: number | null): void {
+    this.filas.update((filas) => filas.map((fila, i) => (i === indice ? { ...fila, familiaId } : fila)));
+  }
+
   cambiarCantidad(indice: number, valor: string): void {
     this.actualizar(indice, (fila) => ({ ...fila, cantidad: valor }));
   }
@@ -214,7 +230,7 @@ export class FilasMateriales implements OnInit {
 }
 
 function filaVacia(): Fila {
-  return { valor: null, nombreAntiguo: null, unidadAntigua: null, cantidad: '', precio: '' };
+  return { valor: null, familiaId: null, nombreAntiguo: null, unidadAntigua: null, cantidad: '', precio: '' };
 }
 
 /** Del número del servidor al texto del campo, con coma decimal. */

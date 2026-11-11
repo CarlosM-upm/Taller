@@ -116,9 +116,13 @@ export async function elegir(page: Page, etiqueta: string, opcion: string) {
   await expect(page.getByRole('listbox')).toHaveCount(0);
 }
 
-/** Ajustes va por pestañas: Clientes, Trabajadores, Materiales y Otros. */
-export async function pestanaDeAjustes(page: Page, nombre: string) {
-  await page.getByRole('tab', { name: nombre }).click();
+/**
+ * Pulsa un botón del diálogo de confirmación ("Guardar", "Cancelar"…) y espera
+ * a que se cierre. Toda edición de Ajustes pregunta antes de guardar.
+ */
+export async function responderDialogo(page: Page, boton: string) {
+  await page.getByRole('dialog').getByRole('button', { name: boton, exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
 /** Elige el material de la primera fila (del catálogo) y escribe su cantidad. */

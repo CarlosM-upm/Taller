@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import { join } from 'node:path';
-import { elegir, pestanaDeAjustes } from './ayudantes';
+import { elegir } from './ayudantes';
 
 /** Cuentas, ficheros y altas en Ajustes que necesitan las pruebas para crear documentos. */
 
@@ -72,9 +72,7 @@ export async function crearMaestrosDePrueba(page: Page, sufijo: string) {
 
   await page.goto('/configuracion');
   await anadirCliente(page, cliente, dni);
-  await pestanaDeAjustes(page, 'Trabajadores');
   await anadirEnAjustes(page, 'Añadir trabajador', trabajador);
-  await pestanaDeAjustes(page, 'Materiales');
   await anadirEnAjustes(page, 'Añadir familia', familia);
   await crearMaterialEnAjustes(page, familia, material, { precio: '10', extra: '0', transporte: '0' });
 

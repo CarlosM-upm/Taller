@@ -10,7 +10,7 @@ import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { FamiliaMaterial, Trabajador } from '../nucleo/modelos';
-import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { confirmar, DialogoConfirmar } from '../comun/dialogo-confirmar';
 
 type Tipo = 'trabajador' | 'familia';
 type Elemento = Trabajador | FamiliaMaterial;
@@ -82,19 +82,27 @@ export class ListaMaestros {
     this.editandoId.set(null);
   }
 
+  /** Pregunta antes. Renombrar a un trabajador llega a todos sus documentos. */
   guardarNombre(id: number): void {
     const nombre = this.nombreEditado().trim();
     if (!nombre || this.ocupado()) return;
 
-    const peticiones = {
-      trabajador: () => this.api.renombrarTrabajador(id, nombre),
-      familia: () => this.api.renombrarFamiliaMaterial(id, nombre),
-    };
-    this.ejecutar(
-      peticiones[this.tipo()](),
-      this.tipo() === 'familia' ? 'Familia renombrada' : 'Nombre cambiado en todos sus documentos',
-      () => this.editandoId.set(null),
-    );
+    const antes = this.elementos().find((e) => e.id === id)?.nombre ?? nombre;
+    const familia = this.tipo() === 'familia';
+    confirmar(this.dialogo, {
+      titulo: `¿Cambiar «${antes}» por «${nombre}»?`,
+      mensaje: familia
+        ? 'Solo cambia el nombre de la familia: sus materiales siguen dentro igual.'
+        : 'El nombre cambiará en todos sus pedidos, trabajos y albaranes, también en los ya firmados.',
+      aceptar: 'Guardar',
+    }).then((seguro) => {
+      if (!seguro) return;
+      const peticion = familia
+        ? this.api.renombrarFamiliaMaterial(id, nombre)
+        : this.api.renombrarTrabajador(id, nombre);
+      this.ejecutar(peticion, familia ? 'Familia renombrada' : 'Nombre cambiado en todos sus documentos',
+        () => this.editandoId.set(null));
+    });
   }
 
   borrar(elemento: Elemento): void {

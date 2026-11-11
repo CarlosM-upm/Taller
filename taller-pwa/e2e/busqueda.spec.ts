@@ -1,5 +1,5 @@
 import { APIRequestContext, expect, test, request as peticionApi } from '@playwright/test';
-import { vigilarErrores, entrar, pestanaDeAjustes, sesionLimpia } from './comun/ayudantes';
+import { vigilarErrores, elegir, entrar, sesionLimpia } from './comun/ayudantes';
 import { CUENTAS, dniDePrueba } from './comun/datos-de-prueba';
 
 /**
@@ -121,7 +121,6 @@ test('en Ajustes los materiales se buscan en todas las familias', async ({ page 
 
   await entrar(page, CUENTAS.jefe);
   await page.goto('/configuracion');
-  await pestanaDeAjustes(page, 'Materiales');
 
   // "nill" está en Tornillo y en Anilla, que son de familias distintas: salen
   // los dos, cada uno con su familia, sin haber elegido ninguna.
@@ -136,6 +135,103 @@ test('en Ajustes los materiales se buscan en todas las familias', async ({ page 
   await expect(page.getByRole('heading', { name: 'Editar material' })).toBeVisible();
   await expect(page.getByLabel('Nombre', { exact: true })).toHaveValue(anilla);
   await page.getByRole('button', { name: 'Cancelar' }).click();
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+/** Una familia con sus materiales, por la API. Devuelve los ids para borrarlos. */
+async function familiaConMateriales(api: APIRequestContext, h: Record<string, string>,
+                                     familia: string, materiales: string[]) {
+  const f = await (await api.post('/api/familias-material', { headers: h, data: { nombre: familia } })).json();
+  const ids: number[] = [];
+  for (const nombre of materiales) {
+    const m = await (await api.post('/api/catalogo', {
+      headers: h, data: { familiaId: f.id, nombre, unidad: 'ud', precio: 1 },
+    })).json();
+    ids.push(m.id);
+  }
+  return { familiaId: f.id as number, ids };
+}
+
+test('en un trabajo, el material se acota por familia y con "Todas" vuelven todos', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  const marca = Date.now();
+  const tornilleria = `PRUEBA-HUMO Tornillería ${marca}`;
+  const perfiles = `PRUEBA-HUMO Perfiles ${marca}`;
+  const tornillo = `PRUEBA-HUMO Tornillo ${marca}`;
+  const tubo = `PRUEBA-HUMO Tubo ${marca}`;
+  const { api, h } = await apiDeJefe();
+  await familiaConMateriales(api, h, tornilleria, [tornillo]);
+  await familiaConMateriales(api, h, perfiles, [tubo]);
+  await api.dispose();
+
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/trabajos/nuevo');
+  const familia = page.locator('mat-select[data-fila="0"]');
+  const verTodos = page.getByRole('button', { name: 'Ver todos los materiales' }).first();
+
+  // Con una familia elegida, la lista solo enseña las suyas.
+  await familia.click();
+  await page.getByRole('option', { name: perfiles, exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await verTodos.click();
+  await expect(page.getByRole('option', { name: tubo })).toBeVisible();
+  await expect(page.getByRole('option', { name: tornillo })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  // Con "Todas", vuelve el catálogo entero.
+  await familia.click();
+  await page.getByRole('option', { name: 'Todas', exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await verTodos.click();
+  await expect(page.getByRole('option', { name: tornillo })).toBeVisible();
+  await page.getByRole('option', { name: tornillo }).click();
+  await expect(page.locator('input[name="material-nombre-0"]')).toHaveValue(tornillo);
+
+  expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
+});
+
+test('en Ajustes los materiales se ven todos o por familia, y van por páginas', async ({ page }) => {
+  const errores = vigilarErrores(page);
+  const marca = Date.now();
+  const grande = `PRUEBA-HUMO Grande ${marca}`;
+  const pequena = `PRUEBA-HUMO Pequeña ${marca}`;
+  const nombres = Array.from({ length: 22 }, (_, i) => `PRUEBA-HUMO Pieza ${String(i + 1).padStart(2, '0')} ${marca}`);
+  const suelto = `PRUEBA-HUMO Suelto ${marca}`;
+  const { api, h } = await apiDeJefe();
+  const creadas = [
+    await familiaConMateriales(api, h, grande, nombres),
+    await familiaConMateriales(api, h, pequena, [suelto]),
+  ];
+
+  try {
+    await entrar(page, CUENTAS.jefe);
+    await page.goto('/configuracion');
+
+    // Sin familia se ven todas; para añadir hay que elegir una.
+    await expect(page.getByText('Para añadir un material, elige antes su familia.')).toBeVisible();
+    await page.getByLabel('Buscar material').fill(String(marca));
+    await expect(page.getByText('1–20 de 23')).toBeVisible();
+
+    // Con una familia, solo las suyas, y por páginas.
+    await elegir(page, 'Familia', grande);
+    await expect(page.getByText('1–20 de 22')).toBeVisible();
+    await expect(page.getByText(suelto)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Siguiente' }).click();
+    await expect(page.getByText('21–22 de 22')).toBeVisible();
+    await expect(page.getByText(nombres[21])).toBeVisible();
+
+    // "Todas las familias" vuelve a enseñarlas todas, cada una con su familia.
+    await elegir(page, 'Familia', 'Todas las familias');
+    await page.getByLabel('Buscar material').fill(suelto);
+    await expect(page.locator('li', { hasText: suelto })).toContainText(pequena);
+  } finally {
+    for (const { familiaId, ids } of creadas) {
+      for (const id of ids) await api.delete(`/api/catalogo/${id}`, { headers: h });
+      await api.delete(`/api/familias-material/${familiaId}`, { headers: h });
+    }
+    await api.dispose();
+  }
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });

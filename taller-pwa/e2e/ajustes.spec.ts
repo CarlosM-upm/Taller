@@ -1,5 +1,5 @@
 import { expect, test, request as peticionApi } from '@playwright/test';
-import { vigilarErrores, borrarYConfirmar, elegir, entrar, sesionLimpia } from './comun/ayudantes';
+import { vigilarErrores, borrarYConfirmar, elegir, entrar, sesionLimpia, responderDialogo } from './comun/ayudantes';
 import { CUENTAS, dniDePrueba, anadirEnAjustes, anadirClienteSinEsperar, crearMaestrosDePrueba } from './comun/datos-de-prueba';
 
 /** Ajustes: clientes con su DNI, catálogo de materiales y su buscador. */
@@ -34,7 +34,15 @@ test('renombrar un cliente en Ajustes cambia su nombre en los documentos', async
   const nuevoNombre = `${cliente} RENOMBRADO`;
   await page.getByLabel(`Editar ${cliente}`).click();
   await page.locator('input[name^="editar-nombre-"]').fill(nuevoNombre);
+
+  // Pregunta antes de guardar. Con "Cancelar" no cambia nada.
   await page.getByLabel('Guardar el cliente').click();
+  await expect(page.getByRole('dialog')).toContainText('también en los albaranes ya firmados');
+  await responderDialogo(page, 'Cancelar');
+  await expect(page.getByText(nuevoNombre, { exact: true })).toHaveCount(0);
+
+  await page.getByLabel('Guardar el cliente').click();
+  await responderDialogo(page, 'Guardar');
   await expect(page.getByText(nuevoNombre, { exact: true })).toBeVisible({ timeout: 15_000 });
 
   await page.goto(urlPedido);
@@ -92,7 +100,7 @@ test('el catálogo calcula el precio total con extra y transporte', async ({ pag
   const familia = `PRUEBA-HUMO Familia ${sufijo}`;
   const material = `PRUEBA-HUMO Tubo ${sufijo}`;
 
-  await page.goto('/configuracion?seccion=materiales');
+  await page.goto('/configuracion');
   await anadirEnAjustes(page, 'Añadir familia', familia);
 
   await elegir(page, 'Familia', familia);

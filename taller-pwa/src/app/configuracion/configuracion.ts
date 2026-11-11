@@ -1,17 +1,18 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTabsModule } from '@angular/material/tabs';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { Sesion } from '../nucleo/sesion';
+import { confirmar } from '../comun/dialogo-confirmar';
 import { CatalogoMateriales } from './catalogo-materiales';
 import { ListaClientes } from './lista-clientes';
 import { ListaMaestros } from './lista-maestros';
@@ -26,9 +27,6 @@ import { ListaMaestros } from './lista-maestros';
  * llevar a la pantalla de entrada en vez de dejar la aplicación con un token
  * que ya no vale.
  */
-/** Las pestañas, en orden. Es lo que va en la dirección: /configuracion?seccion=materiales */
-const SECCIONES = ['clientes', 'trabajadores', 'materiales', 'otros'];
-
 @Component({
   selector: 'app-configuracion',
   imports: [
@@ -39,7 +37,6 @@ const SECCIONES = ['clientes', 'trabajadores', 'materiales', 'otros'];
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
-    MatTabsModule,
     ListaClientes,
     ListaMaestros,
     CatalogoMateriales,
@@ -50,14 +47,10 @@ const SECCIONES = ['clientes', 'trabajadores', 'materiales', 'otros'];
 export class Configuracion implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
-  private readonly ruta = inject(ActivatedRoute);
   private readonly sesion = inject(Sesion);
   private readonly avisos = inject(Avisos);
+  private readonly dialogo = inject(MatDialog);
   readonly maestros = inject(Maestros);
-
-  /** La pestaña abierta, leída de ?seccion= para que recargar no la cambie. */
-  readonly pestana = signal(Math.max(0, SECCIONES.indexOf(
-    this.ruta.snapshot.queryParamMap.get('seccion') ?? '')));
 
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
@@ -79,14 +72,6 @@ export class Configuracion implements OnInit {
 
   ngOnInit(): void {
     this.maestros.asegurarCargados();
-  }
-
-  cambiarPestana(indice: number): void {
-    this.pestana.set(indice);
-    this.router.navigate([], {
-      queryParams: { seccion: SECCIONES[indice] },
-      replaceUrl: true,
-    });
   }
 
   cargarContador(): void {
@@ -113,9 +98,18 @@ export class Configuracion implements OnInit {
       return;
     }
 
-    this.ocupado.set(true);
     this.errorNumero.set(null);
+    confirmar(this.dialogo, {
+      titulo: `¿El próximo albarán será el nº ${numero}?`,
+      mensaje: 'Cámbialo solo para reencauzar la serie. Si ese número ya lo tiene otro albarán, al generarlo avisará.',
+      aceptar: 'Cambiar',
+    }).then((seguro) => {
+      if (seguro) this.enviarContador(numero);
+    });
+  }
 
+  private enviarContador(numero: number): void {
+    this.ocupado.set(true);
     this.api.cambiarProximoNumeroAlbaran(numero).subscribe({
       next: ({ proximoNumeroAlbaran }) => {
         this.numeroGuardado.set(proximoNumeroAlbaran);
@@ -150,9 +144,18 @@ export class Configuracion implements OnInit {
       return;
     }
 
-    this.ocupado.set(true);
     this.errorContrasena.set(null);
+    confirmar(this.dialogo, {
+      titulo: '¿Cambiar la contraseña?',
+      mensaje: 'Se cerrarán todas las sesiones de esta cuenta, también esta: tendrás que volver a entrar con la nueva.',
+      aceptar: 'Cambiar',
+    }).then((seguro) => {
+      if (seguro) this.enviarContrasena(actual, nueva);
+    });
+  }
 
+  private enviarContrasena(actual: string, nueva: string): void {
+    this.ocupado.set(true);
     this.api.cambiarContrasena(actual, nueva).subscribe({
       next: () => {
         this.ocupado.set(false);

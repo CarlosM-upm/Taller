@@ -13,7 +13,7 @@ import { Maestros } from '../nucleo/maestros';
 import { ClienteConDni } from '../nucleo/modelos';
 import { contiene } from '../nucleo/busqueda';
 import { Paginacion } from '../comun/paginacion';
-import { DialogoConfirmar } from '../comun/dialogo-confirmar';
+import { confirmar } from '../comun/dialogo-confirmar';
 
 /**
  * Alta, edición y borrado de clientes, con su DNI. Solo jefe.
@@ -114,6 +114,7 @@ export class ListaClientes implements OnInit {
     this.dniEditado.set(cliente.dni ?? '');
   }
 
+  /** Pregunta antes: el cambio llega a todos sus documentos, también a los albaranes firmados. */
   guardar(id: number): void {
     const nombre = this.nombreEditado().trim();
     const dni = this.dniEditado().trim();
@@ -124,26 +125,31 @@ export class ListaClientes implements OnInit {
       this.avisos.error(null, 'Indica el DNI del cliente');
       return;
     }
-    this.ejecutar(this.api.editarCliente(id, nombre, dni), 'Cliente cambiado en todos sus documentos',
-      () => this.editandoId.set(null));
+    const antes = this.clientes().find((c) => c.id === id)?.nombre ?? nombre;
+    confirmar(this.dialogo, {
+      titulo: `¿Guardar los cambios de ${antes}?`,
+      mensaje:
+        'El nombre y el DNI cambiarán en todos sus pedidos, trabajos y albaranes, ' +
+        'también en los albaranes ya firmados.',
+      aceptar: 'Guardar',
+    }).then((seguro) => {
+      if (!seguro) return;
+      this.ejecutar(this.api.editarCliente(id, nombre, dni), 'Cliente cambiado en todos sus documentos',
+        () => this.editandoId.set(null));
+    });
   }
 
   borrar(cliente: ClienteConDni): void {
-    this.dialogo
-      .open(DialogoConfirmar, {
-        data: {
-          titulo: `¿Borrar a ${cliente.nombre}?`,
-          mensaje:
-            'Solo se puede borrar si no tiene pedidos, trabajos ni albaranes. ' +
-            'Si los tiene, el servidor lo impedirá y dirá cuántos son.',
-          aceptar: 'Borrar',
-          peligroso: true,
-        },
-      })
-      .afterClosed()
-      .subscribe((confirmado) => {
-        if (confirmado) this.ejecutar(this.api.borrarCliente(cliente.id), 'Cliente borrado');
-      });
+    confirmar(this.dialogo, {
+      titulo: `¿Borrar a ${cliente.nombre}?`,
+      mensaje:
+        'Solo se puede borrar si no tiene pedidos, trabajos ni albaranes. ' +
+        'Si los tiene, el servidor lo impedirá y dirá cuántos son.',
+      aceptar: 'Borrar',
+      peligroso: true,
+    }).then((seguro) => {
+      if (seguro) this.ejecutar(this.api.borrarCliente(cliente.id), 'Cliente borrado');
+    });
   }
 
   private cargar(): void {

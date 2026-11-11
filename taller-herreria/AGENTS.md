@@ -139,9 +139,9 @@ taller-pwa/src/app/
 │                   campos-del-trabajo lee horas y vacíos para el alta y la ficha
 ├── albaranes/       listado, ficha con firma, precios y generación desde uno o
 │                   varios trabajos; coste-en-vivo repite la cuenta del servidor
-└── configuracion/   Ajustes en pestañas (?seccion=clientes|trabajadores|materiales|otros):
-                    clientes con buscador y páginas de 20, trabajadores, familias y
-                    catálogo con buscador, contador de albaranes y contraseña
+└── configuracion/   Ajustes, en una sola página: clientes con buscador y páginas de 20,
+                    trabajadores, familias, catálogo (por familia o todas, con buscador
+                    y páginas de 20), contador de albaranes y contraseña
 ```
 
 Y fuera de los dos proyectos, en la raíz del repositorio:
@@ -290,12 +290,19 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   enseñar el que había. El trabajador sigue con desplegable (`selectorMaestro`): son
   dos, decidido así. La forma de buscar está en `nucleo/busqueda` y la comparten
   clientes, materiales y los buscadores de Ajustes.
-- **Ajustes va por pestañas** (Clientes, Trabajadores, Materiales, Otros), decidido con
-  el taller: con cientos de clientes en una sola página no se llegaba al resto. La
-  pestaña va en la dirección (`?seccion=`) para que recargar no la cambie. La lista de
-  clientes va **por páginas de 20**, con buscador por nombre o DNI (sin puntos ni
-  guiones) y el filtro "Solo los que no tienen DNI". En Materiales, el buscador mira
-  **en todas las familias** a la vez y cada resultado dice su familia.
+- **Ajustes, todo en una página** (se probaron pestañas y el taller prefirió una sola
+  página). Lo que la mantiene manejable es que las listas largas van **por páginas de
+  20** (`comun/paginacion`): clientes, con buscador por nombre o DNI (sin puntos ni
+  guiones) y el filtro "Solo los que no tienen DNI"; y materiales, que se ven **todos o
+  los de una familia** ("Todas las familias" en el desplegable) con un buscador que
+  filtra dentro de lo que se ve. Con "Todas", cada material lleva la etiqueta de su
+  familia, y para AÑADIR hay que elegir antes la familia. El número de páginas crece
+  solo con los datos.
+- **Toda edición en Ajustes pregunta antes de guardar** (decidido con el taller), con
+  `confirmar()` de `comun/dialogo-confirmar` y un mensaje que dice qué afecta: cliente y
+  trabajador cambian en todos sus documentos, también los albaranes firmados; un
+  material o una familia no cambian nada ya hecho; la numeración mueve la serie; la
+  contraseña cierra todas las sesiones. Borrar ya preguntaba. Dar de alta no pregunta.
 - **El DNI no se manda a la tablet**: `GET /api/clientes` lleva solo `tieneDni`, y
   `GET /api/clientes/con-dni` (con el DNI) es del jefe. Mismo criterio que los
   precios del catálogo: dos URLs, y el reparto lo decide `SecurityConfig`.
@@ -331,7 +338,12 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   ("nill" → Tornillo, Anilla), sin distinguir mayúsculas ni tildes ("tuberia" encuentra
   "Tubería"), agrupados por familia. La flecha del campo borra la búsqueda a medias y
   despliega el catálogo entero. Texto escrito sin elegir de la lista **no cuenta** como
-  material (lo avisa debajo del campo): sigue siendo "solo del catálogo".
+  material (lo avisa debajo del campo): sigue siendo "solo del catálogo". Delante de
+  cada línea hay un desplegable de **familia** opcional: con una elegida, la lista y la
+  búsqueda se quedan en ella; con "Todas", vuelve el catálogo entero. Solo filtra lo
+  que se ve: no se guarda. En los dos desplegables de familia, "Todas" va como **0**
+  y no como null: con null, `mat-select` lo trata como "sin elegir" y se queda en
+  blanco (los ids empiezan en 1).
 
 ### Firma del cliente en el trabajo
 
@@ -676,7 +688,7 @@ acabar cada fichero. Una sola área: `npx playwright test albaranes`.
 
 Abren la aplicación en el Chrome instalado (no descargan navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 22
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 24
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -688,16 +700,18 @@ en la obra y heredada por el albarán, y volver a ver los enviados de todos los
 clientes, la búsqueda de materiales por un trozo del nombre, y el DNI del cliente
 (obligatorio, con la letra comprobada, sin repetirse, y corregido en un albarán ya
 hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al azar
-(`dniDePrueba()`) y se crean con `anadirCliente()`. Las tres de `busqueda.spec.ts`
+(`dniDePrueba()`) y se crean con `anadirCliente()`. Las cinco de `busqueda.spec.ts`
 cubren el campo de cliente (buscar sin tildes, salir sin elegir, desplegar), los
-clientes de Ajustes por nombre, por DNI y por páginas, y los materiales de Ajustes en
-todas las familias.
+clientes de Ajustes por nombre, por DNI y por páginas, los materiales de Ajustes en
+todas las familias, el filtro de familia en las líneas de un trabajo, y "Todas las
+familias" con las páginas del catálogo.
 
-Con las pestañas de Ajustes: `pestanaDeAjustes(page, 'Materiales')` para cambiar de
-sección, o `page.goto('/configuracion?seccion=materiales')`. Y para tocar un cliente
-concreto en Ajustes, **buscarlo antes** (`getByLabel('Buscar cliente')`): con más de 20
-puede estar en otra página. La prueba de las páginas crea 22 clientes y los **borra en
-la misma prueba**, no al final, para no empujar a otra página los de las siguientes.
+Para tocar un cliente concreto en Ajustes hay que **buscarlo antes**
+(`getByLabel('Buscar cliente')`): con más de 20 puede estar en otra página. Las pruebas
+de páginas crean más de 20 clientes o materiales y los **borran en la misma prueba**,
+no al final, para no empujar a otra página los de las siguientes. Como toda edición
+de Ajustes pregunta, después de guardar se responde al diálogo con
+`responderDialogo(page, 'Guardar')` (o `'Cancelar'`).
 
 Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
 —ya no se teclean, se eligen— y **los borran al terminar**, en `e2e/limpieza.ts`
@@ -871,10 +885,11 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   en el servidor.
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
-- **Buscar el cliente escribiendo o desplegando** (son ~270), **Ajustes en pestañas**,
-  clientes por páginas de 20 con buscador por nombre o DNI y filtro de "sin DNI", y
-  buscador de materiales en todas las familias. Solo pantalla: el servidor no cambia.
-- Todo verificado contra PostgreSQL real y en Chrome: **22 de 22** en la
+- **Buscar el cliente escribiendo o desplegando** (son ~270); en Ajustes, clientes y
+  materiales por páginas de 20 con buscadores, materiales por familia o todas, filtro
+  de familia en las líneas de material, y confirmación en toda edición. Solo pantalla:
+  el servidor no cambia.
+- Todo verificado contra PostgreSQL real y en Chrome: **24 de 24** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente
