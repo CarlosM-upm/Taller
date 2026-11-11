@@ -703,6 +703,26 @@ estilo a algo en un componente, mira si ya existe aquí:
   material detrás (`m`, `kg`, `ud` si no tiene).
 - **Ajustes** tiene un índice pegado arriba (`.indice`, sticky) que salta a cada
   tarjeta por su `id="seccion-…"`, y 12px entre tarjetas, como el resto de pantallas.
+- **Avisos y errores de debajo de un campo**: todo `mat-form-field` que muestre un
+  `mat-hint` o un `mat-error` lleva 12px más por debajo (regla con `:has()` en
+  `styles.scss`). Material reserva una franja estrecha para ese texto, el aviso la
+  llena y la etiqueta del campo siguiente se le quedaba pegada. No hace falta nada
+  en cada campo nuevo.
+- **Ejemplos dentro de un campo** (`placeholder`): con **"p. ej."** delante cuando son
+  un valor de ejemplo ("p. ej. 2,5"), y todo placeholder va en cursiva. Con "2,5" a
+  secas, al pulsar en Horas parecía que ya estaban puestas.
+- **Texto secundario**: `.ligero` (contadores, frases como "no tiene fotos") y `small`
+  (DNI o unidad junto a un nombre) son globales, en `--mat-sys-on-surface-variant`
+  (8,5:1). **No bajes el contraste con `opacity`**: el texto normal al 60% se queda en
+  4,4:1, por debajo del mínimo de 4,5.
+- **Contraste y tamaños, medidos** (WCAG 2.2 AA con axe-core, más medidas propias de
+  objetivos táctiles y de bordes e iconos): sin fallos. Todo lo pulsable mide 48px o
+  más contando la zona táctil invisible de Material (los botones de icono se ven de
+  40 pero tocan en 48); los filtros de Trabajos llevan `button-toggle-overrides`
+  porque Material los deja en 40. Los botones de icono sobre la barra verde llevan
+  `icon-button-overrides` en blanco: el gris de Material no hereda el color de la
+  barra y se quedaba en 1,2:1. El verde de los botones de texto (5-5,9:1) se deja así
+  a propósito: cumple AA y es el verde del logo.
 
 ### Detalles del entorno que hacen perder tiempo
 
@@ -727,7 +747,7 @@ acabar cada fichero. Una sola área: `npx playwright test albaranes`.
 
 Abren la aplicación en el Chrome instalado (no descargan navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 26
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 30
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -741,7 +761,10 @@ clientes, la búsqueda de materiales por un trozo del nombre, y el DNI del clien
 hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al azar
 (`dniDePrueba()`) y se crean con `anadirCliente()`. Las dos últimas de `sesion.spec.ts`
 comprueban que el texto de un botón de solo icono sale al pasar el ratón y que en la
-tablet (Android táctil emulado) no sale ni con una pulsación larga. Las cinco de `busqueda.spec.ts`
+tablet (Android táctil emulado) no sale ni con una pulsación larga. Otras cuatro
+miran el aspecto donde un descuido lo rompería sin dar error: el icono de la cuenta en
+blanco (`sesion`), el aire bajo un aviso y el gris y tamaño del DNI (`ajustes`), los
+filtros de Trabajos a 48px y el "p. ej." en cursiva (`trabajos`). Las cinco de `busqueda.spec.ts`
 cubren el campo de cliente (buscar sin tildes, salir sin elegir, desplegar), los
 clientes de Ajustes por nombre, por DNI y por páginas, los materiales de Ajustes en
 todas las familias, el filtro de familia en las líneas de un trabajo, y "Todas las
@@ -935,7 +958,12 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   estado comunes, píldora en la barra de abajo, listas vacías con icono y qué hacer,
   índice fijo en Ajustes, textos al pasar el ratón por los botones de solo icono, y
   títulos y separaciones iguales en todas las pantallas. Solo pantalla.
-- Todo verificado contra PostgreSQL real y en Chrome: **26 de 26** en la
+- **Revisión de accesibilidad** (contraste WCAG AA, objetivos de 48px, etiquetas) en
+  21 pantallas y estados, y lo que encontró, arreglado en cinco commits: aire bajo los
+  avisos de los campos, icono de la cuenta en blanco, filtros de Trabajos a 48px,
+  ejemplos de los campos con "p. ej." y en cursiva, y texto secundario en un gris
+  común más oscuro. También las horas con coma en la ficha del trabajo.
+- Todo verificado contra PostgreSQL real y en Chrome: **30 de 30** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente
