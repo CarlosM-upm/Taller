@@ -85,6 +85,14 @@ test('el DNI del cliente es obligatorio, se comprueba y no se repite', async ({ 
   await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(dni, { exact: true })).toBeVisible();
 
+  // El DNI de la lista, en el gris oscuro de Material para textos secundarios
+  // (8,5:1) y a 13px: con el gris claro de antes (5,1:1 y 11,7px) era lo que
+  // peor se leía al sol.
+  const dniEnLista = page.getByText(dni, { exact: true });
+  await expect(dniEnLista).toHaveCSS('font-size', '13px');
+  await expect(dniEnLista).toHaveCSS('opacity', '1');
+  await expect(dniEnLista).toHaveCSS('color', 'rgb(65, 73, 62)');
+
   // Otro cliente con el mismo DNI: es el mismo dado de alta dos veces.
   await anadirClienteSinEsperar(page, `${nombre} OTRO`, dni);
   await expect(page.getByText(/ya es del cliente/)).toBeVisible({ timeout: 10_000 });

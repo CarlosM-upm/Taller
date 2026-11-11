@@ -16,11 +16,9 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 .precio { white-space: nowrap; padding: 0 4px; }
-small { opacity: 0.65; }
 .nombre .chip { margin-left: 8px; }
 .vacio { opacity: 0.7; }
 .anadir { margin-bottom: 8px; }
-.ligero { font-weight: 400; opacity: 0.65; }
 .filtros { display: flex; flex-wrap: wrap; gap: 0 12px; }
 .filtros mat-form-field { width: auto; }
 .filtros .crece { flex: 1 1 220px; }
@@ -39,5 +37,5 @@ small { opacity: 0.65; }
   border-top: 2px solid rgba(0, 0, 0, 0.25);
   font-size: 17px;
 }
-.formula { margin: 2px 0 8px; font-size: 12px; opacity: 0.6; }
+.formula { margin: 2px 0 8px; font-size: 12px; color: var(--mat-sys-on-surface-variant); }
 .acciones { display: flex; justify-content: flex-end; gap: 8px; }

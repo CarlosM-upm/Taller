@@ -190,6 +190,23 @@ h3 {
   margin-bottom: 12px;
 }
 
+/* Texto secundario, en el gris oscuro de Material para eso (8,5:1 sobre el
+   fondo). Antes estaba copiado en nueve pantallas, y en Ajustes con un gris más
+   claro (5,1:1) que al sol era lo que peor se leía.
+     .ligero  contadores como "(48)" o "(3 de 15)" y frases como "Este trabajo
+              no tiene fotos"
+     small    datos pequeños junto a un nombre: el DNI, la unidad "(m)" */
+.ligero {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+small {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 13px;
+}
+
 /* El texto de dentro de un campo vacío (ejemplos como "p. ej. 2,5" o
    indicaciones como "Busca o despliega") va en cursiva: así no se confunde con
    un dato ya escrito. Con "2,5" a secas, las horas parecían puestas. */

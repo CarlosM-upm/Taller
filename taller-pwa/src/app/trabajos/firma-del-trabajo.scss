@@ -3,12 +3,6 @@
   margin-top: 12px;
 }
 
-.ligero {
-  font-weight: 400;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.9rem;
-}
-
 // Fondo blanco explícito: la firma es un PNG con fondo blanco, y sobre un
 // tema oscuro sin recuadro quedaría flotando de forma extraña.
 .firma {
