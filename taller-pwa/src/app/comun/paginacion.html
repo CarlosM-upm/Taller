@@ -1,0 +1,13 @@
+@if (total() > porPagina()) {
+  <nav class="paginacion" aria-label="Páginas">
+    <button matButton type="button" [disabled]="pagina() === 0" (click)="paginaChange.emit(pagina() - 1)">
+      <mat-icon>chevron_left</mat-icon>
+      Anterior
+    </button>
+    <span class="rango">{{ desde() }}–{{ hasta() }} de {{ total() }}</span>
+    <button matButton type="button" [disabled]="hasta() >= total()" (click)="paginaChange.emit(pagina() + 1)">
+      Siguiente
+      <mat-icon iconPositionEnd>chevron_right</mat-icon>
+    </button>
+  </nav>
+}

@@ -1,0 +1,52 @@
+<mat-form-field appearance="outline">
+  <mat-label>{{ etiqueta() }}</mat-label>
+  <input
+    matInput
+    type="text"
+    autocomplete="off"
+    [placeholder]="opcionTodos() ?? 'Escribe o despliega'"
+    [matAutocomplete]="lista"
+    #disparador="matAutocompleteTrigger"
+    [value]="texto()"
+    (input)="texto.set($any($event.target).value)"
+    [disabled]="deshabilitado()"
+  />
+  <button
+    matIconButton
+    matSuffix
+    type="button"
+    aria-label="Ver todos los clientes"
+    [disabled]="deshabilitado()"
+    (click)="verTodos(disparador, $event)"
+  >
+    <mat-icon>arrow_drop_down</mat-icon>
+  </button>
+
+  <mat-autocomplete
+    #lista="matAutocomplete"
+    [displayWith]="nombreDe"
+    (optionSelected)="elegir($event.option.value)"
+    (closed)="alCerrar()"
+  >
+    @if (opcionTodos(); as todos) {
+      <mat-option [value]="null">{{ todos }}</mat-option>
+    }
+    @for (cliente of visibles(); track cliente.id) {
+      @if (bloqueado(cliente)) {
+        <mat-option [value]="cliente.id" disabled>{{ cliente.nombre }} (falta el DNI)</mat-option>
+      } @else {
+        <mat-option [value]="cliente.id">{{ cliente.nombre }}</mat-option>
+      }
+    } @empty {
+      @if (opciones().length > 0) {
+        <mat-option disabled>Ningún cliente contiene «{{ texto() }}»</mat-option>
+      }
+    }
+  </mat-autocomplete>
+
+  @if (opciones().length === 0) {
+    <mat-hint>No hay ninguno dado de alta. Se añaden en Ajustes.</mat-hint>
+  } @else if (soloConDni() && hayAlgunoSinDni()) {
+    <mat-hint>Los clientes sin DNI no se pueden elegir: se les pone en Ajustes.</mat-hint>
+  }
+</mat-form-field>

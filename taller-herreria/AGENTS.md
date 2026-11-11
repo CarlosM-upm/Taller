@@ -124,8 +124,10 @@ taller-pwa/src/app/
 ├── nucleo/          sesión, API, interceptores, guardias, fotos, descargas,
 │                   borrador local, maestros (clientes y trabajadores en caché) y
 │                   numeros (aNumero/aTexto/redondear: los números se teclean con coma)
+│                   y busqueda (normalizar/contiene: cómo se busca en toda la app)
 ├── comun/           fotos, galería, confirmaciones, lienzo de firma, appSrcSeguro,
-│                   selectorMaestro (desplegable), filasMateriales (líneas con "+"),
+│                   selectorCliente (buscar o desplegar), selectorMaestro (desplegable
+│                   del trabajador), paginacion, filasMateriales (líneas con "+"),
 │                   tarjetaFotos (la tarjeta de fotos de las tres fichas) y la función
 │                   confirmar() de dialogo-confirmar
 ├── armazon/         barra superior, aviso de sin red y navegación según el rol
@@ -133,10 +135,13 @@ taller-pwa/src/app/
 ├── pedidos/         listado, alta y ficha
 ├── trabajos/        listado con filtro por estado y cliente, selección múltiple
 │                   para unificar, alta a medias y ficha con envío; la ficha delega en
-│                   firma-del-trabajo, albaran-del-trabajo y para-enviar (qué falta)
+│                   firma-del-trabajo, albaran-del-trabajo y para-enviar (qué falta);
+│                   campos-del-trabajo lee horas y vacíos para el alta y la ficha
 ├── albaranes/       listado, ficha con firma, precios y generación desde uno o
 │                   varios trabajos; coste-en-vivo repite la cuenta del servidor
-└── configuracion/   clientes, trabajadores, contador de albaranes y contraseña
+└── configuracion/   Ajustes en pestañas (?seccion=clientes|trabajadores|materiales|otros):
+                    clientes con buscador y páginas de 20, trabajadores, familias y
+                    catálogo con buscador, contador de albaranes y contraseña
 ```
 
 Y fuera de los dos proyectos, en la raíz del repositorio:
@@ -275,8 +280,22 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   no se puede ELEGIR** en un pedido, trabajo o albarán (`ClienteService.paraElegir`,
   400), salvo que el documento ya lo tuviera: los formularios mandan el cliente
   aunque no cambie, y no se debe bloquear la edición de lo antiguo. En la PWA sale
-  en gris con "(falta el DNI)" (`soloConDni` en `selectorMaestro`, solo en
+  en gris con "(falta el DNI)" (`soloConDni` en `selectorCliente`, solo en
   formularios; los filtros lo muestran normal) y en Ajustes con "Falta el DNI".
+- **Elegir un cliente = buscar o desplegar**, en el mismo campo (`comun/selector-cliente`,
+  un `mat-autocomplete`): con ~270 clientes, deslizar no basta. Igual que el material:
+  lo escrito tiene que estar **contenido** en el nombre, sin mayúsculas ni tildes
+  ("perez" encuentra "Pérez"), y la flecha despliega la lista entera. El valor solo
+  cambia al **tocar** un cliente; si se escribe y se sale sin elegir, el campo vuelve a
+  enseñar el que había. El trabajador sigue con desplegable (`selectorMaestro`): son
+  dos, decidido así. La forma de buscar está en `nucleo/busqueda` y la comparten
+  clientes, materiales y los buscadores de Ajustes.
+- **Ajustes va por pestañas** (Clientes, Trabajadores, Materiales, Otros), decidido con
+  el taller: con cientos de clientes en una sola página no se llegaba al resto. La
+  pestaña va en la dirección (`?seccion=`) para que recargar no la cambie. La lista de
+  clientes va **por páginas de 20**, con buscador por nombre o DNI (sin puntos ni
+  guiones) y el filtro "Solo los que no tienen DNI". En Materiales, el buscador mira
+  **en todas las familias** a la vez y cada resultado dice su familia.
 - **El DNI no se manda a la tablet**: `GET /api/clientes` lleva solo `tieneDni`, y
   `GET /api/clientes/con-dni` (con el DNI) es del jefe. Mismo criterio que los
   precios del catálogo: dos URLs, y el reparto lo decide `SecurityConfig`.
@@ -570,7 +589,7 @@ igual que abrir un favorito o reabrir la PWA instalada.
   ("(sin asignar)") y era mentira: el PATCH interpreta un id nulo como "no toques
   este campo", así que elegirla no vaciaba nada.
   **En un FILTRO sí hace falta**, y significa otra cosa: "todos". Para eso está
-  `opcionTodos` en `selectorMaestro`, que solo debe usarse en filtros. Al quitar la
+  `opcionTodos` en `selectorCliente`, que solo debe usarse en filtros. Al quitar la
   opción de los formularios se perdió también en el filtro de Enviados y no había
   forma de volver a ver los trabajos de todos los clientes.
 - **Los colores salen del logotipo.** `src/_theme-colors.scss` se generó con
@@ -650,14 +669,14 @@ npm run humo        # en taller-pwa, con la API arrancada en el 8080
 ```
 
 Las pruebas están en `e2e/`, repartidas por área: `sesion`, `pedidos`, `trabajos`,
-`albaranes` y `ajustes` (`.spec.ts`), con los ayudantes comunes en `e2e/comun/`
+`albaranes`, `ajustes` y `busqueda` (`.spec.ts`), con los ayudantes comunes en `e2e/comun/`
 (`ayudantes.ts` y `datos-de-prueba.ts`) y la limpieza en `e2e/limpieza.ts`, que es el
 `globalTeardown` de `playwright.config.ts`: se ejecuta **una sola vez al final**, no al
 acabar cada fichero. Una sola área: `npx playwright test albaranes`.
 
 Abren la aplicación en el Chrome instalado (no descargan navegadores),
 entra, recorre las pantallas creando y borrando sus propios datos, y **falla si aparece
-cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 19
+cualquier error en la consola del navegador o cualquier excepción sin capturar**. Son 22
 comprobaciones: permisos por rol, pedidos, trabajos, el circuito completo hasta la firma
 del albarán, subida y descarga de fotos, el contador de albaranes, la descarga de los
 tres PDF (mirando que los primeros bytes sean `%PDF-`, porque un cuerpo de error
@@ -669,7 +688,16 @@ en la obra y heredada por el albarán, y volver a ver los enviados de todos los
 clientes, la búsqueda de materiales por un trozo del nombre, y el DNI del cliente
 (obligatorio, con la letra comprobada, sin repetirse, y corregido en un albarán ya
 hecho al cambiarlo en Ajustes). Los clientes de prueba llevan un DNI válido al azar
-(`dniDePrueba()`) y se crean con `anadirCliente()`.
+(`dniDePrueba()`) y se crean con `anadirCliente()`. Las tres de `busqueda.spec.ts`
+cubren el campo de cliente (buscar sin tildes, salir sin elegir, desplegar), los
+clientes de Ajustes por nombre, por DNI y por páginas, y los materiales de Ajustes en
+todas las familias.
+
+Con las pestañas de Ajustes: `pestanaDeAjustes(page, 'Materiales')` para cambiar de
+sección, o `page.goto('/configuracion?seccion=materiales')`. Y para tocar un cliente
+concreto en Ajustes, **buscarlo antes** (`getByLabel('Buscar cliente')`): con más de 20
+puede estar en otra página. La prueba de las páginas crea 22 clientes y los **borra en
+la misma prueba**, no al final, para no empujar a otra página los de las siguientes.
 
 Las pruebas dan de alta sus propios clientes, trabajadores, familias y materiales
 —ya no se teclean, se eligen— y **los borran al terminar**, en `e2e/limpieza.ts`
@@ -843,7 +871,10 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   en el servidor.
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
-- Todo verificado contra PostgreSQL real y en Chrome: **19 de 19** en la
+- **Buscar el cliente escribiendo o desplegando** (son ~270), **Ajustes en pestañas**,
+  clientes por páginas de 20 con buscador por nombre o DNI y filtro de "sin DNI", y
+  buscador de materiales en todas las familias. Solo pantalla: el servidor no cambia.
+- Todo verificado contra PostgreSQL real y en Chrome: **22 de 22** en la
   comprobación de humo, y los PDF y las pantallas nuevas mirados uno a uno.
 
 ### Pendiente

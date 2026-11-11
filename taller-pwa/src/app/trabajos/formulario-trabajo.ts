@@ -13,6 +13,8 @@ import { Maestros } from '../nucleo/maestros';
 import { MaterialLinea, TrabajoDatos } from '../nucleo/modelos';
 import { FilasMateriales } from '../comun/filas-materiales';
 import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
+import { aHoras, vacioONulo } from './campos-del-trabajo';
 
 /**
  * Empezar un trabajo.
@@ -38,6 +40,7 @@ import { SelectorMaestro } from '../comun/selector-maestro';
     MatProgressBarModule,
     FilasMateriales,
     SelectorMaestro,
+    SelectorCliente,
   ],
   templateUrl: './formulario-trabajo.html',
   styleUrl: './formulario-trabajo.scss',
@@ -64,7 +67,7 @@ export class FormularioTrabajo implements OnInit {
   guardar(): void {
     if (this.guardando()) return;
 
-    const horas = this.horasComoNumero();
+    const horas = aHoras(this.horas());
     if (horas === 'invalido') {
       this.errorHoras.set('Escribe un número de horas mayor que cero');
       return;
@@ -73,7 +76,7 @@ export class FormularioTrabajo implements OnInit {
     const datos: TrabajoDatos = {
       clienteId: this.clienteId(),
       trabajadorId: this.trabajadorId(),
-      descripcion: this.vacioONulo(this.descripcion()),
+      descripcion: vacioONulo(this.descripcion()),
       materiales: this.materiales(),
       horas,
     };
@@ -91,22 +94,5 @@ export class FormularioTrabajo implements OnInit {
         this.avisos.error(fallo, 'No se ha podido empezar el trabajo');
       },
     });
-  }
-
-  /** Un campo en blanco viaja como null, no como cadena vacía. */
-  private vacioONulo(valor: string): string | null {
-    const limpio = valor.trim();
-    return limpio.length > 0 ? limpio : null;
-  }
-
-  private horasComoNumero(): number | null | 'invalido' {
-    const texto = this.horas().trim().replace(',', '.');
-    if (texto.length === 0) return null;
-
-    const numero = Number(texto);
-    if (!Number.isFinite(numero) || numero <= 0) return 'invalido';
-    // El backend guarda 2 decimales; redondear aquí evita que se rechace algo
-    // como 1.333 después de haberlo tecleado.
-    return Math.round(numero * 100) / 100;
   }
 }

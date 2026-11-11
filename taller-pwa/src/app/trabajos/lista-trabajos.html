@@ -29,7 +29,7 @@
   <!-- Filtrar por cliente es lo que permite juntar sus trabajos en un albarán
        único: hasta no elegir uno no se puede seleccionar nada. -->
   @if (filtro() === 'ENVIADO' && sesion.esJefe()) {
-    <app-selector-maestro
+    <app-selector-cliente
       etiqueta="Filtrar por cliente"
       opcionTodos="Todos los clientes"
       [opciones]="maestros.clientes()"

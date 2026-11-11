@@ -22,7 +22,7 @@ import { confirmar } from '../comun/dialogo-confirmar';
 import { FilasMateriales } from '../comun/filas-materiales';
 import { LienzoFirma } from '../comun/lienzo-firma';
 import { TarjetaFotos } from '../comun/tarjeta-fotos';
-import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
 import { SrcSeguro } from '../comun/src-seguro';
 
 /**
@@ -59,7 +59,7 @@ const MAX_FOTOS = 15;
     MatCheckboxModule,
     MatSelectModule,
     TarjetaFotos,
-    SelectorMaestro,
+    SelectorCliente,
     SrcSeguro,
   ],
   templateUrl: './detalle-albaran.html',

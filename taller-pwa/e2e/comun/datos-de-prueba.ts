@@ -1,6 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import { join } from 'node:path';
-import { elegir } from './ayudantes';
+import { elegir, pestanaDeAjustes } from './ayudantes';
 
 /** Cuentas, ficheros y altas en Ajustes que necesitan las pruebas para crear documentos. */
 
@@ -43,6 +43,8 @@ export async function anadirCliente(page: Page, nombre: string, dni: string) {
   const campoDni = page.locator('input[name="nuevo-dni"]');
   await campoDni.fill(dni);
   await campoDni.locator('xpath=ancestor::form').getByRole('button', { name: 'Añadir', exact: true }).click();
+  // Se busca: con más de 20 clientes, el nuevo puede caer en otra página.
+  await page.getByLabel('Buscar cliente').fill(nombre);
   await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
 }
 
@@ -70,7 +72,9 @@ export async function crearMaestrosDePrueba(page: Page, sufijo: string) {
 
   await page.goto('/configuracion');
   await anadirCliente(page, cliente, dni);
+  await pestanaDeAjustes(page, 'Trabajadores');
   await anadirEnAjustes(page, 'Añadir trabajador', trabajador);
+  await pestanaDeAjustes(page, 'Materiales');
   await anadirEnAjustes(page, 'Añadir familia', familia);
   await crearMaterialEnAjustes(page, familia, material, { precio: '10', extra: '0', transporte: '0' });
 

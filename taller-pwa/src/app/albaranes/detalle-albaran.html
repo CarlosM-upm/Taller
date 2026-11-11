@@ -51,7 +51,7 @@
               <input matInput name="fecha" type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" [disabled]="ocupado()" />
             </mat-form-field>
 
-            <app-selector-maestro
+            <app-selector-cliente
               etiqueta="Cliente"
               [soloConDni]="true"
               [opciones]="maestros.clientes()"

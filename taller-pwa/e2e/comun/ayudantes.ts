@@ -105,11 +105,20 @@ export async function elegir(page: Page, etiqueta: string, opcion: string) {
   // anterior se está cerrando, la etiqueta también nombra ese panel y la
   // búsqueda encuentra dos elementos. Pasaba al elegir dos veces seguidas en
   // el mismo desplegable.
-  await page.getByRole('combobox', { name: etiqueta, exact: true }).click();
+  const campo = page.getByRole('combobox', { name: etiqueta, exact: true });
+  // El cliente se busca escribiendo (como en la tablet); los demás son
+  // desplegables de siempre, que se abren con un clic.
+  if (await campo.evaluate((elemento) => elemento.tagName === 'INPUT')) await campo.fill(opcion);
+  else await campo.click();
   await page.getByRole('option', { name: opcion, exact: true }).click();
   // Esperar a que el panel termine de cerrarse. Si no, el siguiente clic en el
   // mismo desplegable cae durante la animación de cierre y se pierde.
   await expect(page.getByRole('listbox')).toHaveCount(0);
+}
+
+/** Ajustes va por pestañas: Clientes, Trabajadores, Materiales y Otros. */
+export async function pestanaDeAjustes(page: Page, nombre: string) {
+  await page.getByRole('tab', { name: nombre }).click();
 }
 
 /** Elige el material de la primera fila (del catálogo) y escribe su cantidad. */

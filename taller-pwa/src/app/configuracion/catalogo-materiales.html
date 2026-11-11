@@ -1,6 +1,13 @@
 <h3>Materiales</h3>
 
+<!-- Buscar mira en TODAS las familias; sin nada escrito, se ve la familia elegida. -->
 <mat-form-field appearance="outline" class="ancho">
+  <mat-label>Buscar material</mat-label>
+  <mat-icon matPrefix>search</mat-icon>
+  <input matInput name="buscar-material" placeholder="En todas las familias" autocomplete="off" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+</mat-form-field>
+
+<mat-form-field appearance="outline" class="ancho" [class.oculto]="buscando()">
   <mat-label>Familia</mat-label>
   <mat-select [value]="familiaId()" (valueChange)="elegirFamilia($event)" [disabled]="ocupado()">
     @for (familia of maestros.familias(); track familia.id) {
@@ -12,16 +19,21 @@
   }
 </mat-form-field>
 
-@if (familiaId() !== null) {
-  @if (deLaFamilia().length === 0 && editandoId() === null) {
-    <p class="vacio">Esta familia aún no tiene materiales.</p>
+@if (buscando() || familiaId() !== null) {
+  @if (visibles().length === 0 && editandoId() === null) {
+    <p class="vacio">
+      @if (buscando()) { Ningún material contiene «{{ busqueda().trim() }}». } @else { Esta familia aún no tiene materiales. }
+    </p>
   }
 
   <ul class="lista">
-    @for (material of deLaFamilia(); track material.id) {
+    @for (material of visibles(); track material.id) {
       <li>
         <span class="nombre crece">
           {{ material.nombre }} <small>({{ material.unidad }})</small>
+          @if (buscando()) {
+            <small class="familia">{{ nombreFamilia(material.familiaId) }}</small>
+          }
         </span>
         <span class="precio">
           @if (material.precioTotal !== null) {
@@ -41,9 +53,11 @@
   </ul>
 
   @if (editandoId() === null) {
-    <button matButton (click)="nuevo()" [disabled]="ocupado()">
-      <mat-icon>add</mat-icon> Nuevo material
-    </button>
+    @if (!buscando()) {
+      <button matButton (click)="nuevo()" [disabled]="ocupado()">
+        <mat-icon>add</mat-icon> Nuevo material
+      </button>
+    }
   } @else {
     <form class="formulario" (ngSubmit)="guardar()">
       <h4>{{ editandoId() === 0 ? 'Nuevo material' : 'Editar material' }}</h4>

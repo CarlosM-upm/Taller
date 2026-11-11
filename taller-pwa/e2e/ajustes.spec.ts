@@ -25,6 +25,7 @@ test('renombrar un cliente en Ajustes cambia su nombre en los documentos', async
 
   // Con el pedido existiendo, el cliente NO se puede borrar.
   await page.getByRole('link', { name: 'Ajustes' }).click();
+  await page.getByLabel('Buscar cliente').fill(cliente);
   await page.getByLabel(`Borrar ${cliente}`).click();
   await page.getByRole('button', { name: 'Borrar', exact: true }).last().click();
   await expect(page.getByText(/No se puede borrar el cliente/)).toBeVisible({ timeout: 15_000 });
@@ -72,6 +73,7 @@ test('el DNI del cliente es obligatorio, se comprueba y no se repite', async ({ 
   const conFormato = `${dni.slice(0, 2)}.${dni.slice(2, 5)}.${dni.slice(5, 8)}-${dni[8].toLowerCase()}`;
   await page.locator('input[name="nuevo-dni"]').fill(conFormato);
   await botonAnadir.click();
+  await page.getByLabel('Buscar cliente').fill(nombre);
   await expect(page.getByText(nombre, { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(dni, { exact: true })).toBeVisible();
 
@@ -90,7 +92,7 @@ test('el catálogo calcula el precio total con extra y transporte', async ({ pag
   const familia = `PRUEBA-HUMO Familia ${sufijo}`;
   const material = `PRUEBA-HUMO Tubo ${sufijo}`;
 
-  await page.goto('/configuracion');
+  await page.goto('/configuracion?seccion=materiales');
   await anadirEnAjustes(page, 'Añadir familia', familia);
 
   await elegir(page, 'Familia', familia);

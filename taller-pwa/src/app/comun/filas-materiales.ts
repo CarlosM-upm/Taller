@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Maestros } from '../nucleo/maestros';
 import { MaterialCatalogo, MaterialLinea } from '../nucleo/modelos';
+import { normalizar } from '../nucleo/busqueda';
 
 /** Una fila mientras se edita: los números, como TEXTO. */
 interface Fila {
@@ -214,14 +215,6 @@ export class FilasMateriales implements OnInit {
 
 function filaVacia(): Fila {
   return { valor: null, nombreAntiguo: null, unidadAntigua: null, cantidad: '', precio: '' };
-}
-
-/**
- * Para comparar al buscar: sin mayúsculas y sin tildes. NFD separa cada letra
- * de su tilde, y luego se quitan las tildes sueltas: "Tubería" queda "tuberia".
- */
-function normalizar(texto: string): string {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 /** Del número del servidor al texto del campo, con coma decimal. */

@@ -19,9 +19,11 @@ import { confirmar } from '../comun/dialogo-confirmar';
 import { FilasMateriales } from '../comun/filas-materiales';
 import { TarjetaFotos } from '../comun/tarjeta-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
 import { AlbaranDelTrabajo } from './albaran-del-trabajo';
 import { FirmaDelTrabajo } from './firma-del-trabajo';
 import { queFaltaParaEnviar } from './para-enviar';
+import { aHoras, vacioONulo } from './campos-del-trabajo';
 
 const MAX_FOTOS = 5;
 
@@ -54,6 +56,7 @@ const MAX_FOTOS = 5;
     FilasMateriales,
     TarjetaFotos,
     SelectorMaestro,
+    SelectorCliente,
   ],
   templateUrl: './detalle-trabajo.html',
   styleUrl: './detalle-trabajo.scss',
@@ -288,20 +291,12 @@ export class DetalleTrabajo implements OnInit {
 
   /** Devuelve null si las horas no valen, tras marcar el error. */
   private datosDelFormulario(): TrabajoDatos | null {
-    const texto = this.horas().trim().replace(',', '.');
-    let horas: number | null = null;
-
-    if (texto.length > 0) {
-      const numero = Number(texto);
-      if (!Number.isFinite(numero) || numero <= 0) {
-        this.errorHoras.set('Escribe un número de horas mayor que cero');
-        return null;
-      }
-      horas = Math.round(numero * 100) / 100;
+    const horas = aHoras(this.horas());
+    if (horas === 'invalido') {
+      this.errorHoras.set('Escribe un número de horas mayor que cero');
+      return null;
     }
     this.errorHoras.set(null);
-
-    const vacioONulo = (v: string) => (v.trim().length > 0 ? v.trim() : null);
     return {
       clienteId: this.clienteId(),
       trabajadorId: this.trabajadorId(),

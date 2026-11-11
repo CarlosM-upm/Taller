@@ -13,6 +13,7 @@ import { BorradorLocal } from '../nucleo/borrador-local';
 import { Maestros } from '../nucleo/maestros';
 import { SelectorFotos } from '../comun/selector-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
 
 const MAX_FOTOS = 5;
 
@@ -49,6 +50,7 @@ const CLAVE_BORRADOR = 'pedido-nuevo';
     MatProgressBarModule,
     SelectorFotos,
     SelectorMaestro,
+    SelectorCliente,
   ],
   templateUrl: './formulario-pedido.html',
   styleUrl: './formulario-pedido.scss',

@@ -1,0 +1,13 @@
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rango {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}

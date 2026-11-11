@@ -12,6 +12,7 @@ import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { MaterialCatalogoConPrecio } from '../nucleo/modelos';
 import { aNumero, aTexto } from '../nucleo/numeros';
+import { contiene } from '../nucleo/busqueda';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 
 /**
@@ -57,8 +58,19 @@ export class CatalogoMateriales implements OnInit {
   readonly extra = signal('');
   readonly transporte = signal('');
 
-  readonly deLaFamilia = computed(() =>
-    this.materiales().filter((m) => m.familiaId === this.familiaId()),
+  /** Lo escrito en el buscador, que mira en todas las familias a la vez. */
+  readonly busqueda = signal('');
+  readonly buscando = computed(() => this.busqueda().trim().length > 0);
+
+  /** Buscando: lo que coincide en cualquier familia. Si no, la familia elegida. */
+  readonly visibles = computed(() =>
+    this.buscando()
+      ? this.materiales().filter((m) => contiene(m.nombre, this.busqueda()))
+      : this.materiales().filter((m) => m.familiaId === this.familiaId()),
+  );
+
+  private readonly familias = computed(
+    () => new Map(this.maestros.familias().map((f) => [f.id, f.nombre])),
   );
 
   /** La misma cuenta que MaterialCatalogo.precioTotal() en el servidor. */
@@ -84,9 +96,15 @@ export class CatalogoMateriales implements OnInit {
     this.rellenar(0, '', 'ud', null, 0, 0);
   }
 
+  /** Desde la búsqueda también: se guarda en su familia, sea cual sea la elegida. */
   editar(material: MaterialCatalogoConPrecio): void {
+    this.familiaId.set(material.familiaId);
     this.rellenar(material.id, material.nombre, material.unidad, material.precio,
       material.porcentajeExtra, material.transporte);
+  }
+
+  nombreFamilia(id: number): string {
+    return this.familias().get(id) ?? '';
   }
 
   cancelar(): void {

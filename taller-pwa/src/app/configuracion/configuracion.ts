@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
@@ -25,6 +26,9 @@ import { ListaMaestros } from './lista-maestros';
  * llevar a la pantalla de entrada en vez de dejar la aplicación con un token
  * que ya no vale.
  */
+/** Las pestañas, en orden. Es lo que va en la dirección: /configuracion?seccion=materiales */
+const SECCIONES = ['clientes', 'trabajadores', 'materiales', 'otros'];
+
 @Component({
   selector: 'app-configuracion',
   imports: [
@@ -35,6 +39,7 @@ import { ListaMaestros } from './lista-maestros';
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    MatTabsModule,
     ListaClientes,
     ListaMaestros,
     CatalogoMateriales,
@@ -45,9 +50,14 @@ import { ListaMaestros } from './lista-maestros';
 export class Configuracion implements OnInit {
   private readonly api = inject(ApiTaller);
   private readonly router = inject(Router);
+  private readonly ruta = inject(ActivatedRoute);
   private readonly sesion = inject(Sesion);
   private readonly avisos = inject(Avisos);
   readonly maestros = inject(Maestros);
+
+  /** La pestaña abierta, leída de ?seccion= para que recargar no la cambie. */
+  readonly pestana = signal(Math.max(0, SECCIONES.indexOf(
+    this.ruta.snapshot.queryParamMap.get('seccion') ?? '')));
 
   readonly cargando = signal(true);
   readonly ocupado = signal(false);
@@ -69,6 +79,14 @@ export class Configuracion implements OnInit {
 
   ngOnInit(): void {
     this.maestros.asegurarCargados();
+  }
+
+  cambiarPestana(indice: number): void {
+    this.pestana.set(indice);
+    this.router.navigate([], {
+      queryParams: { seccion: SECCIONES[indice] },
+      replaceUrl: true,
+    });
   }
 
   cargarContador(): void {

@@ -1,4 +1,4 @@
-<h3>Clientes</h3>
+<h3>Clientes <span class="ligero">({{ clientes().length }})</span></h3>
 
 <form class="alta" (ngSubmit)="crear()">
   <mat-form-field appearance="outline" class="crece">
@@ -14,12 +14,27 @@
   </button>
 </form>
 
+<div class="filtros">
+  <mat-form-field appearance="outline" class="crece">
+    <mat-label>Buscar cliente</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput name="buscar-cliente" placeholder="Nombre o DNI" autocomplete="off" [ngModel]="busqueda()" (ngModelChange)="buscar($event)" />
+  </mat-form-field>
+  @if (cuantosSinDni() > 0) {
+    <mat-checkbox [checked]="soloSinDni()" (change)="filtrarSinDni($event.checked)">
+      Solo los que no tienen DNI ({{ cuantosSinDni() }})
+    </mat-checkbox>
+  }
+</div>
+
 @if (clientes().length === 0) {
   <p class="vacio">Todavía no hay ninguno.</p>
+} @else if (filtrados().length === 0) {
+  <p class="vacio">Ningún cliente coincide con la búsqueda.</p>
 }
 
 <ul class="lista">
-  @for (cliente of clientes(); track cliente.id) {
+  @for (cliente of deLaPagina(); track cliente.id) {
     <li>
       @if (editandoId() === cliente.id) {
         <form class="edicion" (ngSubmit)="guardar(cliente.id)">
@@ -57,3 +72,10 @@
     </li>
   }
 </ul>
+
+<app-paginacion
+  [total]="filtrados().length"
+  [porPagina]="porPagina"
+  [pagina]="paginaActual()"
+  (paginaChange)="pagina.set($event)"
+/>

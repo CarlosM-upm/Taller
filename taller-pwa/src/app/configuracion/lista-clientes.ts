@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +11,8 @@ import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { ClienteConDni } from '../nucleo/modelos';
+import { contiene } from '../nucleo/busqueda';
+import { Paginacion } from '../comun/paginacion';
 import { DialogoConfirmar } from '../comun/dialogo-confirmar';
 
 /**
@@ -24,11 +27,23 @@ import { DialogoConfirmar } from '../comun/dialogo-confirmar';
  * Maestros, que comparten las dos cuentas, no lleva el DNI.
  *
  * Los clientes anteriores al DNI obligatorio salen marcados con "Falta el DNI":
- * no se pueden elegir en ningún documento hasta que se les ponga.
+ * no se pueden elegir en ningún documento hasta que se les ponga. El filtro
+ * "Solo los que no tienen DNI" sirve para ir poniéndoselo.
+ *
+ * Con cientos de clientes la lista va por páginas de 20, y se busca por un
+ * trozo del nombre (sin tildes) o del DNI.
  */
 @Component({
   selector: 'app-lista-clientes',
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    Paginacion,
+  ],
   templateUrl: './lista-clientes.html',
   styleUrl: './lista-clientes.scss',
 })
@@ -46,8 +61,41 @@ export class ListaClientes implements OnInit {
   readonly dniEditado = signal('');
   readonly ocupado = signal(false);
 
+  // --- Buscar y paginar ---
+  readonly porPagina = POR_PAGINA;
+  readonly busqueda = signal('');
+  readonly soloSinDni = signal(false);
+  readonly pagina = signal(0);
+
+  readonly cuantosSinDni = computed(() => this.clientes().filter((c) => !c.dni).length);
+
+  readonly filtrados = computed(() =>
+    this.clientes().filter((c) => (!this.soloSinDni() || !c.dni) && coincide(c, this.busqueda())),
+  );
+
+  /** Si al borrar se vacía la última página, se vuelve a la anterior. */
+  readonly paginaActual = computed(() =>
+    Math.min(this.pagina(), Math.max(0, Math.ceil(this.filtrados().length / POR_PAGINA) - 1)),
+  );
+
+  readonly deLaPagina = computed(() => {
+    const desde = this.paginaActual() * POR_PAGINA;
+    return this.filtrados().slice(desde, desde + POR_PAGINA);
+  });
+
   ngOnInit(): void {
     this.cargar();
+  }
+
+  /** Cada búsqueda o filtro nuevo empieza por la primera página. */
+  buscar(texto: string): void {
+    this.busqueda.set(texto);
+    this.pagina.set(0);
+  }
+
+  filtrarSinDni(solo: boolean): void {
+    this.soloSinDni.set(solo);
+    this.pagina.set(0);
   }
 
   crear(): void {
@@ -126,4 +174,13 @@ export class ListaClientes implements OnInit {
       },
     });
   }
+}
+
+const POR_PAGINA = 20;
+
+/** Por un trozo del nombre (sin tildes ni mayúsculas) o del DNI (sin puntos ni guiones). */
+function coincide(cliente: ClienteConDni, consulta: string): boolean {
+  if (contiene(cliente.nombre, consulta)) return true;
+  const dni = consulta.toUpperCase().replace(/[\s.-]/g, '');
+  return dni.length > 0 && (cliente.dni ?? '').includes(dni);
 }

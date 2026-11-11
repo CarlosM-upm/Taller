@@ -18,6 +18,16 @@
 .precio { white-space: nowrap; padding: 0 4px; }
 small { opacity: 0.65; }
 .vacio { opacity: 0.7; }
+/* Al buscar, la familia de cada resultado, para saber de dónde sale. */
+.familia {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--mat-sys-surface-container-highest);
+  opacity: 1;
+}
+/* Mientras se busca, el desplegable de familia no pinta nada. */
+.oculto { display: none; }
 
 .formulario {
   margin-top: 12px;

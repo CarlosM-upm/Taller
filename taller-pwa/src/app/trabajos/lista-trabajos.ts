@@ -14,7 +14,7 @@ import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { Sesion } from '../nucleo/sesion';
 import { Trabajo } from '../nucleo/modelos';
-import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
 import { DialogoGenerarAlbaran } from '../albaranes/dialogo-generar-albaran';
 
 type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
@@ -30,7 +30,7 @@ type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
     MatIconModule,
     MatProgressBarModule,
     MatCheckboxModule,
-    SelectorMaestro,
+    SelectorCliente,
   ],
   templateUrl: './lista-trabajos.html',
   styleUrl: './lista-trabajos.scss',

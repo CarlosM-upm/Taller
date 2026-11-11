@@ -26,3 +26,7 @@
   color: var(--mat-sys-on-error-container);
 }
 .vacio { opacity: 0.7; }
+.ligero { font-weight: 400; opacity: 0.65; }
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; }
+.filtros mat-form-field { width: auto; }
+.filtros mat-checkbox { margin-bottom: 20px; }

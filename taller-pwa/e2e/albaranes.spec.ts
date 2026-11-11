@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { vigilarErrores, imagenCargada, borrarYConfirmar, descargarPdf, elegir, primerMaterial, entrar, sesionLimpia } from './comun/ayudantes';
+import { vigilarErrores, imagenCargada, borrarYConfirmar, descargarPdf, elegir, primerMaterial, entrar, pestanaDeAjustes, sesionLimpia } from './comun/ayudantes';
 import { CUENTAS, dniDePrueba, anadirEnAjustes, crearMaestrosDePrueba } from './comun/datos-de-prueba';
 
 /** Albaranes: generación, unificación, precios, numeración, PDF y firma. */
@@ -46,6 +46,7 @@ test('el circuito completo: trabajo enviado, albarán y firma', async ({ page })
   // Corregir el DNI en Ajustes lo corrige también en el albarán ya hecho.
   const dniCorregido = dniDePrueba();
   await page.getByRole('link', { name: 'Ajustes' }).click();
+  await page.getByLabel('Buscar cliente').fill(cliente);
   await page.getByLabel(`Editar ${cliente}`).click();
   await page.locator('input[name^="editar-dni-"]').fill(dniCorregido);
   await page.getByLabel('Guardar el cliente').click();
@@ -190,6 +191,7 @@ test('el contador de albaranes se lee y se reencauza', async ({ page }) => {
   await entrar(page, CUENTAS.jefe);
   await page.getByRole('link', { name: 'Ajustes' }).click();
   await expect(page).toHaveURL(/\/configuracion$/);
+  await pestanaDeAjustes(page, 'Otros');
 
   // Se lee el valor actual para poder dejarlo como estaba al terminar.
   const campo = page.getByLabel('Próximo número');
@@ -292,6 +294,7 @@ test('un albarán admite varios trabajadores', async ({ page }) => {
   // Un segundo trabajador, para poder añadirlo al albarán después.
   const segundo = `PRUEBA-HUMO Segundo ${Date.now()}`;
   await page.getByRole('link', { name: 'Ajustes' }).click();
+  await pestanaDeAjustes(page, 'Trabajadores');
   await anadirEnAjustes(page, 'Añadir trabajador', segundo);
 
   await page.getByRole('link', { name: 'Trabajos' }).click();

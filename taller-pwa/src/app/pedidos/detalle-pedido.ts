@@ -18,6 +18,7 @@ import { Pedido } from '../nucleo/modelos';
 import { confirmar } from '../comun/dialogo-confirmar';
 import { TarjetaFotos } from '../comun/tarjeta-fotos';
 import { SelectorMaestro } from '../comun/selector-maestro';
+import { SelectorCliente } from '../comun/selector-cliente';
 
 const MAX_FOTOS = 5;
 
@@ -45,6 +46,7 @@ const MAX_FOTOS = 5;
     MatProgressBarModule,
     TarjetaFotos,
     SelectorMaestro,
+    SelectorCliente,
   ],
   templateUrl: './detalle-pedido.html',
   styleUrl: './detalle-pedido.scss',
