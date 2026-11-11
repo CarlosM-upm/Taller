@@ -84,15 +84,26 @@
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8rem;
 
+  // El apartado activo se marca con una píldora suave detrás del icono, como en
+  // Material 3: se ve igual de claro dónde se está, sin el bloque de color de
+  // lado a lado que pesaba más que el propio contenido.
   mat-icon {
     font-size: 26px;
     width: 26px;
     height: 26px;
+    box-sizing: content-box;
+    padding: 4px 20px;
+    border-radius: 16px;
+    transition: background-color 150ms ease;
   }
 
   &.activo {
-    color: var(--mat-sys-primary);
-    font-weight: 500;
-    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+
+    mat-icon {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
   }
 }
