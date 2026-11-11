@@ -140,9 +140,9 @@ taller-pwa/src/app/
 │                   campos-del-trabajo lee horas y vacíos para el alta y la ficha
 ├── albaranes/       listado, ficha con firma, precios y generación desde uno o
 │                   varios trabajos; coste-en-vivo repite la cuenta del servidor
-└── configuracion/   Ajustes, en una sola página: clientes con buscador y páginas de 20,
+└── configuracion/   Ajustes, en una sola página: clientes con buscador y páginas de 15,
                     trabajadores, familias, catálogo (por familia o todas, con buscador
-                    y páginas de 20), contador de albaranes y contraseña
+                    y páginas de 15), contador de albaranes y contraseña
 ```
 
 Y fuera de los dos proyectos, en la raíz del repositorio:
@@ -293,7 +293,9 @@ Campos: `numero`, `fecha`, `cliente`, `dniCliente`, `trabajadores` (varios),
   clientes, materiales y los buscadores de Ajustes.
 - **Ajustes, todo en una página** (se probaron pestañas y el taller prefirió una sola
   página). Lo que la mantiene manejable es que las listas largas van **por páginas de
-  20** (`comun/paginacion`): clientes, con buscador por nombre o DNI (sin puntos ni
+  15** (decidido con el taller; antes eran 20). El número sale de una sola constante,
+  `POR_PAGINA` en `comun/paginacion.ts`, que usan las dos listas: cámbialo ahí y no
+  en cada lista. Son clientes, con buscador por nombre o DNI (sin puntos ni
   guiones) y el filtro "Solo los que no tienen DNI"; y materiales, que se ven **todos o
   los de una familia** ("Todas las familias" en el desplegable) con un buscador que
   filtra dentro de lo que se ve. Con "Todas", cada material lleva la etiqueta de su
@@ -771,8 +773,8 @@ todas las familias, el filtro de familia en las líneas de un trabajo, y "Todas 
 familias" con las páginas del catálogo.
 
 Para tocar un cliente concreto en Ajustes hay que **buscarlo antes**
-(`getByLabel('Buscar cliente')`): con más de 20 puede estar en otra página. Las pruebas
-de páginas crean más de 20 clientes o materiales y los **borran en la misma prueba**,
+(`getByLabel('Buscar cliente')`): con más de 15 puede estar en otra página. Las pruebas
+de páginas crean 22 clientes o materiales (dos páginas) y los **borran en la misma prueba**,
 no al final, para no empujar a otra página los de las siguientes. Como toda edición
 de Ajustes pregunta, después de guardar se responde al diálogo con
 `responderDialogo(page, 'Guardar')` (o `'Cancelar'`).
@@ -950,7 +952,7 @@ Verificado arrancando la aplicación contra PostgreSQL real:
 - **Buscar el material por un trozo del nombre**, o desplegar el catálogo entero,
   en el mismo campo (pensado para cuando haya cientos).
 - **Buscar el cliente escribiendo o desplegando** (son ~270); en Ajustes, clientes y
-  materiales por páginas de 20 con buscadores, materiales por familia o todas, filtro
+  materiales por páginas (hoy de 15) con buscadores, materiales por familia o todas, filtro
   de familia en las líneas de material, y confirmación en toda edición. Solo pantalla:
   el servidor no cambia.
 - **Repaso visual** en siete pasos, uno por commit (para volver al punto de partida:

@@ -16,14 +16,14 @@ import { MaterialCatalogoConPrecio } from '../nucleo/modelos';
 import { aNumero, aTexto } from '../nucleo/numeros';
 import { contiene } from '../nucleo/busqueda';
 import { confirmar } from '../comun/dialogo-confirmar';
-import { Paginacion } from '../comun/paginacion';
+import { Paginacion, POR_PAGINA } from '../comun/paginacion';
 
 /**
  * Los materiales del catálogo. Solo jefe.
  *
  * Se ven todos, o los de una familia si se elige en el desplegable ("Todas las
  * familias" vuelve a todos). El buscador filtra dentro de lo que se ve, y la
- * lista va por páginas de 20, como los clientes. Cada material lleva unidad y
+ * lista va por páginas de 15, como los clientes. Cada material lleva unidad y
  * tres campos de precio; el total por unidad = precio + precio·extra% +
  * transporte se ve calcularse al teclear, repitiendo la misma cuenta que el
  * servidor (que es el que manda al guardar).
@@ -234,5 +234,3 @@ export class CatalogoMateriales implements OnInit {
     this.transporte.set(aTexto(transporte));
   }
 }
-
-const POR_PAGINA = 20;

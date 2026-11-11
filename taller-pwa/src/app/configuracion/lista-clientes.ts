@@ -13,7 +13,7 @@ import { Avisos } from '../nucleo/avisos';
 import { Maestros } from '../nucleo/maestros';
 import { ClienteConDni } from '../nucleo/modelos';
 import { contiene } from '../nucleo/busqueda';
-import { Paginacion } from '../comun/paginacion';
+import { Paginacion, POR_PAGINA } from '../comun/paginacion';
 import { confirmar } from '../comun/dialogo-confirmar';
 
 /**
@@ -31,7 +31,7 @@ import { confirmar } from '../comun/dialogo-confirmar';
  * no se pueden elegir en ningún documento hasta que se les ponga. El filtro
  * "Solo los que no tienen DNI" sirve para ir poniéndoselo.
  *
- * Con cientos de clientes la lista va por páginas de 20, y se busca por un
+ * Con cientos de clientes la lista va por páginas de 15, y se busca por un
  * trozo del nombre (sin tildes) o del DNI.
  */
 @Component({
@@ -182,8 +182,6 @@ export class ListaClientes implements OnInit {
     });
   }
 }
-
-const POR_PAGINA = 20;
 
 /** Por un trozo del nombre (sin tildes ni mayúsculas) o del DNI (sin puntos ni guiones). */
 function coincide(cliente: ClienteConDni, consulta: string): boolean {
