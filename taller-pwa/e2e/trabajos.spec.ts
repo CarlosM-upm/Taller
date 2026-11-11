@@ -208,3 +208,13 @@ test('un trabajo ya facturado no se puede volver a seleccionar', async ({ page }
 
   expect(errores, `Errores en el navegador:\n${errores.join('\n')}`).toEqual([]);
 });
+
+test('los filtros de Trabajos miden 48px de alto, como el resto de botones', async ({ page }) => {
+  await entrar(page, CUENTAS.jefe);
+  await page.goto('/trabajos');
+  // Es lo que más se pulsa en esta pantalla, y a veces con guantes.
+  for (const filtro of ['Todos', 'Sin terminar', 'Enviados']) {
+    const caja = await page.getByRole('radio', { name: filtro }).boundingBox();
+    expect(caja!.height, filtro).toBeGreaterThanOrEqual(48);
+  }
+});

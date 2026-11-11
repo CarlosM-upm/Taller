@@ -1,6 +1,15 @@
+@use '@angular/material' as mat;
+
 .filtro {
   width: 100%;
   margin-bottom: 16px;
+  // 48px de alto, como el resto de botones: Material los deja en 40, y es lo
+  // que más se pulsa en esta pantalla, a veces con guantes.
+  @include mat.button-toggle-overrides(
+    (
+      height: 48px,
+    )
+  );
 
   // Reparte el ancho a partes iguales: son objetivos táctiles, no enlaces.
   ::ng-deep .mat-button-toggle {
