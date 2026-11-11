@@ -16,6 +16,7 @@ import { Sesion } from '../nucleo/sesion';
 import { Trabajo } from '../nucleo/modelos';
 import { SelectorCliente } from '../comun/selector-cliente';
 import { DialogoGenerarAlbaran } from '../albaranes/dialogo-generar-albaran';
+import { EstadoVacio } from '../comun/estado-vacio';
 
 type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
 
@@ -30,6 +31,7 @@ type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
+    EstadoVacio,
     MatCheckboxModule,
     SelectorCliente,
   ],

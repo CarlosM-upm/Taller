@@ -23,10 +23,10 @@
       </mat-card-content>
     </mat-card>
   } @else if (!cargando() && pedidos().length === 0) {
-    <p class="aviso-vacio">
-      Todavía no hay pedidos.<br />
-      Usa el botón de abajo para apuntar el primero.
-    </p>
+    <app-estado-vacio icono="assignment" titulo="Todavía no hay pedidos"
+                      texto="Aquí se apuntan los encargos que van llegando.">
+      <a matButton="filled" routerLink="/pedidos/nuevo"><mat-icon>add</mat-icon> Nuevo pedido</a>
+    </app-estado-vacio>
   } @else {
     @for (pedido of pedidos(); track pedido.id) {
       <mat-card class="pedido" [routerLink]="['/pedidos', pedido.id]">

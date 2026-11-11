@@ -8,6 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Pedido } from '../nucleo/modelos';
+import { EstadoVacio } from '../comun/estado-vacio';
 
 @Component({
   selector: 'app-lista-pedidos',
@@ -18,6 +19,7 @@ import { Pedido } from '../nucleo/modelos';
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
+    EstadoVacio,
   ],
   templateUrl: './lista-pedidos.html',
   styleUrl: './lista-pedidos.scss',

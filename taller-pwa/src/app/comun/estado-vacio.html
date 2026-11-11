@@ -1,0 +1,8 @@
+<div class="vacio">
+  <span class="icono"><mat-icon>{{ icono() }}</mat-icon></span>
+  <p class="titulo">{{ titulo() }}</p>
+  @if (texto(); as texto) {
+    <p class="texto">{{ texto }}</p>
+  }
+  <ng-content />
+</div>

@@ -23,10 +23,10 @@
       </mat-card-content>
     </mat-card>
   } @else if (!cargando() && albaranes().length === 0) {
-    <p class="aviso-vacio">
-      Todavía no hay albaranes.<br />
-      Se generan desde la ficha de un trabajo que ya esté enviado.
-    </p>
+    <app-estado-vacio icono="receipt_long" titulo="Todavía no hay albaranes"
+                      texto="Se generan desde la ficha de un trabajo enviado, o juntando varios en Trabajos → Enviados.">
+      <a matButton routerLink="/trabajos">Ir a Trabajos</a>
+    </app-estado-vacio>
   } @else {
     @for (albaran of albaranes(); track albaran.id) {
       <mat-card class="albaran" [routerLink]="['/albaranes', albaran.id]">

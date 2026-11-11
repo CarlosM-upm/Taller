@@ -52,15 +52,18 @@
       </mat-card-content>
     </mat-card>
   } @else if (!cargando() && visibles().length === 0) {
-    <p class="aviso-vacio">
-      @if (filtro() === 'TODOS') {
-        Todavía no hay trabajos.<br />Usa el botón de abajo para empezar uno.
-      } @else if (filtro() === 'BORRADOR') {
-        No hay ningún trabajo a medias.
-      } @else {
-        Todavía no se ha enviado ningún trabajo.
-      }
-    </p>
+    @if (filtro() === 'TODOS') {
+      <app-estado-vacio icono="build" titulo="Todavía no hay trabajos"
+                        texto="Se puede empezar uno y terminarlo otro día: hasta enviarlo es un borrador.">
+        <a matButton="filled" routerLink="/trabajos/nuevo"><mat-icon>add</mat-icon> Nuevo trabajo</a>
+      </app-estado-vacio>
+    } @else if (filtro() === 'BORRADOR') {
+      <app-estado-vacio icono="task_alt" titulo="No hay ningún trabajo a medias"
+                        texto="Todo lo que se empezó ya está enviado." />
+    } @else {
+      <app-estado-vacio icono="send" titulo="Todavía no se ha enviado ningún trabajo"
+                        texto="Un trabajo se envía desde su ficha cuando está completo." />
+    }
   } @else {
     @for (trabajo of visibles(); track trabajo.id) {
       <mat-card

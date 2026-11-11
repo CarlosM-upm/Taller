@@ -8,6 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
 import { Albaran } from '../nucleo/modelos';
+import { EstadoVacio } from '../comun/estado-vacio';
 
 /**
  * Listado de albaranes. Solo lo ve el jefe.
@@ -24,6 +25,7 @@ import { Albaran } from '../nucleo/modelos';
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
+    EstadoVacio,
   ],
   templateUrl: './lista-albaranes.html',
   styleUrl: './lista-albaranes.scss',
