@@ -2,6 +2,7 @@ import { Component, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { VisorFoto } from './visor-foto';
 import { SrcSeguro } from './src-seguro';
 
@@ -17,7 +18,7 @@ import { SrcSeguro } from './src-seguro';
  */
 @Component({
   selector: 'app-galeria-fotos',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule, SrcSeguro],
+  imports: [MatButtonModule, MatDialogModule, MatIconModule, MatTooltipModule, SrcSeguro],
   templateUrl: './galeria-fotos.html',
   styleUrl: './galeria-fotos.scss',
 })

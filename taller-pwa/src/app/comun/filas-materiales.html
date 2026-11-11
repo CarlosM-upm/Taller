@@ -42,6 +42,7 @@
             matSuffix
             type="button"
             aria-label="Ver todos los materiales"
+            matTooltip="Ver todos los materiales"
             [disabled]="deshabilitado()"
             (click)="verTodos($index, disparador, $event)"
           >
@@ -115,6 +116,7 @@
         type="button"
         class="col-borrar"
         aria-label="Quitar esta línea de material"
+        matTooltip="Quitar esta línea de material"
         [disabled]="deshabilitado() || filas().length === 1"
         (click)="quitar($index)"
       >

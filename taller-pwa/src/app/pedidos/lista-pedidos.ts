@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ApiTaller } from '../nucleo/api';
 import { Avisos } from '../nucleo/avisos';
@@ -17,7 +18,7 @@ import { EstadoVacio } from '../comun/estado-vacio';
     RouterLink,
     MatButtonModule,
     MatCardModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatProgressBarModule,
     EstadoVacio,
   ],

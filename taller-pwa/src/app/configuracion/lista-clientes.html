@@ -46,10 +46,23 @@
             <mat-label>DNI</mat-label>
             <input matInput [name]="'editar-dni-' + cliente.id" [ngModel]="dniEditado()" (ngModelChange)="dniEditado.set($event)" [disabled]="ocupado()" />
           </mat-form-field>
-          <button matIconButton type="submit" aria-label="Guardar el cliente" [disabled]="ocupado()">
+          <button
+            matIconButton
+            type="submit"
+            aria-label="Guardar el cliente"
+            matTooltip="Guardar el cliente"
+            [disabled]="ocupado()"
+          >
             <mat-icon>check</mat-icon>
           </button>
-          <button matIconButton type="button" aria-label="Cancelar" [disabled]="ocupado()" (click)="editandoId.set(null)">
+          <button
+            matIconButton
+            type="button"
+            aria-label="Cancelar"
+            matTooltip="Cancelar"
+            [disabled]="ocupado()"
+            (click)="editandoId.set(null)"
+          >
             <mat-icon>close</mat-icon>
           </button>
         </form>
@@ -62,10 +75,22 @@
             <span class="chip chip-aviso">Falta el DNI</span>
           }
         </span>
-        <button matIconButton [attr.aria-label]="'Editar ' + cliente.nombre" [disabled]="ocupado()" (click)="editar(cliente)">
+        <button
+          matIconButton
+          [attr.aria-label]="'Editar ' + cliente.nombre"
+          [matTooltip]="'Editar ' + cliente.nombre"
+          [disabled]="ocupado()"
+          (click)="editar(cliente)"
+        >
           <mat-icon>edit</mat-icon>
         </button>
-        <button matIconButton [attr.aria-label]="'Borrar ' + cliente.nombre" [disabled]="ocupado()" (click)="borrar(cliente)">
+        <button
+          matIconButton
+          [attr.aria-label]="'Borrar ' + cliente.nombre"
+          [matTooltip]="'Borrar ' + cliente.nombre"
+          [disabled]="ocupado()"
+          (click)="borrar(cliente)"
+        >
           <mat-icon>delete</mat-icon>
         </button>
       }

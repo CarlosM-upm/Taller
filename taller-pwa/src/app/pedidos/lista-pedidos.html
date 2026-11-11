@@ -5,7 +5,13 @@
 <div class="contenedor">
   <div class="fila cabecera">
     <h2 class="crece">Pedidos</h2>
-    <button matIconButton aria-label="Recargar" [disabled]="cargando()" (click)="cargar()">
+    <button
+      matIconButton
+      aria-label="Recargar"
+      matTooltip="Recargar"
+      [disabled]="cargando()"
+      (click)="cargar()"
+    >
       <mat-icon>refresh</mat-icon>
     </button>
   </div>

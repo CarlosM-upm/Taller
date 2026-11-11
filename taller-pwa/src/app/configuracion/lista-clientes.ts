@@ -5,6 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { Observable } from 'rxjs';
 import { ApiTaller } from '../nucleo/api';
@@ -40,7 +41,7 @@ import { confirmar } from '../comun/dialogo-confirmar';
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatInputModule,
     Paginacion,
   ],

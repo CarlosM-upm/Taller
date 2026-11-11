@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -52,7 +53,7 @@ const MAX_FOTOS = 15;
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatInputModule,
     MatProgressBarModule,
     FilasMateriales,

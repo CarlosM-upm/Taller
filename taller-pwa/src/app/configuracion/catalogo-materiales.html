@@ -69,10 +69,22 @@
             <small>sin precio</small>
           }
         </span>
-        <button matIconButton [attr.aria-label]="'Editar ' + material.nombre" [disabled]="ocupado()" (click)="editar(material)">
+        <button
+          matIconButton
+          [attr.aria-label]="'Editar ' + material.nombre"
+          [matTooltip]="'Editar ' + material.nombre"
+          [disabled]="ocupado()"
+          (click)="editar(material)"
+        >
           <mat-icon>edit</mat-icon>
         </button>
-        <button matIconButton [attr.aria-label]="'Borrar ' + material.nombre" [disabled]="ocupado()" (click)="borrar(material)">
+        <button
+          matIconButton
+          [attr.aria-label]="'Borrar ' + material.nombre"
+          [matTooltip]="'Borrar ' + material.nombre"
+          [disabled]="ocupado()"
+          (click)="borrar(material)"
+        >
           <mat-icon>delete</mat-icon>
         </button>
       </li>

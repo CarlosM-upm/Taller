@@ -3,6 +3,7 @@ import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { Cliente } from '../nucleo/modelos';
 import { contiene } from '../nucleo/busqueda';
@@ -23,7 +24,7 @@ import { contiene } from '../nucleo/busqueda';
  */
 @Component({
   selector: 'app-selector-cliente',
-  imports: [MatAutocompleteModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [MatAutocompleteModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatTooltipModule, MatInputModule],
   templateUrl: './selector-cliente.html',
   styleUrl: './selector-cliente.scss',
 })

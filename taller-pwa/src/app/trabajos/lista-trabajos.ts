@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
@@ -29,7 +30,7 @@ type Filtro = 'TODOS' | 'BORRADOR' | 'ENVIADO';
     MatButtonModule,
     MatButtonToggleModule,
     MatCardModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatProgressBarModule,
     EstadoVacio,
     MatCheckboxModule,

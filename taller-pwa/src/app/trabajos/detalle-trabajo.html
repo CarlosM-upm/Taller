@@ -4,18 +4,30 @@
 
 <div class="contenedor">
   <div class="fila cabecera">
-    <a matIconButton routerLink="/trabajos" aria-label="Volver">
+    <a matIconButton routerLink="/trabajos" aria-label="Volver" matTooltip="Volver">
       <mat-icon>arrow_back</mat-icon>
     </a>
     <h2 class="crece">Trabajo</h2>
 
     @if (trabajo() && sesion.esJefe()) {
-      <button matIconButton aria-label="Descargar PDF del trabajo" [disabled]="ocupado()" (click)="descargarPdf()">
+      <button
+        matIconButton
+        aria-label="Descargar PDF del trabajo"
+        matTooltip="Descargar PDF del trabajo"
+        [disabled]="ocupado()"
+        (click)="descargarPdf()"
+      >
         <mat-icon>picture_as_pdf</mat-icon>
       </button>
     }
     @if (trabajo() && puedeEditar()) {
-      <button matIconButton aria-label="Borrar" [disabled]="ocupado()" (click)="borrar()">
+      <button
+        matIconButton
+        aria-label="Borrar"
+        matTooltip="Borrar"
+        [disabled]="ocupado()"
+        (click)="borrar()"
+      >
         <mat-icon>delete</mat-icon>
       </button>
     }

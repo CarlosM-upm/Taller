@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Avisos } from '../nucleo/avisos';
 import { Fotos } from '../nucleo/fotos';
 
@@ -24,7 +25,7 @@ export interface FotoElegida {
  */
 @Component({
   selector: 'app-selector-fotos',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './selector-fotos.html',
   styleUrl: './selector-fotos.scss',
 })

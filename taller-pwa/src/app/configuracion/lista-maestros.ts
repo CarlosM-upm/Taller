@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
@@ -34,7 +35,7 @@ type Elemento = Trabajador | FamiliaMaterial;
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatInputModule,
   ],
   templateUrl: './lista-maestros.html',

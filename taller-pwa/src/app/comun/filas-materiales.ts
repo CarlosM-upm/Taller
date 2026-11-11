@@ -4,6 +4,7 @@ import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Maestros } from '../nucleo/maestros';
@@ -76,7 +77,7 @@ interface GrupoFamilia {
     MatAutocompleteModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatIconModule,
+    MatIconModule, MatTooltipModule,
     MatInputModule,
     MatSelectModule,
   ],
