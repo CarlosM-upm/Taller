@@ -81,10 +81,10 @@
             }
             <span class="cliente crece">{{ trabajo.cliente || 'Sin cliente todavía' }}</span>
             @if (trabajo.enAlbaran) {
-              <span class="etiqueta facturado">Ya en un albarán</span>
+              <span class="chip chip-info">Ya en un albarán</span>
             }
             @if (trabajo.estado === 'BORRADOR') {
-              <span class="etiqueta borrador">Sin terminar</span>
+              <span class="chip chip-pendiente">Sin terminar</span>
             } @else {
               <span class="fecha">{{ trabajo.fecha | date: 'dd/MM/yyyy' }}</span>
             }
@@ -105,12 +105,12 @@
             <!-- Igual que en la lista de albaranes. Va en todos los filtros: la
                  firma se recoge tanto en borrador como ya enviado. -->
             @if (trabajo.tieneFirma) {
-              <span class="etiqueta firmado">
-                <mat-icon class="icono-pie">draw</mat-icon>
+              <span class="chip chip-hecho">
+                <mat-icon>draw</mat-icon>
                 Firmado
               </span>
             } @else {
-              <span class="etiqueta sin-firmar">Sin firmar</span>
+              <span class="chip chip-pendiente">Sin firmar</span>
             }
             @if (trabajo.fotoIds.length > 0) {
               <mat-icon class="icono-pie">photo_library</mat-icon>

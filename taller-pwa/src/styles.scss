@@ -99,6 +99,52 @@ button.mat-mdc-button {
   margin: 6px 0;
 }
 
+/* Etiquetas de estado: el mismo estado se ve igual en todas las pantallas, y solo
+   lleva relleno de color lo que está hecho o lo que bloquea. Lo pendiente va solo
+   con contorno: se ve, pero no mancha la lista.
+     .chip-hecho      Firmado
+     .chip-pendiente  Sin terminar, Sin firmar
+     .chip-info       Ya en un albarán, la familia de un material
+     .chip-aviso      Falta el DNI (no se puede elegir hasta ponérselo) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.chip-hecho {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.chip-pendiente {
+  border-color: var(--mat-sys-outline);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.chip-info {
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.chip-aviso {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
 .aviso-vacio {
   padding: 32px 16px;
   text-align: center;

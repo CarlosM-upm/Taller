@@ -59,7 +59,7 @@
           @if (cliente.dni) {
             <small>{{ cliente.dni }}</small>
           } @else {
-            <span class="falta">Falta el DNI</span>
+            <span class="chip chip-aviso">Falta el DNI</span>
           }
         </span>
         <button matIconButton [attr.aria-label]="'Editar ' + cliente.nombre" [disabled]="ocupado()" (click)="editar(cliente)">

@@ -174,9 +174,9 @@ export async function etiquetaDeFirmaEnLista(page: Page, descripcion: string, fi
   await page.getByRole('link', { name: 'Trabajos' }).click();
   await page.locator('mat-button-toggle', { hasText: filtro }).click();
   const tarjeta = page.locator('mat-card.trabajo', { hasText: descripcion });
-  await expect(tarjeta.locator('.etiqueta', { hasText: etiqueta })).toBeVisible({ timeout: 15_000 });
+  await expect(tarjeta.locator('.chip', { hasText: etiqueta })).toBeVisible({ timeout: 15_000 });
   const otra = etiqueta === 'Firmado' ? 'Sin firmar' : 'Firmado';
-  await expect(tarjeta.locator('.etiqueta', { hasText: otra })).toHaveCount(0);
+  await expect(tarjeta.locator('.chip', { hasText: otra })).toHaveCount(0);
 }
 
 /**

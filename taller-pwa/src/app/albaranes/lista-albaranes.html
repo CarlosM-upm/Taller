@@ -44,12 +44,12 @@
             <span>{{ nombresTrabajadores(albaran) }}</span>
             <span class="crece"></span>
             @if (albaran.tieneFirma) {
-              <span class="etiqueta firmado">
-                <mat-icon class="icono-pie">draw</mat-icon>
+              <span class="chip chip-hecho">
+                <mat-icon>draw</mat-icon>
                 Firmado
               </span>
             } @else {
-              <span class="etiqueta sin-firmar">Sin firmar</span>
+              <span class="chip chip-pendiente">Sin firmar</span>
             }
             @if (albaran.fotoIds.length > 0) {
               <mat-icon class="icono-pie">photo_library</mat-icon>

@@ -17,20 +17,13 @@
 }
 .precio { white-space: nowrap; padding: 0 4px; }
 small { opacity: 0.65; }
+.nombre .chip { margin-left: 8px; }
 .vacio { opacity: 0.7; }
 .anadir { margin-bottom: 8px; }
 .ligero { font-weight: 400; opacity: 0.65; }
 .filtros { display: flex; flex-wrap: wrap; gap: 0 12px; }
 .filtros mat-form-field { width: auto; }
 .filtros .crece { flex: 1 1 220px; }
-/* Con "Todas las familias", la familia de cada material, para saber de dónde sale. */
-.familia {
-  margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: var(--mat-sys-surface-container-highest);
-  opacity: 1;
-}
 
 /* El tono y el borde los pone .recuadro-edicion (styles.scss). */
 .formulario { margin: 4px 0; }

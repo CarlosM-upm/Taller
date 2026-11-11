@@ -59,7 +59,7 @@
         <span class="nombre crece">
           {{ material.nombre }} <small>({{ material.unidad }})</small>
           @if (familiaId() === null) {
-            <small class="familia">{{ material.familia }}</small>
+            <span class="chip chip-info">{{ material.familia }}</span>
           }
         </span>
         <span class="precio">
