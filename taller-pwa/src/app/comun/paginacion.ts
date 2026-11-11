@@ -16,6 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './paginacion.scss',
 })
 export class Paginacion {
+  /** Para distinguirla de otras en la misma página ("Páginas de clientes"). */
+  readonly etiqueta = input('Páginas');
   readonly total = input.required<number>();
   readonly porPagina = input(20);
   readonly pagina = input(0);

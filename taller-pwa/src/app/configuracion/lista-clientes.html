@@ -35,7 +35,7 @@
 
 <ul class="lista">
   @for (cliente of deLaPagina(); track cliente.id) {
-    <li>
+    <li [class.recuadro-edicion]="editandoId() === cliente.id">
       @if (editandoId() === cliente.id) {
         <form class="edicion" (ngSubmit)="guardar(cliente.id)">
           <mat-form-field appearance="outline" class="crece">
@@ -74,6 +74,7 @@
 </ul>
 
 <app-paginacion
+  etiqueta="Páginas de clientes"
   [total]="filtrados().length"
   [porPagina]="porPagina"
   [pagina]="paginaActual()"

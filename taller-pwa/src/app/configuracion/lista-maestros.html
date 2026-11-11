@@ -22,7 +22,7 @@
 
 <ul class="lista">
   @for (elemento of elementos(); track elemento.id) {
-    <li>
+    <li [class.recuadro-edicion]="editandoId() === elemento.id">
       @if (editandoId() === elemento.id) {
         <mat-form-field appearance="outline" class="crece">
           <input

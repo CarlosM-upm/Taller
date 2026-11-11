@@ -75,11 +75,11 @@ test('en Ajustes los clientes se buscan por nombre o DNI y van por páginas', as
 
     // 22 coinciden: 20 en la primera página y 2 en la segunda.
     await buscador.fill(`Paginar`);
-    await expect(page.getByText('1–20 de 22')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Páginas de clientes' }).getByText('1–20 de 22')).toBeVisible();
     await expect(page.getByText(creados[0].nombre, { exact: true })).toBeVisible();
     await expect(page.getByText(creados[21].nombre, { exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Siguiente' }).click();
-    await expect(page.getByText('21–22 de 22')).toBeVisible();
+    await page.getByRole('navigation', { name: 'Páginas de clientes' }).getByRole('button', { name: 'Siguiente' }).click();
+    await expect(page.getByRole('navigation', { name: 'Páginas de clientes' }).getByText('21–22 de 22')).toBeVisible();
     await expect(page.getByText(creados[21].nombre, { exact: true })).toBeVisible();
 
     // Por DNI, aunque se escriba con puntos y en minúscula. Una nueva búsqueda
@@ -88,7 +88,7 @@ test('en Ajustes los clientes se buscan por nombre o DNI y van por páginas', as
     await buscador.fill(`${dni.slice(0, 2)}.${dni.slice(2, 8)}-${dni[8].toLowerCase()}`);
     await expect(page.getByText(creados[5].nombre, { exact: true })).toBeVisible();
     await expect(page.getByText(creados[6].nombre, { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Siguiente' })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Páginas de clientes' }).getByRole('button', { name: 'Siguiente' })).toHaveCount(0);
   } finally {
     // Se borran ya, no al final: con 22 clientes más, las pruebas que vienen
     // detrás encontrarían los suyos en otra página.
@@ -211,14 +211,14 @@ test('en Ajustes los materiales se ven todos o por familia, y van por páginas',
     // Sin familia se ven todas; para añadir hay que elegir una.
     await expect(page.getByText('Para añadir un material, elige antes su familia.')).toBeVisible();
     await page.getByLabel('Buscar material').fill(String(marca));
-    await expect(page.getByText('1–20 de 23')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Páginas de materiales' }).getByText('1–20 de 23')).toBeVisible();
 
     // Con una familia, solo las suyas, y por páginas.
     await elegir(page, 'Familia', grande);
-    await expect(page.getByText('1–20 de 22')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Páginas de materiales' }).getByText('1–20 de 22')).toBeVisible();
     await expect(page.getByText(suelto)).toHaveCount(0);
-    await page.getByRole('button', { name: 'Siguiente' }).click();
-    await expect(page.getByText('21–22 de 22')).toBeVisible();
+    await page.getByRole('navigation', { name: 'Páginas de materiales' }).getByRole('button', { name: 'Siguiente' }).click();
+    await expect(page.getByRole('navigation', { name: 'Páginas de materiales' }).getByText('21–22 de 22')).toBeVisible();
     await expect(page.getByText(nombres[21])).toBeVisible();
 
     // "Todas las familias" vuelve a enseñarlas todas, cada una con su familia.

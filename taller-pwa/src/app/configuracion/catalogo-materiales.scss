@@ -31,12 +31,10 @@ small { opacity: 0.65; }
   opacity: 1;
 }
 
-.formulario {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.04);
-}
+/* El tono y el borde los pone .recuadro-edicion (styles.scss). */
+.formulario { margin: 4px 0; }
+/* La fila que se edita deja de ser una fila: el formulario va a lo ancho. */
+.lista li.recuadro-edicion { display: block; min-height: 0; }
 .formulario h4 { margin: 0 0 8px; }
 
 .total {

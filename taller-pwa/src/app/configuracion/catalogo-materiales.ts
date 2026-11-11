@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -35,6 +35,7 @@ import { Paginacion } from '../comun/paginacion';
   selector: 'app-catalogo-materiales',
   imports: [
     DecimalPipe,
+    NgTemplateOutlet,
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,

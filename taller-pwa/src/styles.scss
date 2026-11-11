@@ -87,6 +87,17 @@ button.mat-mdc-button {
   flex: 1 1 auto;
 }
 
+// Lo que se está editando en Ajustes (un cliente, un material…): otro tono y
+// un borde, para que se vea a la primera qué fila está abierta.
+.recuadro-edicion {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  border: 2px solid var(--mat-sys-primary);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 6px 0;
+}
+
 .aviso-vacio {
   padding: 32px 16px;
   text-align: center;

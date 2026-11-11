@@ -1,5 +1,5 @@
 @if (total() > porPagina()) {
-  <nav class="paginacion" aria-label="Páginas">
+  <nav class="paginacion" [attr.aria-label]="etiqueta()">
     <button matButton type="button" [disabled]="pagina() === 0" (click)="paginaChange.emit(pagina() - 1)">
       <mat-icon>chevron_left</mat-icon>
       Anterior
