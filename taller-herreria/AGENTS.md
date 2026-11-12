@@ -654,6 +654,13 @@ igual que abrir un favorito o reabrir la PWA instalada.
 - **El lienzo de firma necesita `touch-action: none`.** Sin eso, arrastrar el dedo hace
   scroll en la página en lugar de dibujar y la firma no sale. Y hay que dimensionarlo
   según `devicePixelRatio`, o el trazo se ve borroso en la tablet.
+- **El lienzo de firma se mide con `clientWidth`/`clientHeight`, no con
+  `getBoundingClientRect`.** El diálogo se abre creciendo desde el 80% y el lienzo se
+  prepara justo entonces: con la caja, el dibujo quedaba al 80% y se estiraba, y el
+  trazo salía hasta 111px desviado del dedo. El punto del puntero descuenta la escala
+  y el borde. Y **nada debajo del recuadro puede aparecer o desaparecer al firmar**: el
+  diálogo está centrado y el recuadro se movía bajo el dedo (por eso se quitó "Todavía
+  no hay nada firmado"). `firmarEnLienzo()` de las pruebas comprueba las dos cosas.
 - **Nunca cargues tipografías ni iconos desde Google Fonts.** El taller tiene internet,
   pero la aplicación no debe depender de él: el día que se caiga la línea los iconos
   aparecerían como palabras sueltas ("delete", "photo_camera") y la tablet quedaría
