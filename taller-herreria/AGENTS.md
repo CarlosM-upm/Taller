@@ -682,7 +682,9 @@ igual que abrir un favorito o reabrir la PWA instalada.
   muevas una regla de permisos al cliente quitándola de `SecurityConfig`.
 - Navegación **abajo**: es lo que alcanza el pulgar sujetando una tablet. Objetivos
   táctiles de 48-64 px, pensados para manos con guantes. No bajes la densidad de
-  Material a valores negativos. El apartado activo lleva una píldora detrás del icono.
+  Material a valores negativos. El apartado activo se marca con un **recuadro** verde
+  suave que ocupa todo su hueco, con el texto en verde (5:1). Se probó una píldora
+  solo detrás del icono y el taller prefirió el recuadro.
 
 ### Aspecto común (`src/styles.scss`)
 
@@ -972,7 +974,8 @@ Verificado arrancando la aplicación contra PostgreSQL real:
   el servidor no cambia.
 - **Repaso visual** en siete pasos, uno por commit (para volver al punto de partida:
   etiqueta `antes-del-diseno`): números en formato español con la unidad, etiquetas de
-  estado comunes, píldora en la barra de abajo, listas vacías con icono y qué hacer,
+  estado comunes, píldora en la barra de abajo (deshecha después: el taller prefirió
+  el recuadro de siempre), listas vacías con icono y qué hacer,
   índice fijo en Ajustes, textos al pasar el ratón por los botones de solo icono, y
   títulos y separaciones iguales en todas las pantallas. Solo pantalla.
 - **Revisión de accesibilidad** (contraste WCAG AA, objetivos de 48px, etiquetas) en
