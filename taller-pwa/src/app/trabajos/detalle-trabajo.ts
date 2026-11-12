@@ -23,8 +23,8 @@ import { SelectorMaestro } from '../comun/selector-maestro';
 import { SelectorCliente } from '../comun/selector-cliente';
 import { AlbaranDelTrabajo } from './albaran-del-trabajo';
 import { FirmaDelTrabajo } from './firma-del-trabajo';
-import { queFaltaParaEnviar } from './para-enviar';
-import { aHoras, vacioONulo } from './campos-del-trabajo';
+import { FormularioTrabajo, queFaltaParaEnviar } from './para-enviar';
+import { aHoras, difiereDeLoGuardado, vacioONulo } from './campos-del-trabajo';
 import { aTexto } from '../nucleo/numeros';
 
 const MAX_FOTOS = 5;
@@ -87,6 +87,8 @@ export class DetalleTrabajo implements OnInit {
   readonly materiales = signal<MaterialLinea[]>([]);
   readonly horas = signal('');
   readonly errorHoras = signal<string | null>(null);
+  /** Sube al descartar los cambios: rehace las filas de materiales (ver descartarCambios). */
+  readonly filasNuevas = signal(0);
 
   readonly esBorrador = computed(() => this.trabajo()?.estado === 'BORRADOR');
 
@@ -104,28 +106,19 @@ export class DetalleTrabajo implements OnInit {
     return (fotoId: number) => this.api.urlFotoTrabajo(id, fotoId);
   });
 
-  /** Qué falta para poder enviarlo, con los nombres que ve el usuario. */
-  readonly faltan = computed(() =>
-    queFaltaParaEnviar({
-      clienteId: this.clienteId(),
-      trabajadorId: this.trabajadorId(),
-      descripcion: this.descripcion(),
-      materiales: this.materiales(),
-      horas: this.horas(),
-    }),
-  );
+  /** El formulario tal como está escrito. */
+  private readonly campos = computed<FormularioTrabajo>(() => ({
+    clienteId: this.clienteId(),
+    trabajadorId: this.trabajadorId(),
+    descripcion: this.descripcion(),
+    materiales: this.materiales(),
+    horas: this.horas(),
+  }));
 
-  readonly hayCambios = computed(() => {
-    const t = this.trabajo();
-    if (!t) return false;
-    return (
-      this.clienteId() !== t.clienteId ||
-      this.trabajadorId() !== t.trabajadorId ||
-      this.descripcion().trim() !== (t.descripcion ?? '') ||
-      JSON.stringify(this.materiales()) !== JSON.stringify(t.materiales) ||
-      this.horas().trim() !== aTexto(t.horas)
-    );
-  });
+  /** Qué falta para poder enviarlo, con los nombres que ve el usuario. */
+  readonly faltan = computed(() => queFaltaParaEnviar(this.campos()));
+
+  readonly hayCambios = computed(() => difiereDeLoGuardado(this.campos(), this.trabajo()));
 
   /**
    * OJO: la carga va en ngOnInit y NO en el constructor.
@@ -156,6 +149,16 @@ export class DetalleTrabajo implements OnInit {
         this.fallo.set(this.avisos.textoDe(fallo, 'No se ha podido cargar el trabajo'));
       },
     });
+  }
+
+  /** "Cancelar": el formulario vuelve a como está guardado. */
+  descartarCambios(): void {
+    const t = this.trabajo();
+    if (!t || this.ocupado()) return;
+    this.aplicar(t);
+    // Las filas de materiales solo leen sus líneas al crearse (no se
+    // realimentan desde aquí): para que vuelvan las guardadas, se rehacen.
+    this.filasNuevas.update((n) => n + 1);
   }
 
   guardar(): void {

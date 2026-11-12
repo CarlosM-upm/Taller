@@ -95,6 +95,20 @@ export class DetalleAlbaran implements OnInit {
   readonly precioHora = signal('');
   readonly importeExtra = signal('');
   readonly incluirTotal = signal(false);
+
+  /**
+   * El formulario como texto, y cómo estaba al pulsar el lápiz: si son
+   * iguales, "Sin cambios" en lugar de Guardar.
+   */
+  private readonly formulario = computed(() =>
+    JSON.stringify([
+      this.numero().trim(), this.fecha(), this.clienteId(), this.trabajadorIds(),
+      this.descripcion().trim(), this.horas().trim(), this.materiales(),
+      this.precioHora().trim(), this.importeExtra().trim(), this.incluirTotal(),
+    ])
+  );
+  private readonly formularioAlEmpezar = signal('');
+  readonly hayCambios = computed(() => this.formulario() !== this.formularioAlEmpezar());
   readonly errores = signal<Record<string, string>>({});
 
   /** El coste mientras se teclea, sin esperar a guardar (ver coste-en-vivo.ts). */
@@ -163,6 +177,7 @@ export class DetalleAlbaran implements OnInit {
     this.importeExtra.set(aTexto(a.importeExtra));
     this.incluirTotal.set(a.incluirTotal);
     this.errores.set({});
+    this.formularioAlEmpezar.set(this.formulario());
     this.editando.set(true);
   }
 

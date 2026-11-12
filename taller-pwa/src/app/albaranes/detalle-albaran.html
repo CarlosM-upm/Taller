@@ -146,7 +146,12 @@
 
             <div class="fila-fin acciones">
               <button matButton type="button" [disabled]="ocupado()" (click)="cancelarEdicion()">Cancelar</button>
-              <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+              <!-- Como en Trabajo: "Sin cambios" hasta que se toca algo. -->
+              @if (hayCambios()) {
+                <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+              } @else {
+                <button matButton type="submit" disabled>Sin cambios</button>
+              }
             </div>
           </form>
         } @else {

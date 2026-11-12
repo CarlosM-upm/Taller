@@ -74,6 +74,16 @@ export class DetallePedido implements OnInit {
   readonly clienteId = signal<number | null>(null);
   readonly trabajadorId = signal<number | null>(null);
   readonly descripcion = signal('');
+
+  /**
+   * El formulario como texto, y cómo estaba al pulsar el lápiz: si son
+   * iguales, "Sin cambios" en lugar de Guardar.
+   */
+  private readonly formulario = computed(() =>
+    JSON.stringify([this.clienteId(), this.trabajadorId(), this.descripcion().trim()])
+  );
+  private readonly formularioAlEmpezar = signal('');
+  readonly hayCambios = computed(() => this.formulario() !== this.formularioAlEmpezar());
   readonly errores = signal<Record<string, string>>({});
 
   /** La galería necesita saber construir la URL de cada foto. */
@@ -139,6 +149,7 @@ export class DetallePedido implements OnInit {
     this.trabajadorId.set(pedido.trabajadorId);
     this.descripcion.set(pedido.descripcion);
     this.errores.set({});
+    this.formularioAlEmpezar.set(this.formulario());
     this.editando.set(true);
   }
 

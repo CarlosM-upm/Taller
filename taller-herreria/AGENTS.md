@@ -724,6 +724,14 @@ estilo a algo en un componente, mira si ya existe aquí:
   (DNI o unidad junto a un nombre) son globales, en `--mat-sys-on-surface-variant`
   (8,5:1). **No bajes el contraste con `opacity`**: el texto normal al 60% se queda en
   4,4:1, por debajo del mínimo de 4,5.
+- **Guardar y Cancelar en las fichas** (Trabajo, Albarán y Pedido), iguales en las
+  tres: sin tocar nada, el botón de guardar pone **"Sin cambios"** y está desactivado;
+  en cuanto se cambia algo salen **Cancelar** (texto) y **Guardar** (relleno). En
+  Albarán y Pedido, que se editan con el lápiz, Cancelar está siempre (es la forma de
+  salir de la edición) y "Sin cambios" se decide comparando el formulario con cómo
+  estaba al pulsar el lápiz (`formularioAlEmpezar`). En Trabajo, que siempre se puede
+  editar, Cancelar vuelve a lo guardado y **rehace las filas de materiales** con un
+  `@for` de un solo elemento (`filasNuevas`): solo leen sus líneas al crearse.
 - **Contraste y tamaños, medidos** (WCAG 2.2 AA con axe-core, más medidas propias de
   objetivos táctiles y de bordes e iconos): sin fallos. Todo lo pulsable mide 48px o
   más contando la zona táctil invisible de Material (los botones de icono se ven de

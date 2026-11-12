@@ -159,6 +159,7 @@ test('dos trabajos de un cliente se unifican en un albarán con su precio', asyn
   // Poner precios y comprobar el total en vivo: 12 tornillos a 2 € son 24 €,
   // más 6,5 h a 10 € son 65 €, más 11 € de extra = 100 €.
   await page.getByLabel('Editar').click();
+  await expect(page.getByRole('button', { name: 'Sin cambios' })).toBeDisabled();
   await page.locator('input[name="material-precio-0"]').fill('2');
   await page.getByLabel('Precio por hora').fill('10');
   await page.getByLabel('Añadir al coste').fill('11');

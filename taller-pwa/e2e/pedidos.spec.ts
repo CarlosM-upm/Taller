@@ -32,6 +32,14 @@ test('un pedido se crea, se abre y se borra', async ({ page }) => {
   await expect(page).toHaveURL(/\/pedidos\/\d+$/);
   await expect(page.getByText('Fecha de entrada')).toBeVisible();
 
+  // Editar: "Sin cambios" hasta que se toca algo; Cancelar lo deja como estaba.
+  await page.getByLabel('Editar', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sin cambios' })).toBeDisabled();
+  await page.getByLabel('Qué han pedido').fill('Reja cambiada que se descarta');
+  await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.getByText('Reja de prueba automática')).toBeVisible();
+
   // Borrar (solo el jefe puede)
   await borrarYConfirmar(page);
   await expect(page).toHaveURL(/\/pedidos$/, { timeout: 15_000 });

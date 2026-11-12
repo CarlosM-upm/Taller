@@ -37,6 +37,17 @@ test('un trabajo pasa de borrador a enviado y avisa de lo que falta', async ({ p
 
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(page.getByText('Cambios guardados')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'Sin cambios' })).toBeDisabled();
+
+  // Al tocar algo salen Cancelar y Guardar; Cancelar lo deja como estaba,
+  // también las líneas de material.
+  await page.locator('input[name="material-cantidad-0"]').fill('7');
+  await page.getByLabel('Qué se ha hecho').fill('Cambio que se descarta');
+  await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.locator('input[name="material-cantidad-0"]')).toHaveValue('3');
+  await expect(page.getByLabel('Qué se ha hecho')).toHaveValue('Trabajo de prueba automática');
+  await expect(page.getByRole('button', { name: 'Sin cambios' })).toBeDisabled();
 
   // Enviar, con su confirmación
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();

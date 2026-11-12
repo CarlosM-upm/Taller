@@ -89,11 +89,15 @@
             </mat-form-field>
 
             <h3 class="titulo-seccion">Materiales</h3>
-            <app-filas-materiales
-              [lineasIniciales]="t.materiales"
-              [deshabilitado]="ocupado()"
-              (cambio)="materiales.set($event)"
-            />
+            <!-- El @for con un solo elemento rehace las filas al descartar los
+                 cambios: solo leen sus líneas al crearse. -->
+            @for (n of [filasNuevas()]; track n) {
+              <app-filas-materiales
+                [lineasIniciales]="t.materiales"
+                [deshabilitado]="ocupado()"
+                (cambio)="materiales.set($event)"
+              />
+            }
 
             <mat-form-field appearance="outline">
               <mat-label>Horas</mat-label>
@@ -106,9 +110,13 @@
             </mat-form-field>
 
             <div class="fila-fin acciones">
-              <button matButton type="submit" [disabled]="ocupado() || !hayCambios()">
-                {{ hayCambios() ? 'Guardar' : 'Sin cambios' }}
-              </button>
+              <!-- Como en Albarán y Pedido: Cancelar y Guardar en cuanto se toca algo. -->
+              @if (hayCambios()) {
+                <button matButton type="button" [disabled]="ocupado()" (click)="descartarCambios()">Cancelar</button>
+                <button matButton="filled" type="submit" [disabled]="ocupado()">Guardar</button>
+              } @else {
+                <button matButton type="submit" disabled>Sin cambios</button>
+              }
               @if (esBorrador()) {
                 <button matButton="filled" type="button" [disabled]="ocupado()" (click)="enviar()">
                   Enviar
