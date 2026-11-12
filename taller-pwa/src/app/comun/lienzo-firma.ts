@@ -29,6 +29,16 @@ import { MatIconModule } from '@angular/material/icon';
  * - `setPointerCapture`: si el dedo se sale del recuadro a mitad del trazo, el
  *   dibujo continúa en vez de cortarse de golpe.
  *
+ * - El tamaño se toma de `clientWidth`/`clientHeight`, NO de
+ *   getBoundingClientRect: el diálogo se abre creciendo desde el 80% y el
+ *   lienzo se prepara justo entonces, así que la caja medía el 80% y el dibujo
+ *   salía estirado (hasta 111px desviado abajo a la derecha). Además la caja
+ *   incluye el borde de 2px, que no es zona de dibujo. Por lo mismo, el punto
+ *   del puntero descuenta la escala y el borde.
+ *
+ * - Nada debajo del recuadro que aparezca o desaparezca al firmar: el diálogo
+ *   está centrado y, al cambiar de alto, el recuadro se movía bajo el dedo.
+ *
  * Se exporta a PNG, que es uno de los dos formatos que admite el servidor.
  */
 @Component({
@@ -61,12 +71,14 @@ export class LienzoFirma implements AfterViewInit, OnDestroy {
 
   private preparar(): void {
     const lienzo = this.lienzoRef().nativeElement;
-    const caja = lienzo.getBoundingClientRect();
-    if (caja.width === 0 || caja.height === 0) return;
+    // Sin borde y sin la animación de apertura del diálogo (ver arriba).
+    const ancho = lienzo.clientWidth;
+    const alto = lienzo.clientHeight;
+    if (ancho === 0 || alto === 0) return;
 
     const densidad = window.devicePixelRatio || 1;
-    lienzo.width = Math.round(caja.width * densidad);
-    lienzo.height = Math.round(caja.height * densidad);
+    lienzo.width = Math.round(ancho * densidad);
+    lienzo.height = Math.round(alto * densidad);
 
     const pincel = lienzo.getContext('2d');
     if (!pincel) return;
@@ -75,7 +87,7 @@ export class LienzoFirma implements AfterViewInit, OnDestroy {
     // Fondo blanco: sin esto el PNG sale con fondo transparente y la firma
     // resulta invisible al imprimirla o al verla sobre fondo oscuro.
     pincel.fillStyle = '#ffffff';
-    pincel.fillRect(0, 0, caja.width, caja.height);
+    pincel.fillRect(0, 0, ancho, alto);
 
     pincel.strokeStyle = '#111111';
     pincel.lineWidth = 2.5;
@@ -86,9 +98,20 @@ export class LienzoFirma implements AfterViewInit, OnDestroy {
     this.hayTrazo.set(false);
   }
 
+  /**
+   * Del puntero en la pantalla al punto dentro de la zona de dibujo. Si el
+   * diálogo aún está creciendo, la caja en pantalla es más pequeña que la real:
+   * se corrige con la escala, y se descuenta el borde.
+   */
   private puntoDe(evento: PointerEvent): { x: number; y: number } {
-    const caja = this.lienzoRef().nativeElement.getBoundingClientRect();
-    return { x: evento.clientX - caja.left, y: evento.clientY - caja.top };
+    const lienzo = this.lienzoRef().nativeElement;
+    const caja = lienzo.getBoundingClientRect();
+    const escalaX = caja.width / (lienzo.offsetWidth || caja.width);
+    const escalaY = caja.height / (lienzo.offsetHeight || caja.height);
+    return {
+      x: (evento.clientX - caja.left) / escalaX - lienzo.clientLeft,
+      y: (evento.clientY - caja.top) / escalaY - lienzo.clientTop,
+    };
   }
 
   empezar(evento: PointerEvent): void {

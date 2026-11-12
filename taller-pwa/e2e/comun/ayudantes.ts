@@ -1,4 +1,4 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 /**
@@ -156,6 +156,11 @@ export async function cambiarA(page: Page, cuenta: { usuario: string; contrasena
 export async function firmarEnLienzo(page: Page) {
   const lienzo = page.locator('canvas.lienzo');
   await expect(lienzo).toBeVisible();
+  // El diálogo se abre creciendo desde el 80%: se espera a que acabe, como
+  // haría una persona.
+  await expect
+    .poll(() => lienzo.evaluate((c) => Math.round(c.getBoundingClientRect().width) === c.offsetWidth))
+    .toBe(true);
   const caja = await lienzo.boundingBox();
   if (!caja) throw new Error('El lienzo de firma no tiene tamaño');
   await page.mouse.move(caja.x + 40, caja.y + caja.height / 2);
@@ -163,7 +168,35 @@ export async function firmarEnLienzo(page: Page) {
   await page.mouse.move(caja.x + 120, caja.y + 40, { steps: 10 });
   await page.mouse.move(caja.x + 200, caja.y + caja.height - 40, { steps: 10 });
   await page.mouse.up();
+
+  // El trazo cae justo bajo el puntero, también lejos de la esquina (abajo a
+  // la derecha llegó a salir 111px más allá), y el recuadro no se mueve al
+  // empezar a firmar (se movía 14px).
+  const x = caja.x + caja.width * 0.8;
+  const y = caja.y + caja.height * 0.75;
+  await page.mouse.move(x - 10, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 10, y, { steps: 5 });
+  await page.mouse.up();
+  expect(await lienzo.boundingBox(), 'el recuadro se ha movido al firmar').toEqual(caja);
+  expect(await pintadoEn(lienzo, x, y), 'el trazo no ha caído bajo el puntero').toBe(true);
+
   await page.getByRole('button', { name: 'Guardar firma' }).click();
+}
+
+/** Si el lienzo tiene tinta en ese punto de la pantalla (o a 2px). */
+async function pintadoEn(lienzo: Locator, x: number, y: number): Promise<boolean> {
+  return lienzo.evaluate(
+    (c: HTMLCanvasElement, [px, py]) => {
+      const r = c.getBoundingClientRect();
+      const bx = Math.round(((px - r.left - c.clientLeft) * c.width) / c.clientWidth);
+      const by = Math.round(((py - r.top - c.clientTop) * c.height) / c.clientHeight);
+      const datos = c.getContext('2d')!.getImageData(bx - 2, by - 2, 5, 5).data;
+      for (let i = 0; i < datos.length; i += 4) if (datos[i] < 128) return true;
+      return false;
+    },
+    [x, y]
+  );
 }
 
 /**
